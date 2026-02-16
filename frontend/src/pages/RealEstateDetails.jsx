@@ -2807,6 +2807,55 @@ export default function RealEstateDetails() {
         />
       )}
       
+      {/* Passport Preview Modal */}
+      {showPassportPreviewModal && passportPreviewUrl && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => {
+          setShowPassportPreviewModal(false);
+          if (passportPreviewUrl) {
+            URL.revokeObjectURL(passportPreviewUrl);
+            setPassportPreviewUrl(null);
+          }
+        }}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-green-600" />
+                Passport Document
+              </h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(passportPreviewUrl, '_blank')}
+                  className="flex items-center gap-1"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in New Tab
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowPassportPreviewModal(false);
+                    URL.revokeObjectURL(passportPreviewUrl);
+                    setPassportPreviewUrl(null);
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-2 bg-gray-100">
+              <iframe
+                src={passportPreviewUrl}
+                className="w-full h-full min-h-[70vh] rounded border border-gray-300"
+                title="Passport Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Currency Settings Modal */}
       {showCurrencySettingsModal && (
         <CurrencySettingsModal
