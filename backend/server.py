@@ -10349,6 +10349,20 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
         # Sub-brokers see only linked clients
         clients = await db.clients.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
     
+    # Get all client IDs for batch real estate lookup
+    client_ids = [c['id'] for c in clients]
+    
+    # Get real estate investments for all clients at once
+    real_estate_clients = set()
+    real_estate_cursor = db.real_estate_opportunities.find(
+        {"investors.client_id": {"$in": client_ids}},
+        {"investors.client_id": 1}
+    )
+    async for re_opp in real_estate_cursor:
+        for inv in re_opp.get('investors', []):
+            if inv.get('client_id') in client_ids:
+                real_estate_clients.add(inv['client_id'])
+    
     # Get approved trades for each client
     client_summaries = []
     for client in clients:
@@ -10358,6 +10372,8 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
         }, {"_id": 0}).to_list(100)
         
         total_investment = sum(t.get('total_amount', 0) for t in trades)
+        has_bonds = len(trades) > 0
+        has_real_estate = client['id'] in real_estate_clients
         
         client_summaries.append({
             "id": client['id'],
@@ -10365,7 +10381,9 @@ async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
             "pan_number": client['pan_number'],
             "total_investment": round(total_investment, 2),
             "trade_count": len(trades),
-            "is_active": client.get('is_active', True)
+            "is_active": client.get('is_active', True),
+            "has_bonds": has_bonds,
+            "has_real_estate": has_real_estate
         })
     
     # Sort by investment value (highest first), then alphabetically by name
