@@ -1874,66 +1874,35 @@ export default function ReinvestmentTagging() {
                         {formatCurrency(entry.net_amount)}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* UCC - Display only, edit via modal */}
+                        {currentUcc ? (
                           <Badge variant={currentUcc === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
                             {currentUcc}
                           </Badge>
                         ) : (
-                          <Select
-                            value={currentUcc}
-                            onValueChange={(v) => handleLocalChange(entry.id, 'target_ucc', v)}
-                          >
-                            <SelectTrigger className="w-28 h-8 text-xs">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(clientGroup.ucc_list || []).map(ucc => (
-                                <SelectItem key={ucc} value={ucc}>{ucc}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <span className="text-xs text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* Portfolio - Display only, edit via modal */}
+                        {currentPortfolio ? (
                           <Badge variant={currentPortfolio === 'Multi' ? 'secondary' : 'outline'} className="text-xs">
                             {currentPortfolio === 'Multi' ? 'Multi' : PORTFOLIO_OPTIONS.find(p => p.value === currentPortfolio)?.label || currentPortfolio}
                           </Badge>
                         ) : (
-                          <Select
-                            value={currentPortfolio}
-                            onValueChange={(v) => handleLocalChange(entry.id, 'portfolio_category', v)}
-                          >
-                            <SelectTrigger className="w-28 h-8 text-xs">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PORTFOLIO_OPTIONS.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <span className="text-xs text-gray-400">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {isSplit ? (
+                        {/* Tag - Display only, edit via modal */}
+                        {currentTag && currentTag !== 'not_tagged' ? (
                           <Badge className="text-xs bg-etihad-gold-100 text-etihad-gold-700 border-etihad-gold-200">
                             {TAG_OPTIONS.find(t => t.value === currentTag)?.label || currentTag}
                           </Badge>
                         ) : (
-                          <Select
-                            value={currentTag}
-                            onValueChange={(v) => handleLocalChange(entry.id, 'reinvestment_tag', v)}
-                          >
-                            <SelectTrigger className="w-28 h-8 text-xs">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TAG_OPTIONS.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                            Not Tagged
+                          </Badge>
                         )}
                       </td>
                       <td className="px-3 py-2">
