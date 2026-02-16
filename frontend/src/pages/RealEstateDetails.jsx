@@ -2603,21 +2603,137 @@ export default function RealEstateDetails() {
                           </tr>
                         );
                       })}
+                      
+                      {/* DLD Fee Row */}
+                      {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (
+                        <tr className="border-b border-gray-100 hover:bg-orange-50/30 bg-orange-50/20">
+                          <td className="py-3 px-4">
+                            <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm font-bold">
+                              D
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-medium text-orange-700">
+                            DLD Fee
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-500 text-sm">
+                            On Registration
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                              {opp.dld_fee_percentage || 4}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-orange-700">
+                            {convertCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}
+                          </td>
+                          {/* Per-user DLD contribution */}
+                          {opp.investors?.length > 0 ? (
+                            opp.investors.map((inv, i) => {
+                              const dldAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
+                              const userDld = dldAmount * (inv.share_percentage / 100);
+                              return (
+                                <td key={i} className="py-3 px-3 text-center bg-orange-50/50">
+                                  <span className="font-mono text-sm text-orange-700">
+                                    {convertCurrency(userDld)}
+                                  </span>
+                                </td>
+                              );
+                            })
+                          ) : (
+                            <td className="py-3 px-3 text-center bg-orange-50/50">
+                              <span className="font-mono text-sm text-orange-700 font-bold">
+                                {convertCurrency((opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100)) * viewingSharePercentage / 100)}
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      )}
+                      
+                      {/* Admin Fee Row */}
+                      {opp.admin_fee > 0 && (
+                        <tr className="border-b border-gray-100 hover:bg-green-50/30 bg-green-50/20">
+                          <td className="py-3 px-4">
+                            <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">
+                              A
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-medium text-green-700">
+                            Admin Fee
+                          </td>
+                          <td className="py-3 px-4 text-center text-gray-500 text-sm">
+                            On Registration
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                              Fixed
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-green-700">
+                            {convertCurrency(opp.admin_fee)}
+                          </td>
+                          {/* Per-user Admin contribution */}
+                          {opp.investors?.length > 0 ? (
+                            opp.investors.map((inv, i) => {
+                              const userAdmin = opp.admin_fee * (inv.share_percentage / 100);
+                              return (
+                                <td key={i} className="py-3 px-3 text-center bg-green-50/50">
+                                  <span className="font-mono text-sm text-green-700">
+                                    {convertCurrency(userAdmin)}
+                                  </span>
+                                </td>
+                              );
+                            })
+                          ) : (
+                            <td className="py-3 px-3 text-center bg-green-50/50">
+                              <span className="font-mono text-sm text-green-700 font-bold">
+                                {convertCurrency(opp.admin_fee * viewingSharePercentage / 100)}
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      )}
                     </tbody>
                     <tfoot className="bg-gray-100 font-semibold">
-                      <tr>
-                        <td colSpan="4" className="py-3 px-4 text-right text-gray-700">Total</td>
-                        <td className="py-3 px-4 text-right font-bold text-gray-800">
+                      {/* Unit Price Subtotal */}
+                      <tr className="border-b border-gray-200">
+                        <td colSpan="4" className="py-2 px-4 text-right text-gray-600 text-sm">Unit Price Subtotal</td>
+                        <td className="py-2 px-4 text-right font-semibold text-gray-700">
                           {convertCurrency(opp.unit_price)}
                         </td>
-                        {/* Per-user total */}
                         {opp.investors?.length > 0 ? (
                           opp.investors.map((inv, i) => {
-                            const userTotal = opp.unit_price * (inv.share_percentage / 100);
+                            const userSubtotal = opp.unit_price * (inv.share_percentage / 100);
+                            return (
+                              <td key={i} className="py-2 px-3 text-center bg-blue-50">
+                                <span className="font-mono text-sm text-blue-700">
+                                  {convertCurrency(userSubtotal)}
+                                </span>
+                              </td>
+                            );
+                          })
+                        ) : (
+                          <td className="py-2 px-3 text-center bg-blue-50">
+                            <span className="font-mono text-sm text-blue-700">
+                              {convertCurrency(opp.unit_price * viewingSharePercentage / 100)}
+                            </span>
+                          </td>
+                        )}
+                      </tr>
+                      {/* Grand Total including DLD + Admin */}
+                      <tr>
+                        <td colSpan="4" className="py-3 px-4 text-right text-gray-700 font-bold">Grand Total (incl. Fees)</td>
+                        <td className="py-3 px-4 text-right font-bold text-gray-800">
+                          {convertCurrency(opp.total_cost || (opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0)))}
+                        </td>
+                        {/* Per-user grand total */}
+                        {opp.investors?.length > 0 ? (
+                          opp.investors.map((inv, i) => {
+                            const totalCost = opp.total_cost || (opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0));
+                            const userGrandTotal = totalCost * (inv.share_percentage / 100);
                             return (
                               <td key={i} className="py-3 px-3 text-center bg-blue-100">
                                 <span className="font-mono font-bold text-blue-800">
-                                  {convertCurrency(userTotal)}
+                                  {convertCurrency(userGrandTotal)}
                                 </span>
                               </td>
                             );
@@ -2625,7 +2741,7 @@ export default function RealEstateDetails() {
                         ) : (
                           <td className="py-3 px-3 text-center bg-blue-100">
                             <span className="font-mono font-bold text-blue-800">
-                              {convertCurrency(opp.unit_price * viewingSharePercentage / 100)}
+                              {convertCurrency((opp.total_cost || (opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0))) * viewingSharePercentage / 100)}
                             </span>
                           </td>
                         )}
