@@ -3706,6 +3706,19 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
         # Get UCC - use target_ucc from cashflow if available, otherwise client's UCC
         ucc = cashflow.get('target_ucc') or client.get('ucc') or client.get('pan_number', '')
         
+        # Get MF investment date - use broker-selected date from cashflow, fallback to T+1 from cashflow date
+        mf_investment_date = cashflow.get('mf_investment_date')
+        if not mf_investment_date:
+            # Fallback to T+1 from cashflow date
+            if cashflow.get('date'):
+                try:
+                    cf_date = datetime.strptime(cashflow['date'][:10], '%Y-%m-%d')
+                    mf_investment_date = (cf_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                except:
+                    mf_investment_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            else:
+                mf_investment_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        
         # Prepare investment data
         investment_item = {
             "UCC": ucc,
@@ -3713,7 +3726,7 @@ async def call_kinntegra_mf_buy_scheduler(cashflow: dict, client: dict, is_revis
             "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
             "InvestmentAmount": amount,
             "PortfolioName": format_portfolio_name(cashflow.get('portfolio_category', 'wealth')),
-            "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            "MFInvestmentDate": mf_investment_date  # Use broker-selected date, not approval date
         }
         
         # Add revision fields if this is a revision
