@@ -1762,56 +1762,79 @@ export default function RealEstateDetails() {
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {opp.investors.map((investor, idx) => (
+                {opp.investors.map((investor, idx) => {
+                  const canViewDetails = canViewInvestorDetails(investor.client_id);
+                  const isOwnProfile = isCurrentUserInvestor(investor.client_id);
+                  
+                  return (
                   <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800">{investor.client_name || `Investor ${idx + 1}`}</span>
+                      <span className="font-medium text-gray-800">
+                        {investor.client_name || `Investor ${idx + 1}`}
+                        {isOwnProfile && <span className="ml-1 text-xs text-indigo-600">(You)</span>}
+                      </span>
                       <Badge variant="outline">{investor.share_percentage || 25}%</Badge>
                     </div>
                     <p className="text-xs text-gray-500 mb-2">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
                     
-                    {/* Passport Status */}
-                    <div className="mb-3">
-                      {investor.passport_details?.passport_number ? (
-                        <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span>Passport: {investor.passport_details.passport_number}</span>
+                    {/* Passport Status - Only show details if user can view this investor */}
+                    {canViewDetails ? (
+                      <div className="mb-3">
+                        {investor.passport_details?.passport_number ? (
+                          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Passport: {investor.passport_details.passport_number}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-xs text-etihad-gold-600 bg-etihad-gold-50 px-2 py-1 rounded">
+                            <Clock className="h-3 w-3" />
+                            <span>Passport details pending</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
+                          <Lock className="h-3 w-3" />
+                          <span>Details restricted</span>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-xs text-etihad-gold-600 bg-etihad-gold-50 px-2 py-1 rounded">
-                          <Clock className="h-3 w-3" />
-                          <span>Passport details pending</span>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedInvestorForPassport(investor);
-                          setShowPassportModal(true);
-                        }}
-                        data-testid={`passport-btn-${idx}`}
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Passport
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedInvestorForXirr(investor);
-                          setShowXirrComparisonModal(true);
-                        }}
-                      >
-                        <BarChart3 className="h-4 w-4 mr-1" />
-                        XIRR
-                      </Button>
-                    </div>
+                    {/* Action buttons - Only show if user can view this investor's details */}
+                    {canViewDetails ? (
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedInvestorForPassport(investor);
+                            setShowPassportModal(true);
+                          }}
+                          data-testid={`passport-btn-${idx}`}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Passport
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedInvestorForXirr(investor);
+                            setShowXirrComparisonModal(true);
+                          }}
+                        >
+                          <BarChart3 className="h-4 w-4 mr-1" />
+                          XIRR
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 text-center py-2">
+                        {user?.role === 'client' ? 'You can only view your own details' : 'Not your linked client'}
+                      </div>
+                    )}
                     {/* Edit/Remove buttons - ONLY for broker */}
                     {user?.role === 'broker' && (
                       <div className="flex gap-2 mt-2">
