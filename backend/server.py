@@ -3817,6 +3817,19 @@ async def _call_kinntegra_for_allocation(cashflow: dict, client: dict, allocatio
         # Get UCC from allocation
         ucc = allocation.get('ucc') or client.get('ucc') or client.get('pan_number', '')
         
+        # Get MF investment date - use broker-selected date, fallback to T+1 from cashflow date
+        mf_investment_date = allocation.get('investment_date')
+        if not mf_investment_date:
+            # Fallback to T+1 from cashflow date
+            if cashflow.get('date'):
+                try:
+                    cf_date = datetime.strptime(cashflow['date'][:10], '%Y-%m-%d')
+                    mf_investment_date = (cf_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                except:
+                    mf_investment_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            else:
+                mf_investment_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        
         # Prepare investment data
         investment_item = {
             "UCC": ucc,
@@ -3824,7 +3837,7 @@ async def _call_kinntegra_for_allocation(cashflow: dict, client: dict, allocatio
             "BondInvestmentDate": cashflow.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d')),
             "InvestmentAmount": amount,
             "PortfolioName": format_portfolio_name(allocation.get('portfolio', 'wealth')),
-            "MFInvestmentDate": datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            "MFInvestmentDate": mf_investment_date  # Use broker-selected date
         }
         
         if is_revision:
