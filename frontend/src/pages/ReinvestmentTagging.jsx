@@ -1835,9 +1835,9 @@ export default function ReinvestmentTagging() {
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC *</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio *</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag *</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Portfolio</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">Tag</th>
                   <th className="w-16 px-3 py-2"></th>
                 </tr>
               </thead>
