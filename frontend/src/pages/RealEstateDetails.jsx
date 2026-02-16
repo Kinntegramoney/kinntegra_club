@@ -1830,6 +1830,7 @@ export default function RealEstateDetails() {
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
+                                  setPassportPreviewLoading(true);
                                   try {
                                     const token = localStorage.getItem("token");
                                     const response = await axios.get(
@@ -1839,17 +1840,26 @@ export default function RealEstateDetails() {
                                         responseType: 'blob'
                                       }
                                     );
-                                    const fileURL = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-                                    window.open(fileURL, '_blank');
+                                    const fileURL = window.URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' }));
+                                    setPassportPreviewUrl(fileURL);
+                                    setShowPassportPreviewModal(true);
                                   } catch (error) {
+                                    console.error("Passport view error:", error);
                                     toast.error("Failed to view passport document");
+                                  } finally {
+                                    setPassportPreviewLoading(false);
                                   }
                                 }}
                                 className="p-1 hover:bg-green-100 rounded transition-colors shrink-0"
                                 title="View Passport"
                                 data-testid={`view-passport-btn-${idx}`}
+                                disabled={passportPreviewLoading}
                               >
-                                <Eye className="h-3.5 w-3.5 text-green-700" />
+                                {passportPreviewLoading ? (
+                                  <RefreshCw className="h-3.5 w-3.5 text-green-700 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5 text-green-700" />
+                                )}
                               </button>
                             )}
                           </div>
