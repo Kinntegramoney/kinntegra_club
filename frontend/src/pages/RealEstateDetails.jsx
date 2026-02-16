@@ -1897,6 +1897,7 @@ export default function RealEstateDetails() {
                         </Button>
                       </div>
                     )}
+                    </div>
                   </div>
                   );
                 })}
