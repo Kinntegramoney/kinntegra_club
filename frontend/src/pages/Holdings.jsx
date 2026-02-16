@@ -2340,6 +2340,7 @@ export default function Holdings() {
                       <tr>
                         <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Repaid</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
@@ -2370,6 +2371,11 @@ export default function Holdings() {
                         const grossDifference = actualGross - expectedGross;
                         const profitDifference = actualProfit - expectedProfit;
                         
+                        // Repaid amounts (principal + interest)
+                        const repaidPrincipal = holding.repaid_principal || 0;
+                        const repaidInterest = holding.repaid_interest || 0;
+                        const totalRepaid = repaidPrincipal + repaidInterest;
+                        
                         // Format number with commas (Indian format)
                         const formatNum = (num) => num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         
@@ -2394,6 +2400,14 @@ export default function Holdings() {
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(holding.invested_amount)}</p>
                             {/* No difference shown for Investment - it doesn't change */}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p className="text-blue-700 font-semibold">{formatNum(totalRepaid)}</p>
+                            <div className="text-[10px] text-gray-500">
+                              <span title="Principal Repaid">P: {formatNum(repaidPrincipal)}</span>
+                              <span className="mx-1">|</span>
+                              <span title="Interest Repaid">I: {formatNum(repaidInterest)}</span>
+                            </div>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
                             <p>{formatNum(actualGross)}</p>
