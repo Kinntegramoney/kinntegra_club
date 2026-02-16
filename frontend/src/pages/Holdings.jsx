@@ -1682,8 +1682,14 @@ export default function Holdings() {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                        {client.total_investment ? formatINR(client.total_investment) : '₹ 0'}
+                        {getClientDisplayValue(client)}
                       </div>
+                      {/* Show breakdown for 'all' filter */}
+                      {clientTypeFilter === 'all' && (client.has_bonds && client.has_real_estate) && (
+                        <div className="text-[10px] text-gray-400">
+                          B: {formatINR(client.bond_investment || 0)} | RE: {formatAED(client.real_estate_investment || 0)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
