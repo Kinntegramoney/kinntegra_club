@@ -1781,13 +1781,14 @@ export default function RealEstateDetails() {
                     <p className="text-xs text-gray-500 mb-2">Share: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}</p>
                     
                     {/* Passport Status - Only show details if user can view this investor */}
+                    <div className="flex-grow">
                     {canViewDetails ? (
                       <div className="mb-3">
                         {investor.passport_details?.passport_number ? (
                           <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded justify-between">
-                            <div className="flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              <span>Passport: {investor.passport_details.passport_number}</span>
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                              <CheckCircle2 className="h-3 w-3 shrink-0" />
+                              <span className="truncate">Passport: {investor.passport_details.passport_number}</span>
                             </div>
                             {investor.passport_document && (
                               <button
@@ -1808,7 +1809,7 @@ export default function RealEstateDetails() {
                                     toast.error("Failed to view passport document");
                                   }
                                 }}
-                                className="p-1 hover:bg-green-100 rounded transition-colors"
+                                className="p-1 hover:bg-green-100 rounded transition-colors shrink-0"
                                 title="View Passport"
                                 data-testid={`view-passport-btn-${idx}`}
                               >
@@ -1831,8 +1832,10 @@ export default function RealEstateDetails() {
                         </div>
                       </div>
                     )}
+                    </div>
                     
                     {/* Action buttons - Only show if user can view this investor's details */}
+                    <div className="mt-auto">
                     {canViewDetails ? (
                       <div className="flex gap-2">
                         <Button 
