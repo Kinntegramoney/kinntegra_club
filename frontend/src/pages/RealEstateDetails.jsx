@@ -1521,8 +1521,8 @@ export default function RealEstateDetails() {
                               )}
                             </td>
                             
-                            {/* Per-Investor columns for combined DLD + Admin - Same as installment rows */}
-                            {opp.investors?.map((investor) => {
+                            {/* Per-Investor columns for combined DLD + Admin - Only show investors user can view */}
+                            {opp.investors?.filter(inv => canViewInvestorDetails(inv.client_id)).map((investor) => {
                               // Get DLD and Admin payment records for this investor
                               const invDldAdmin = opp.dld_admin_documents?.find(p => p.investor_id === investor.client_id) || {};
                               const sharePercent = investor.share_percentage || (100 / opp.investors.length);
