@@ -780,10 +780,21 @@ export default function RealEstateDetails() {
 
   if (!user) return null;
 
+  // Determine correct sidebar and navigation paths based on user role
+  const SidebarComponent = user.role === 'broker' ? Sidebar : 
+                          user.role === 'sub_broker' ? SubBrokerSidebar : 
+                          ClientSidebar;
+  
+  const getBackPath = () => {
+    if (user.role === 'sub_broker') return '/sub-broker/opportunities';
+    if (user.role === 'client') return '/client/real-estate';
+    return '/broker/opportunities';
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar user={user} />
+        <SidebarComponent user={user} />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-gray-500">Loading...</p>
         </div>
@@ -794,11 +805,11 @@ export default function RealEstateDetails() {
   if (!opportunity) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar user={user} />
+        <SidebarComponent user={user} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Property not found</p>
-            <Button onClick={() => navigate("/broker/opportunities")}>Back to Opportunities</Button>
+            <Button onClick={() => navigate(getBackPath())}>Back to Opportunities</Button>
           </div>
         </div>
       </div>
