@@ -27302,6 +27302,9 @@ async def get_sub_brokers_for_data_gathering(current_user: dict = Depends(get_cu
 
 # ============= Historical Currency Rates API =============
 
+# AED to USD is a pegged rate (approximately fixed)
+AED_USD_RATE = 3.6725  # 1 USD = 3.6725 AED (pegged)
+
 @api_router.get("/currency/historical/{date}")
 async def get_historical_currency_rate(
     date: str,  # Format: YYYY-MM-DD
@@ -27312,6 +27315,7 @@ async def get_historical_currency_rate(
     """
     Fetch historical currency exchange rate for a specific date.
     Uses Frankfurter.app API (free, no key required).
+    AED is calculated via USD (AED is pegged to USD at ~3.6725).
     
     Returns: { "date": "2024-10-01", "base": "AED", "target": "INR", "rate": 22.75 }
     """
@@ -27320,60 +27324,63 @@ async def get_historical_currency_rate(
     try:
         # Validate date format
         from datetime import datetime
-        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+        datetime.strptime(date, "%Y-%m-%d")  # Just for validation
         
-        # Frankfurter uses EUR as the base, so we need to convert
-        # First get EUR to base, then EUR to target
+        # Frankfurter doesn't support AED, so we use USD and convert
+        # AED is pegged to USD at approximately 3.6725 AED per USD
         async with httpx.AsyncClient(timeout=10) as client:
+            # Get USD to target rate
             response = await client.get(
                 f"https://api.frankfurter.app/{date}",
-                params={"base": "EUR", "symbols": f"{base},{target}"}
+                params={"base": "USD", "symbols": target}
             )
             
             if response.status_code != 200:
                 # Try fallback to live rates if historical not available
                 response = await client.get(
                     "https://api.frankfurter.app/latest",
-                    params={"base": "EUR", "symbols": f"{base},{target}"}
+                    params={"base": "USD", "symbols": target}
                 )
             
             if response.status_code == 200:
                 data = response.json()
                 rates = data.get("rates", {})
                 
-                base_rate = rates.get(base, 1)
-                target_rate = rates.get(target, 1)
+                target_rate_per_usd = rates.get(target, 0)
                 
-                # Calculate base to target rate
-                # If base is EUR, rate = target_rate
-                # Otherwise, rate = target_rate / base_rate
-                if base == "EUR":
-                    calculated_rate = target_rate
-                else:
-                    calculated_rate = target_rate / base_rate if base_rate else 0
-                
-                return {
-                    "date": data.get("date", date),
-                    "base": base,
-                    "target": target,
-                    "rate": round(calculated_rate, 4),
-                    "source": "frankfurter.app"
-                }
-            else:
-                # Fallback to default rates
-                default_rates = {
-                    "INR": 22.75,
-                    "USD": 0.27,
-                    "EUR": 0.25,
-                    "GBP": 0.21
-                }
-                return {
-                    "date": date,
-                    "base": base,
-                    "target": target,
-                    "rate": default_rates.get(target, 1),
-                    "source": "fallback"
-                }
+                if target_rate_per_usd > 0:
+                    # Calculate target per AED
+                    # If USD = 84 INR and USD = 3.6725 AED
+                    # Then 1 AED = 84 / 3.6725 = 22.87 INR
+                    if base == "AED":
+                        calculated_rate = target_rate_per_usd / AED_USD_RATE
+                    elif base == "USD":
+                        calculated_rate = target_rate_per_usd
+                    else:
+                        calculated_rate = target_rate_per_usd
+                    
+                    return {
+                        "date": data.get("date", date),
+                        "base": base,
+                        "target": target,
+                        "rate": round(calculated_rate, 4),
+                        "source": "frankfurter.app"
+                    }
+            
+            # Fallback to default rates
+            default_rates = {
+                "INR": 22.75,
+                "USD": 0.27,
+                "EUR": 0.25,
+                "GBP": 0.21
+            }
+            return {
+                "date": date,
+                "base": base,
+                "target": target,
+                "rate": default_rates.get(target, 1),
+                "source": "fallback"
+            }
                 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format. Use YYYY-MM-DD: {str(e)}")
