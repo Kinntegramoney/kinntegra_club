@@ -3328,9 +3328,22 @@ async def broker_approve_reinvestment_tag(
     if not cashflow:
         raise HTTPException(status_code=404, detail="Cashflow not found")
     
-    # Verify this was tagged by a sub-broker under this broker
-    if cashflow.get('approval_status') != 'pending_broker_approval':
-        raise HTTPException(status_code=400, detail="This tag is not pending broker approval")
+    # Check approval status - first check holding_cashflows, then check reinvestment_logs for split allocations
+    cashflow_status = cashflow.get('approval_status')
+    
+    # If cashflow doesn't have pending_broker_approval, check reinvestment_logs for split allocations
+    if cashflow_status != 'pending_broker_approval':
+        # Check if there are reinvestment_logs with pending_broker_approval for this cashflow
+        pending_logs = await db.reinvestment_logs.find(
+            {
+                "cashflow_id": cashflow_id,
+                "approval_status": "pending_broker_approval"
+            },
+            {"_id": 0}
+        ).to_list(100)
+        
+        if not pending_logs:
+            raise HTTPException(status_code=400, detail="This tag is not pending broker approval")
     
     # Get client info
     client = await db.clients.find_one({"id": cashflow.get('client_id')}, {"_id": 0})
