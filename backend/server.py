@@ -3360,8 +3360,8 @@ async def broker_approve_reinvestment_tag(
             }}
         )
         
-        # Update the reinvestment_log if exists
-        await db.reinvestment_logs.update_one(
+        # Update ALL reinvestment_logs for this cashflow (important for split allocations)
+        update_result = await db.reinvestment_logs.update_many(
             {"cashflow_id": cashflow_id},
             {"$set": {
                 "approval_status": "pending",
@@ -3370,6 +3370,7 @@ async def broker_approve_reinvestment_tag(
                 "broker_approved_by": current_user['id']
             }}
         )
+        logs_updated = update_result.modified_count
         
         # Send approval email to client
         if client and client.get('email'):
@@ -3390,8 +3391,16 @@ async def broker_approve_reinvestment_tag(
                 broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
                 broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
                 
-                # Get the net amount for email
-                net_amount = cashflow.get('net_amount', cashflow.get('amount', 0))
+                # Get the net amount for email - sum all allocations if split
+                if logs_updated > 1:
+                    # Multiple allocations - get total from reinvestment_logs
+                    logs = await db.reinvestment_logs.find(
+                        {"cashflow_id": cashflow_id},
+                        {"_id": 0, "amount": 1}
+                    ).to_list(100)
+                    net_amount = sum(log.get('amount', 0) for log in logs)
+                else:
+                    net_amount = cashflow.get('net_amount', cashflow.get('amount', 0))
                 
                 # Send email asynchronously
                 background_tasks.add_task(
@@ -3399,19 +3408,20 @@ async def broker_approve_reinvestment_tag(
                     client_name=client.get('name', ''),
                     client_email=client.get('email'),
                     total_amount=net_amount,
-                    cashflows_count=1,
+                    cashflows_count=logs_updated or 1,
                     approval_token=approval_token,
                     broker_name=broker_name
                 )
                 
-                logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, approval email sent to {client.get('email')}")
+                logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, approval email sent to {client.get('email')}, {logs_updated} allocations updated")
             except Exception as e:
                 logger.error(f"Error sending client approval email: {e}")
         
         return {
             "message": "Reinvestment tag approved, pending client approval",
             "status": "pending",
-            "client_name": client.get('name') if client else 'Unknown'
+            "client_name": client.get('name') if client else 'Unknown',
+            "allocations_updated": logs_updated
         }
     
     else:  # reject
