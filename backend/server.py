@@ -3440,8 +3440,8 @@ async def broker_approve_reinvestment_tag(
             }}
         )
         
-        # Update the reinvestment_log if exists
-        await db.reinvestment_logs.update_one(
+        # Update ALL reinvestment_logs for this cashflow (important for split allocations)
+        await db.reinvestment_logs.update_many(
             {"cashflow_id": cashflow_id},
             {"$set": {
                 "approval_status": "broker_rejected",
