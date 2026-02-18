@@ -883,24 +883,85 @@ export default function Opportunities() {
       { label: "Other Fees", value: opp.other_fees },
     ].filter(item => item.value > 0) : [];
 
+    // State for image carousel
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    
+    const nextImage = () => {
+      if (opp.images && opp.images.length > 1) {
+        setCurrentImageIndex((prev) => (prev + 1) % opp.images.length);
+      }
+    };
+    
+    const prevImage = () => {
+      if (opp.images && opp.images.length > 1) {
+        setCurrentImageIndex((prev) => (prev - 1 + opp.images.length) % opp.images.length);
+      }
+    };
+    
+    const getImageSrc = (img) => {
+      if (!img) return '';
+      if (typeof img === 'string') return img;
+      if (img.data) return `data:${img.content_type || 'image/jpeg'};base64,${img.data}`;
+      return img.url || '';
+    };
+
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
-        {/* Property Image - if available */}
+        {/* Property Images Carousel - scrollable */}
         {opp.images && opp.images.length > 0 && (
           <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-32 overflow-hidden rounded-t-lg">
+            <div className="relative h-36 overflow-hidden rounded-t-lg bg-gray-100">
+              {/* Current Image */}
               <img 
-                src={opp.images[0].data 
-                  ? `data:${opp.images[0].content_type || 'image/jpeg'};base64,${opp.images[0].data}`
-                  : opp.images[0]
-                } 
-                alt={opp.building_name}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                src={getImageSrc(opp.images[currentImageIndex])}
+                alt={`${opp.building_name} - Image ${currentImageIndex + 1}`}
+                className="w-full h-full object-cover transition-opacity duration-300"
+                onError={(e) => { e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12">No Image</text></svg>'; }}
               />
+              
+              {/* Navigation Arrows - only show if multiple images */}
               {opp.images.length > 1 && (
+                <>
+                  {/* Left Arrow */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                  >
+                    <ChevronDown className="h-4 w-4 rotate-90" />
+                  </button>
+                  
+                  {/* Right Arrow */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                  >
+                    <ChevronDown className="h-4 w-4 -rotate-90" />
+                  </button>
+                  
+                  {/* Image Counter */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
+                    {currentImageIndex + 1} / {opp.images.length}
+                  </div>
+                  
+                  {/* Dot Indicators */}
+                  <div className="absolute bottom-2 right-2 flex gap-1">
+                    {opp.images.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                          idx === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Single image indicator */}
+              {opp.images.length === 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                  +{opp.images.length - 1} photos
+                  1 photo
                 </div>
               )}
             </div>
