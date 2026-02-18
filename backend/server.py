@@ -3399,9 +3399,17 @@ async def broker_approve_reinvestment_tag(
                     expires_delta=timedelta(days=7)
                 )
                 
-                # Get broker name
-                broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
-                broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
+                # Get the representative name (prefer sub-broker if client is linked)
+                representative_name = 'Your Broker'
+                if client.get('linked_subbroker_id'):
+                    subbroker = await db.partners.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
+                    if not subbroker:
+                        subbroker = await db.sub_brokers.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
+                    if subbroker:
+                        representative_name = subbroker.get('name', 'Your Broker')
+                else:
+                    broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
+                    representative_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
                 
                 # Get the net amount for email - sum all allocations if split
                 if logs_updated > 1:
@@ -3422,7 +3430,7 @@ async def broker_approve_reinvestment_tag(
                     total_amount=net_amount,
                     cashflows_count=logs_updated or 1,
                     approval_token=approval_token,
-                    broker_name=broker_name
+                    broker_name=representative_name
                 )
                 
                 logger.info(f"Broker approved reinvestment tag for {cashflow.get('bond_name')}, approval email sent to {client.get('email')}, {logs_updated} allocations updated")
