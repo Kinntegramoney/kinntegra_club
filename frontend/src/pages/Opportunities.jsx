@@ -1009,11 +1009,29 @@ export default function Opportunities() {
         {/* Payment Schedule Timeline - only show for users with detailed access */}
         {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-4">
-            {/* Currency Selector Header */}
+            {/* Currency & Share Selector Header */}
             <div className="flex items-center justify-between text-xs mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600 font-medium">Payment Schedule (25% share)</span>
-                <div className="relative group">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-gray-600 font-medium">Payment Schedule</span>
+                
+                {/* Share Percentage Selector */}
+                <div className="relative">
+                  <select
+                    value={selectedSharePercent}
+                    onChange={(e) => setSelectedSharePercent(parseInt(e.target.value))}
+                    className="appearance-none bg-purple-50 border border-purple-200 rounded px-2 py-0.5 text-[10px] font-medium text-purple-700 cursor-pointer hover:bg-purple-100 pr-5"
+                    data-testid="share-selector"
+                  >
+                    <option value={25}>25% share</option>
+                    <option value={50}>50% share</option>
+                    <option value={75}>75% share</option>
+                    <option value={100}>100% (Full)</option>
+                  </select>
+                  <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-purple-500 pointer-events-none" />
+                </div>
+                
+                {/* Currency Selector */}
+                <div className="relative">
                   <select
                     value={selectedCurrency}
                     onChange={(e) => handleCurrencyChange(e.target.value)}
