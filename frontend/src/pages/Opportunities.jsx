@@ -1461,7 +1461,7 @@ export default function Opportunities() {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-auto">
           <Button 
             variant="outline" 
             size="sm" 
