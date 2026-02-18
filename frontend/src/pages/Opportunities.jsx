@@ -6,6 +6,7 @@ import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import EditBondModal from "@/components/EditBondModal";
+import HorizontalPaymentTimeline from "@/components/HorizontalPaymentTimeline";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, MapPin, TrendingUp, Plus, Pencil, Share2, Eye, Users, Lock, Download, X, Calculator, Trash2, Heart } from "lucide-react";
+import { Building2, MapPin, TrendingUp, Plus, Pencil, Share2, Eye, Users, Lock, Download, X, Calculator, Trash2, Heart, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
