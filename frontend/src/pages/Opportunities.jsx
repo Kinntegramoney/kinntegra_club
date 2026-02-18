@@ -1036,8 +1036,8 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Payment Schedule Timeline - only show for users with detailed access */}
-        {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
+        {/* Payment Schedule Timeline - only show for AVAILABLE opportunities */}
+        {canSeeDetails && status === 'available' && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-3">
             {/* Currency & Share Selector Header */}
             <div className="flex items-center justify-between text-xs mb-1.5">
