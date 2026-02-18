@@ -1190,7 +1190,7 @@ export default function Opportunities() {
           <div className="mb-3">
             {/* Currency Selector - filtered by participant payment currencies */}
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-gray-500 text-[10px] font-medium">Remaining Payments</span>
+              <span className="text-gray-500 text-[10px] font-medium">Outstanding Payments</span>
               <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
@@ -1213,27 +1213,75 @@ export default function Opportunities() {
               </div>
             </div>
             
-            {/* Timeline showing only REMAINING payments */}
-            {opp.payment_schedule && opp.payment_schedule.length > 0 && (
-              <HorizontalPaymentTimeline 
-                milestones={opp.payment_schedule
-                  .map((p, idx) => ({
-                    date: p.date,
-                    description: p.description || `Payment ${idx + 1}`,
-                    percentage: p.percentage,
-                    amount: (p.percentage / 100) * (opp.investment_amount || opp.total_cost || 0),
-                    isPaid: idx < (opp.payments_completed || 0)
-                  }))
-                  .filter(m => !m.isPaid)  // Only show unpaid/remaining payments
-                }
-                totalAmount={opp.investment_amount || opp.total_cost || 0}
-                showShareValues={true}
-                sharePercent={100}  // Show full amounts for funded
-                compact={true}
-                currency={selectedCurrency}
-                conversionRate={currencyRates[selectedCurrency] || 1}
-              />
-            )}
+            {/* Timeline showing outstanding payments - considers participant payment status */}
+            {opp.payment_schedule && opp.payment_schedule.length > 0 && (() => {
+              const today = new Date();
+              const totalParticipants = opp.current_investors || 4;
+              
+              // Process milestones with outstanding calculation
+              const milestonesWithOutstanding = opp.payment_schedule.map((p, idx) => {
+                const paymentDate = new Date(p.date);
+                const isPastDue = paymentDate < today;
+                
+                // Get payment status from participant data if available
+                // participant_payments: { payment_idx: { paid_count: X, total: Y } }
+                const participantPayments = opp.participant_payments?.[idx] || {};
+                const paidCount = participantPayments.paid_count || (isPastDue ? totalParticipants : 0);
+                const outstandingCount = totalParticipants - paidCount;
+                
+                // Calculate outstanding amount for this milestone
+                const milestoneAmount = (p.percentage / 100) * (opp.total_cost || 0);
+                const outstandingAmount = (outstandingCount / totalParticipants) * milestoneAmount;
+                
+                return {
+                  date: p.date,
+                  description: p.description || `Payment ${idx + 1}`,
+                  percentage: p.percentage,
+                  amount: milestoneAmount,
+                  outstandingAmount: outstandingAmount,
+                  outstandingCount: outstandingCount,
+                  paidCount: paidCount,
+                  totalParticipants: totalParticipants,
+                  isPaid: outstandingCount === 0,  // Fully paid if no outstanding
+                  isPastDue: isPastDue,
+                  isFuture: !isPastDue
+                };
+              });
+              
+              // Filter to show only milestones with outstanding amounts OR future payments
+              const outstandingMilestones = milestonesWithOutstanding.filter(m => 
+                m.outstandingAmount > 0 || m.isFuture
+              );
+              
+              if (outstandingMilestones.length === 0) {
+                return (
+                  <div className="text-center py-2 bg-emerald-50 rounded border border-emerald-200">
+                    <span className="text-[10px] text-emerald-700 font-medium">All payments completed</span>
+                  </div>
+                );
+              }
+              
+              return (
+                <HorizontalPaymentTimeline 
+                  milestones={outstandingMilestones.map(m => ({
+                    date: m.date,
+                    description: m.isPastDue && m.outstandingCount > 0 
+                      ? `${m.description} (${m.outstandingCount}/${m.totalParticipants} pending)`
+                      : m.description,
+                    percentage: m.percentage,
+                    amount: m.isFuture ? m.amount : m.outstandingAmount,  // Show full amount for future, outstanding for past
+                    isPaid: m.isPaid,
+                    isPastDue: m.isPastDue
+                  }))}
+                  totalAmount={opp.total_cost || 0}
+                  showShareValues={true}
+                  sharePercent={100}
+                  compact={true}
+                  currency={selectedCurrency}
+                  conversionRate={currencyRates[selectedCurrency] || 1}
+                />
+              );
+            })()}
             
             {/* Projected Sale Value & Profit */}
             {(() => {
