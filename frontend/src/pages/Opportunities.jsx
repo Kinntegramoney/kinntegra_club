@@ -527,38 +527,54 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation Slides - embedded viewer with better navigation */}
+        {/* Presentation Slides - clickable preview with download */}
         {bond.presentations && bond.presentations.length > 0 && (
           <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-52 overflow-hidden rounded-t-lg bg-gray-900">
-              {/* Use Office Online viewer for better navigation (supports arrows) */}
-              <iframe
-                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(BACKEND_URL + bond.presentations[0].url)}`}
-                title={bond.presentations[0].original_filename || 'Presentation'}
-                className="w-full h-full border-0"
-                loading="lazy"
-                allowFullScreen
-              />
+            <div className="relative h-40 overflow-hidden rounded-t-lg bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+              {/* Presentation Preview */}
+              <div className="w-full h-full flex flex-col items-center justify-center p-4">
+                <div className="bg-white/80 rounded-lg shadow-sm p-4 text-center max-w-[90%]">
+                  <FileText className="h-12 w-12 text-amber-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {bond.presentations[0].original_filename || bond.presentations[0].original_name || 'Presentation'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {bond.presentations.length} document{bond.presentations.length > 1 ? 's' : ''} available
+                  </p>
+                  <a 
+                    href={`${BACKEND_URL}${bond.presentations[0].url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-3 px-4 py-2 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    View / Download
+                  </a>
+                </div>
+              </div>
               
               {/* Document count badge */}
               <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
                 {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
               </div>
               
-              {/* Bottom bar with controls hint */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/80 text-[10px]">Use ← → arrows or scroll to navigate</span>
-                  <a 
-                    href={`${BACKEND_URL}${bond.presentations[0].url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-amber-500 text-white text-[10px] px-3 py-1 rounded hover:bg-amber-600 transition-colors flex items-center gap-1"
-                  >
-                    <Download className="h-3 w-3" /> Download
-                  </a>
+              {/* Multiple docs - show list */}
+              {bond.presentations.length > 1 && (
+                <div className="absolute bottom-2 left-2 right-2 flex gap-1 overflow-x-auto">
+                  {bond.presentations.slice(1).map((pres, idx) => (
+                    <a
+                      key={idx}
+                      href={`${BACKEND_URL}${pres.url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 px-2 py-1 bg-white/90 text-[9px] text-amber-700 rounded shadow-sm hover:bg-amber-100 transition-colors truncate max-w-[120px]"
+                      title={pres.original_filename || `Document ${idx + 2}`}
+                    >
+                      {pres.original_filename || `Doc ${idx + 2}`}
+                    </a>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
