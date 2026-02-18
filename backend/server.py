@@ -23432,6 +23432,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         "bond_aum": {
             "total_invested": bond_total_invested or bond_aum,
             "total_repaid": bond_total_repaid,
+            "principal_repaid": bond_total_principal_repaid,  # Principal component of repaid
+            "interest_repaid": bond_total_interest_repaid,    # Interest component of repaid
             "gross_expected": bond_gross_expected,  # Total expected (repaid + pending)
             "total_pending": bond_total_pending,    # Gross Expected - Repaid
             "profits": bond_profits                  # Gross Expected - Invested
