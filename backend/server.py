@@ -23324,6 +23324,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     # Dedupe based on (client_name, gross_amount, repayment_date, investment_date) to be safe
     repaid_entries = set()
     bond_total_repaid = 0
+    bond_total_principal_repaid = 0
+    bond_total_interest_repaid = 0
     
     actual_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(10000)
     for rep in actual_repayments:
@@ -23337,6 +23339,8 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         if unique_key not in repaid_entries:
             repaid_entries.add(unique_key)
             bond_total_repaid += gross_amount or 0
+            bond_total_principal_repaid += rep.get('principal', 0) or rep.get('principal_component', 0) or 0
+            bond_total_interest_repaid += rep.get('interest', 0) or rep.get('interest_component', 0) or 0
     
     # Total Pending: From holding_cashflows where date > today
     # These are the pre-calculated maturity amounts (already adjusted for prepayments)
