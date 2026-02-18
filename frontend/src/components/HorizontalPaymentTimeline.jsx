@@ -2,23 +2,22 @@ import React from "react";
 
 /**
  * Horizontal Payment Timeline Component
- * Displays payment milestones as a horizontal timeline with alternating nodes above/below
- * Similar to the design: colored segments with circular nodes showing dates/amounts
+ * Displays payment milestones as a subtle horizontal timeline with alternating nodes
  */
 
-// Color palette for timeline segments (warm to cool progression)
+// Color palette for timeline segments (muted, subtle colors)
 const COLORS = [
-  { bg: 'bg-amber-400', border: 'border-amber-500', text: 'text-amber-600', fill: '#fbbf24' },
-  { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-orange-600', fill: '#f97316' },
-  { bg: 'bg-red-500', border: 'border-red-600', text: 'text-red-600', fill: '#ef4444' },
-  { bg: 'bg-pink-500', border: 'border-pink-600', text: 'text-pink-600', fill: '#ec4899' },
-  { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-purple-600', fill: '#a855f7' },
-  { bg: 'bg-indigo-600', border: 'border-indigo-700', text: 'text-indigo-600', fill: '#4f46e5' },
-  { bg: 'bg-teal-600', border: 'border-teal-700', text: 'text-teal-600', fill: '#0d9488' },
+  { bg: 'bg-amber-300/70', border: 'border-amber-400', text: 'text-amber-700', fill: '#fbbf24' },
+  { bg: 'bg-orange-300/70', border: 'border-orange-400', text: 'text-orange-700', fill: '#f97316' },
+  { bg: 'bg-rose-300/70', border: 'border-rose-400', text: 'text-rose-700', fill: '#fb7185' },
+  { bg: 'bg-pink-300/70', border: 'border-pink-400', text: 'text-pink-700', fill: '#f472b6' },
+  { bg: 'bg-purple-300/70', border: 'border-purple-400', text: 'text-purple-700', fill: '#a78bfa' },
+  { bg: 'bg-indigo-300/70', border: 'border-indigo-400', text: 'text-indigo-700', fill: '#818cf8' },
+  { bg: 'bg-teal-300/70', border: 'border-teal-400', text: 'text-teal-700', fill: '#5eead4' },
 ];
 
-// Paid color (green)
-const PAID_COLOR = { bg: 'bg-emerald-500', border: 'border-emerald-600', text: 'text-emerald-600', fill: '#10b981' };
+// Paid color (subtle green)
+const PAID_COLOR = { bg: 'bg-emerald-300/70', border: 'border-emerald-400', text: 'text-emerald-700', fill: '#6ee7b7' };
 
 // Currency symbols
 const CURRENCY_SYMBOLS = {
