@@ -12,6 +12,15 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 ### Completed Features (Feb 2026)
 
+#### Session: Feb 18, 2026
+1. **Currency Settings on Dashboard** - Moved Currency Settings button to Dashboard's Market Rates section for global access
+2. **Real Estate Payment Timeline** - Consolidated all properties into a single timeline bar chart with:
+   - Monthly grouping of payments
+   - Visual bar chart showing paid vs upcoming amounts
+   - Overdue payment detection (red highlighting)
+   - Enhanced upcoming payments list (5 items)
+3. **CurrencySettingsModal Component** - Created shared component at `/app/frontend/src/components/CurrencySettingsModal.jsx`
+
 #### Session: Feb 16, 2026
 1. **Client Approval Count Fix** - Fixed pending approvals count to match all statuses
 2. **Email Spam Fix** - Disabled individual auto-emails, only "New MF Purchase Order" email sent
@@ -28,10 +37,8 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 - Historical Currency API integration (`/api/currency/historical_rate`)
 
 ### In Progress
-- **Currency Logic Overhaul (P1)**
-  - Move "Currency Settings" button to payment schedule modal
-  - Use historical rates for past payments
-  - Backend API complete, frontend implementation pending
+- **"Multi" display bug (P0)** - May still show "Multi" for single allocations (needs user verification)
+- **Duplicate approval emails (P1)** - Previous fix needs user verification
 
 ### Pending Issues
 - **Expected Sale Date Bug (P1)** - Dates change unexpectedly (recurring, not investigated)
