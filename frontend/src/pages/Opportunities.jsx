@@ -1519,6 +1519,7 @@ export default function Opportunities() {
             </Button>
           )}
         </div>
+        </div>
       </div>
     );
   };
