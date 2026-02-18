@@ -306,6 +306,18 @@ export default function Opportunities() {
     fetchProjectedRates(currency);
   };
 
+  // Handle custom share input
+  const handleCustomShareSubmit = () => {
+    const value = parseFloat(customShareInput);
+    if (value > 0 && value <= 100) {
+      setSelectedSharePercent(value);
+      setShowCustomInput(false);
+      setCustomShareInput('');
+    } else {
+      toast.error("Please enter a valid percentage between 0 and 100");
+    }
+  };
+
   // Check if client has detailed access to a property
   const hasDetailedAccess = (propertyId) => {
     if (!user) return false;
