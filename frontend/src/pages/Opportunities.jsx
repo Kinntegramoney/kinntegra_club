@@ -1080,22 +1080,22 @@ export default function Opportunities() {
 
         {/* Payment Schedule Timeline - only show for users with detailed access */}
         {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-3">
             {/* Currency & Share Selector Header */}
-            <div className="flex items-center justify-between text-xs mb-2">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-gray-500 text-[10px]">Schedule</span>
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-gray-400 text-[9px]">Schedule</span>
                 
                 {/* Share Percentage Pills - matching View Details */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   {presetPercentages.map((pct) => (
                     <button
                       key={pct}
-                      onClick={() => { setSelectedSharePercent(pct); setShowCustomInput(false); }}
-                      className={`px-1.5 py-0.5 text-[9px] rounded transition-all ${
-                        selectedSharePercent === pct && !showCustomInput
+                      onClick={() => { setCardSharePercent(pct); setShowCardCustomInput(false); }}
+                      className={`px-1 py-0.5 text-[8px] rounded transition-all ${
+                        cardSharePercent === pct && !showCardCustomInput
                           ? 'bg-purple-500 text-white font-medium'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
                       {pct}%
@@ -1103,41 +1103,41 @@ export default function Opportunities() {
                   ))}
                   
                   {/* Custom input toggle/field */}
-                  {showCustomInput ? (
+                  {showCardCustomInput ? (
                     <div className="flex items-center gap-0.5">
                       <input
                         type="number"
-                        value={customShareInput}
-                        onChange={(e) => setCustomShareInput(e.target.value)}
+                        value={cardCustomInput}
+                        onChange={(e) => setCardCustomInput(e.target.value)}
                         placeholder="%"
-                        className="w-10 px-1 py-0.5 text-[9px] border border-purple-300 rounded focus:outline-none focus:border-purple-500"
-                        onKeyDown={(e) => e.key === 'Enter' && handleCustomShareSubmit()}
+                        className="w-8 px-1 py-0.5 text-[8px] border border-purple-300 rounded focus:outline-none focus:border-purple-500"
+                        onKeyDown={(e) => e.key === 'Enter' && handleCardCustomSubmit()}
                         autoFocus
                       />
                       <button
-                        onClick={handleCustomShareSubmit}
-                        className="px-1 py-0.5 text-[9px] bg-purple-500 text-white rounded"
+                        onClick={handleCardCustomSubmit}
+                        className="px-1 py-0.5 text-[8px] bg-purple-500 text-white rounded"
                       >
                         ✓
                       </button>
                       <button
-                        onClick={() => { setShowCustomInput(false); setCustomShareInput(''); }}
-                        className="px-1 py-0.5 text-[9px] bg-gray-200 text-gray-600 rounded"
+                        onClick={() => { setShowCardCustomInput(false); setCardCustomInput(''); }}
+                        className="px-1 py-0.5 text-[8px] bg-gray-200 text-gray-500 rounded"
                       >
                         ✕
                       </button>
                     </div>
                   ) : (
                     <button
-                      onClick={() => setShowCustomInput(true)}
-                      className={`px-1.5 py-0.5 text-[9px] rounded transition-all ${
-                        !presetPercentages.includes(selectedSharePercent)
+                      onClick={() => setShowCardCustomInput(true)}
+                      className={`px-1 py-0.5 text-[8px] rounded transition-all ${
+                        !presetPercentages.includes(cardSharePercent)
                           ? 'bg-purple-500 text-white font-medium'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                       title="Enter custom percentage"
                     >
-                      {!presetPercentages.includes(selectedSharePercent) ? `${selectedSharePercent}%` : '...'}
+                      {!presetPercentages.includes(cardSharePercent) ? `${cardSharePercent}%` : '...'}
                     </button>
                   )}
                 </div>
