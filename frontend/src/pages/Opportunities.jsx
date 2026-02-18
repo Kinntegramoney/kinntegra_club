@@ -854,10 +854,13 @@ export default function Opportunities() {
           <div className="mb-3 -mx-5 -mt-5">
             <div className="relative h-32 overflow-hidden rounded-t-lg">
               <img 
-                src={opp.images[0]} 
+                src={opp.images[0].data 
+                  ? `data:${opp.images[0].content_type || 'image/jpeg'};base64,${opp.images[0].data}`
+                  : opp.images[0]
+                } 
                 alt={opp.building_name}
                 className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { e.target.parentElement.style.display = 'none'; }}
               />
               {opp.images.length > 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
