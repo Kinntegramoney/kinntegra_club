@@ -27639,14 +27639,23 @@ async def get_projected_currency_rates(
             
             # Current rate (actual from latest API data)
             current_rate = y_values[-1] if y_values else 22.75
-            oldest_rate = y_values[0] if y_values else current_rate
+            min_rate = min(y_values) if y_values else current_rate
+            max_rate = max(y_values) if y_values else current_rate
             
             # Calculate average annual change (absolute, not percentage)
-            # This gives the actual rate change per year over the 5-year period
+            # Use the full range (min to max) over 5 years for projection
+            # This gives a more accurate representation of the overall trend
             if len(y_values) >= 2:
-                total_absolute_change = current_rate - oldest_rate
+                # For increasing trend, use current - min; for decreasing, use current - max
+                if current_rate >= min_rate:
+                    # Upward trend: calculate from min rate to current
+                    total_absolute_change = current_rate - min_rate
+                else:
+                    # Downward trend: calculate from max rate to current
+                    total_absolute_change = current_rate - max_rate
+                    
                 avg_annual_change_absolute = total_absolute_change / 5  # 5 years of data
-                total_change_percent = (total_absolute_change / oldest_rate * 100) if oldest_rate != 0 else 0
+                total_change_percent = (total_absolute_change / min_rate * 100) if min_rate != 0 else 0
                 avg_annual_change = total_change_percent / 5
             else:
                 avg_annual_change_absolute = 0
