@@ -1396,7 +1396,7 @@ export default function Opportunities() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {availableBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="available" />
                   ))}
@@ -1416,7 +1416,7 @@ export default function Opportunities() {
                   <p className="text-gray-500">No funded/invested opportunities yet</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {fundedBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="funded" />
                   ))}
@@ -1436,7 +1436,7 @@ export default function Opportunities() {
                   <p className="text-gray-500">No closed opportunities yet</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {closedBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="closed" />
                   ))}
