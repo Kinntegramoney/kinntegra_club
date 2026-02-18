@@ -908,7 +908,7 @@ export default function Opportunities() {
     return (
       <div className="bg-white border border-gray-200 rounded-lg hover:border-teal-500 transition-colors flex flex-col h-full">
         {/* Property Images Carousel - Always show placeholder area for alignment */}
-        <div className="relative h-36 overflow-hidden rounded-t-lg bg-gray-100 flex-shrink-0">
+        <div className="relative h-44 overflow-hidden rounded-t-lg bg-gray-100 flex-shrink-0">
           {opp.images && opp.images.length > 0 ? (
             <>
               {/* Current Image */}
