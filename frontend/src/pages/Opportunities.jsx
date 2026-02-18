@@ -527,57 +527,29 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation Slides - scrollable carousel */}
+        {/* Presentation Slides - embedded and scrollable */}
         {bond.presentations && bond.presentations.length > 0 && (
           <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-36 overflow-hidden rounded-t-lg bg-gradient-to-br from-amber-50 to-orange-50">
-              {/* Scrollable container for presentations */}
-              <div className="flex overflow-x-auto h-full snap-x snap-mandatory scrollbar-thin scrollbar-thumb-amber-300 scrollbar-track-amber-100">
-                {bond.presentations.map((presentation, idx) => (
-                  <div 
-                    key={presentation.id || idx}
-                    className="flex-shrink-0 w-full h-full snap-center flex items-center justify-center p-3"
-                  >
-                    {presentation.thumbnail ? (
-                      <img 
-                        src={presentation.thumbnail}
-                        alt={presentation.original_filename || `Slide ${idx + 1}`}
-                        className="max-h-full max-w-full object-contain rounded shadow-md"
-                      />
-                    ) : (
-                      <a 
-                        href={`${BACKEND_URL}${presentation.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex flex-col items-center justify-center p-4 bg-white/80 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      >
-                        <FileText className="h-10 w-10 text-amber-500 mb-2" />
-                        <p className="text-xs text-amber-700 font-medium text-center max-w-[180px] truncate">
-                          {presentation.original_filename || presentation.original_name || `Document ${idx + 1}`}
-                        </p>
-                        <p className="text-[10px] text-amber-600 mt-1">Click to view</p>
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              {/* Scroll indicators */}
-              {bond.presentations.length > 1 && (
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-                  {bond.presentations.map((_, idx) => (
-                    <div 
-                      key={idx} 
-                      className="w-1.5 h-1.5 rounded-full bg-amber-400/60"
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="relative h-44 overflow-hidden rounded-t-lg bg-gradient-to-br from-amber-50 to-orange-50">
+              {/* Embedded document viewer */}
+              <iframe
+                src={`${BACKEND_URL}${bond.presentations[0].url}#toolbar=0&navpanes=0&scrollbar=1`}
+                title={bond.presentations[0].original_filename || 'Presentation'}
+                className="w-full h-full border-0"
+                style={{ backgroundColor: 'transparent' }}
+              />
               
               {/* Document count badge */}
-              <div className="absolute top-2 right-2 bg-amber-600/80 text-white text-[10px] px-2 py-0.5 rounded-full">
+              <div className="absolute top-2 right-2 bg-amber-600/80 text-white text-[10px] px-2 py-0.5 rounded-full z-10">
                 {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
               </div>
+              
+              {/* Multiple docs indicator */}
+              {bond.presentations.length > 1 && (
+                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded z-10">
+                  Scroll ↓ | +{bond.presentations.length - 1} more docs
+                </div>
+              )}
             </div>
           </div>
         )}
