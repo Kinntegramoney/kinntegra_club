@@ -143,8 +143,8 @@ export default function HorizontalPaymentTimeline({
                     <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
                       <div className="font-medium">{milestone.description || `${milestone.percentage}%`}</div>
                       <div className="text-gray-300">{formatDate(milestone.date)}</div>
-                      {show25Percent && totalAmount > 0 && (
-                        <div className="text-emerald-300">{formatAmount(get25PercentValue(milestone.percentage))}</div>
+                      {showShareValues && totalAmount > 0 && (
+                        <div className="text-emerald-300">{formatAmount(getShareValue(milestone.percentage))}</div>
                       )}
                       {milestone.isPaid && <span className="text-emerald-400 text-[10px]">Paid</span>}
                     </div>
@@ -166,9 +166,9 @@ export default function HorizontalPaymentTimeline({
               <p className={`text-[9px] font-medium ${milestone.isPaid ? 'text-emerald-600' : COLORS[idx % COLORS.length].text}`}>
                 {milestone.percentage}%
               </p>
-              {show25Percent && totalAmount > 0 && (
-                <p className="text-[8px] text-gray-500">
-                  {formatAmount(get25PercentValue(milestone.percentage), false)}
+              {showShareValues && totalAmount > 0 && (
+                <p className="text-[8px] text-gray-500 truncate" title={formatAmount(getShareValue(milestone.percentage), true)}>
+                  {formatAmount(getShareValue(milestone.percentage), false, true)}
                 </p>
               )}
             </div>
