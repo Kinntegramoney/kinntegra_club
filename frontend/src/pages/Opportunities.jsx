@@ -1006,10 +1006,82 @@ export default function Opportunities() {
         {/* Payment Schedule Timeline - only show for users with detailed access */}
         {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-4">
+            {/* Currency Selector Header */}
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-gray-600 font-medium">Payment Schedule (25% share)</span>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 font-medium">Payment Schedule (25% share)</span>
+                <div className="relative group">
+                  <select
+                    value={selectedCurrency}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
+                    className="appearance-none bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-[10px] font-medium text-gray-700 cursor-pointer hover:bg-gray-200 pr-5"
+                    data-testid="currency-selector"
+                  >
+                    <option value="AED">AED</option>
+                    <option value="INR">INR ₹</option>
+                    <option value="USD">USD $</option>
+                    <option value="EUR">EUR €</option>
+                    <option value="GBP">GBP £</option>
+                    <option value="SGD">SGD S$</option>
+                  </select>
+                  <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
+                </div>
+                {loadingRates && (
+                  <span className="text-[10px] text-gray-400 animate-pulse">Loading...</span>
+                )}
+              </div>
               <span className="font-medium text-teal-600">{opp.total_payment_percentage_completed || 0}% paid</span>
             </div>
+            
+            {/* Projected Rate Info */}
+            {selectedCurrency !== "AED" && projectedRates && (
+              <div className="mb-2 p-2 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <Coins className="h-3 w-3 text-blue-500" />
+                    <span className="text-gray-600">
+                      1 AED = <span className="font-semibold text-blue-600">{projectedRates.current_rate?.toFixed(2)}</span> {selectedCurrency}
+                    </span>
+                    {projectedRates.trend && (
+                      <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] ${
+                        projectedRates.trend.direction === 'increasing' 
+                          ? 'bg-green-100 text-green-600' 
+                          : projectedRates.trend.direction === 'decreasing'
+                            ? 'bg-red-100 text-red-600'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {projectedRates.trend.direction === 'increasing' ? (
+                          <TrendingUp className="h-2.5 w-2.5" />
+                        ) : projectedRates.trend.direction === 'decreasing' ? (
+                          <TrendingDown className="h-2.5 w-2.5" />
+                        ) : null}
+                        {projectedRates.trend.avg_annual_change_percent > 0 ? '+' : ''}{projectedRates.trend.avg_annual_change_percent?.toFixed(1)}%/yr
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-gray-500">
+                    5yr: {projectedRates.historical_summary?.min_rate?.toFixed(2)} - {projectedRates.historical_summary?.max_rate?.toFixed(2)}
+                  </span>
+                </div>
+                {/* Mini projected rates bar */}
+                {projectedRates.projected_rates && projectedRates.projected_rates.length > 0 && (
+                  <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-blue-100">
+                    <span className="text-[9px] text-gray-500">Projected:</span>
+                    {projectedRates.projected_rates.slice(0, 4).map((pr, idx) => (
+                      <span 
+                        key={idx} 
+                        className={`text-[9px] px-1 py-0.5 rounded ${
+                          pr.is_projected ? 'bg-purple-50 text-purple-600' : 'bg-blue-100 text-blue-700 font-medium'
+                        }`}
+                      >
+                        {pr.year.toString().slice(-2)}: {pr.rate?.toFixed(1)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
             <HorizontalPaymentTimeline 
               milestones={opp.payment_schedule.map((p, idx) => ({
                 date: p.date,
@@ -1021,6 +1093,8 @@ export default function Opportunities() {
               totalAmount={opp.investment_amount || opp.total_cost || 0}
               show25Percent={true}
               compact={true}
+              currency={selectedCurrency}
+              conversionRate={currencyRates[selectedCurrency] || 1}
             />
           </div>
         )}
