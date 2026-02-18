@@ -2200,14 +2200,14 @@ export default function Holdings() {
                               Payment Timeline - All Properties
                             </h3>
                             
-                            {/* Overall Progress Bar */}
+                            {/* Overall Progress Summary */}
                             <div className="mb-6">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
                                     <span className="text-sm text-gray-600">Paid:</span>
-                                    <span className="text-sm font-semibold text-green-600">
+                                    <span className="text-sm font-semibold text-emerald-600">
                                       AED {new Intl.NumberFormat('en-AE').format(Math.round(totalPaid))}
                                     </span>
                                     <span className="text-xs text-gray-500">({paidPercent.toFixed(1)}%)</span>
@@ -2225,87 +2225,24 @@ export default function Holdings() {
                                   Total: AED {new Intl.NumberFormat('en-AE').format(Math.round(totalInvestment))}
                                 </span>
                               </div>
-                              
-                              <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex">
-                                <div 
-                                  className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-500"
-                                  style={{ width: `${paidPercent}%` }}
-                                />
-                                <div 
-                                  className="bg-gradient-to-r from-amber-400 to-amber-500 h-full transition-all duration-500"
-                                  style={{ width: `${outstandingPercent}%` }}
-                                />
-                              </div>
                             </div>
                             
-                            {/* Monthly Timeline Bar Chart */}
-                            {monthlyData.length > 0 && (
+                            {/* Horizontal Payment Timeline */}
+                            {paymentTimeline.length > 0 && (
                               <div className="mb-6">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Schedule by Month</h4>
-                                <div className="relative">
-                                  {/* Chart container */}
-                                  <div className="flex items-end gap-1 h-32 overflow-x-auto pb-6">
-                                    {monthlyData.map((month, idx) => {
-                                      const paidHeight = maxMonthAmount > 0 ? (month.paid / maxMonthAmount) * 100 : 0;
-                                      const unpaidHeight = maxMonthAmount > 0 ? (month.unpaid / maxMonthAmount) * 100 : 0;
-                                      const totalMonth = month.paid + month.unpaid;
-                                      const isPastMonth = new Date(month.date + '-01') < new Date();
-                                      
-                                      return (
-                                        <div 
-                                          key={idx} 
-                                          className="flex flex-col items-center min-w-[50px] group relative"
-                                          title={`${formatMonth(month.date)}: AED ${new Intl.NumberFormat('en-AE').format(Math.round(totalMonth))}`}
-                                        >
-                                          {/* Stacked bar */}
-                                          <div className="flex flex-col-reverse w-8 h-24 bg-gray-50 rounded-t-sm overflow-hidden border border-gray-200">
-                                            {month.paid > 0 && (
-                                              <div 
-                                                className="w-full bg-gradient-to-t from-green-500 to-green-400 transition-all duration-300"
-                                                style={{ height: `${paidHeight}%` }}
-                                              />
-                                            )}
-                                            {month.unpaid > 0 && (
-                                              <div 
-                                                className={`w-full transition-all duration-300 ${isPastMonth ? 'bg-gradient-to-t from-red-500 to-red-400' : 'bg-gradient-to-t from-amber-500 to-amber-400'}`}
-                                                style={{ height: `${unpaidHeight}%` }}
-                                              />
-                                            )}
-                                          </div>
-                                          
-                                          {/* Month label */}
-                                          <span className="text-[10px] text-gray-500 mt-1 whitespace-nowrap transform -rotate-45 origin-top-left translate-y-2">
-                                            {formatMonth(month.date)}
-                                          </span>
-                                          
-                                          {/* Hover tooltip */}
-                                          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                                            <div className="font-semibold">{formatMonth(month.date)}</div>
-                                            {month.paid > 0 && <div className="text-green-300">Paid: AED {new Intl.NumberFormat('en-AE').format(Math.round(month.paid))}</div>}
-                                            {month.unpaid > 0 && <div className="text-amber-300">Due: AED {new Intl.NumberFormat('en-AE').format(Math.round(month.unpaid))}</div>}
-                                            <div className="text-gray-300 text-[10px] mt-1">{month.payments.length} payment(s)</div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  
-                                  {/* Chart legend */}
-                                  <div className="flex items-center gap-4 mt-2 text-xs">
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-3 h-3 rounded bg-green-500"></div>
-                                      <span className="text-gray-600">Paid</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-3 h-3 rounded bg-amber-500"></div>
-                                      <span className="text-gray-600">Upcoming</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <div className="w-3 h-3 rounded bg-red-500"></div>
-                                      <span className="text-gray-600">Overdue</span>
-                                    </div>
-                                  </div>
-                                </div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Milestones</h4>
+                                <HorizontalPaymentTimeline 
+                                  milestones={paymentTimeline.map(p => ({
+                                    date: p.date,
+                                    description: `${p.description} (${p.propertyName})`,
+                                    percentage: p.percentage,
+                                    amount: p.amount,
+                                    isPaid: p.isPaid
+                                  }))}
+                                  totalAmount={totalInvestment}
+                                  show25Percent={false}
+                                  compact={false}
+                                />
                               </div>
                             )}
                             
