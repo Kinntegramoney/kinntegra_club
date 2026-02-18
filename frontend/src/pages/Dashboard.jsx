@@ -697,7 +697,15 @@ export default function Dashboard() {
                   <ArrowRightLeft className="h-5 w-5 text-cyan-600" />
                 </div>
                 <h3 className="font-semibold text-gray-800">Market Rates</h3>
-                <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded ml-auto">Live</span>
+                <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">Live</span>
+                <button
+                  onClick={() => setShowCurrencySettingsModal(true)}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium rounded-lg transition-colors"
+                  data-testid="currency-settings-btn"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Currency Settings
+                </button>
               </div>
               
               <div className="space-y-3">
