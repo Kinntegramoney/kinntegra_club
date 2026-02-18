@@ -27568,6 +27568,167 @@ async def get_live_currency_rates(
         }
 
 
+@api_router.get("/currency/projected-rates")
+async def get_projected_currency_rates(
+    target: str = "INR",
+    years_ahead: int = 5,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get projected currency rates based on 5-year historical trends.
+    Returns current rate and projected rates for future years.
+    Base currency is AED.
+    
+    Uses linear regression on historical data to project future rates.
+    """
+    import httpx
+    from datetime import datetime, timedelta
+    import statistics
+    
+    try:
+        # Fetch 5 years of historical data
+        historical_rates = []
+        today = datetime.now()
+        
+        # Get rates for the past 5 years (sample monthly)
+        async with httpx.AsyncClient(timeout=30) as client:
+            for year_offset in range(5, -1, -1):
+                for month in [1, 4, 7, 10]:  # Quarterly samples
+                    try:
+                        sample_date = today - timedelta(days=year_offset * 365 + (12 - month) * 30)
+                        date_str = sample_date.strftime("%Y-%m-%d")
+                        
+                        response = await client.get(
+                            f"https://api.frankfurter.app/{date_str}",
+                            params={"base": "USD", "symbols": target}
+                        )
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            rate = data.get("rates", {}).get(target, 0)
+                            if rate > 0:
+                                # Convert to AED base
+                                aed_rate = rate / AED_USD_RATE
+                                historical_rates.append({
+                                    "date": data.get("date", date_str),
+                                    "rate": aed_rate,
+                                    "year_offset": -year_offset
+                                })
+                    except Exception:
+                        continue
+        
+        # Calculate trend using simple linear regression
+        if len(historical_rates) >= 4:
+            x_values = [r["year_offset"] for r in historical_rates]
+            y_values = [r["rate"] for r in historical_rates]
+            
+            n = len(x_values)
+            x_mean = sum(x_values) / n
+            y_mean = sum(y_values) / n
+            
+            # Calculate slope and intercept
+            numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_values, y_values))
+            denominator = sum((x - x_mean) ** 2 for x in x_values)
+            
+            if denominator != 0:
+                slope = numerator / denominator
+                intercept = y_mean - slope * x_mean
+            else:
+                slope = 0
+                intercept = y_mean
+            
+            # Current rate
+            current_rate = y_values[-1] if y_values else 22.75
+            
+            # Calculate average annual change percentage
+            if len(y_values) >= 2:
+                total_change = (y_values[-1] - y_values[0]) / y_values[0] * 100 if y_values[0] != 0 else 0
+                avg_annual_change = total_change / 5  # 5 years of data
+            else:
+                avg_annual_change = 0
+            
+            # Project future rates
+            projected_rates = []
+            for year in range(0, years_ahead + 1):
+                projected_rate = intercept + slope * year
+                # Apply dampening factor to prevent unrealistic projections
+                if year > 0:
+                    # Max 5% annual change from previous year
+                    prev_rate = projected_rates[-1]["rate"] if projected_rates else current_rate
+                    max_change = prev_rate * 0.05
+                    if abs(projected_rate - prev_rate) > max_change:
+                        projected_rate = prev_rate + (max_change if slope > 0 else -max_change)
+                
+                projected_rates.append({
+                    "year": today.year + year,
+                    "rate": round(projected_rate, 4),
+                    "is_projected": year > 0
+                })
+            
+            # Calculate confidence level based on data consistency
+            rate_std = statistics.stdev(y_values) if len(y_values) > 1 else 0
+            confidence = "high" if rate_std < 1 else "medium" if rate_std < 2 else "low"
+            
+            return {
+                "base": "AED",
+                "target": target,
+                "current_rate": round(current_rate, 4),
+                "projected_rates": projected_rates,
+                "trend": {
+                    "direction": "increasing" if slope > 0 else "decreasing" if slope < 0 else "stable",
+                    "avg_annual_change_percent": round(avg_annual_change, 2),
+                    "slope": round(slope, 4)
+                },
+                "historical_summary": {
+                    "min_rate": round(min(y_values), 4),
+                    "max_rate": round(max(y_values), 4),
+                    "avg_rate": round(sum(y_values) / len(y_values), 4),
+                    "data_points": len(historical_rates)
+                },
+                "confidence": confidence,
+                "source": "frankfurter.app + projection"
+            }
+        else:
+            # Fallback with default projections
+            default_rates = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36}
+            current = default_rates.get(target, 22.75)
+            
+            return {
+                "base": "AED",
+                "target": target,
+                "current_rate": current,
+                "projected_rates": [
+                    {"year": today.year + i, "rate": round(current * (1 + 0.02 * i), 4), "is_projected": i > 0}
+                    for i in range(years_ahead + 1)
+                ],
+                "trend": {"direction": "stable", "avg_annual_change_percent": 2.0, "slope": 0},
+                "historical_summary": {"min_rate": current * 0.9, "max_rate": current * 1.1, "avg_rate": current, "data_points": 0},
+                "confidence": "low",
+                "source": "fallback"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error calculating projected currency rates: {str(e)}")
+        # Return default projection
+        default_rates = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36}
+        current = default_rates.get(target, 22.75)
+        today = datetime.now()
+        
+        return {
+            "base": "AED",
+            "target": target,
+            "current_rate": current,
+            "projected_rates": [
+                {"year": today.year + i, "rate": round(current * (1 + 0.02 * i), 4), "is_projected": i > 0}
+                for i in range(years_ahead + 1)
+            ],
+            "trend": {"direction": "stable", "avg_annual_change_percent": 2.0, "slope": 0},
+            "historical_summary": {"min_rate": current, "max_rate": current, "avg_rate": current, "data_points": 0},
+            "confidence": "low",
+            "source": "error_fallback"
+        }
+
+
 # Include the router in the main app (MUST be after all routes are defined)
 app.include_router(api_router)
 
