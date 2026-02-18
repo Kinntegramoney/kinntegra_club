@@ -1114,45 +1114,37 @@ export default function Opportunities() {
             {selectedCurrency !== "AED" && projectedRates && (
               <div className="mb-2 px-2 py-1.5 bg-gray-50 rounded border border-gray-100">
                 <div className="flex items-center justify-between text-[9px]">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-gray-500">Today:</span>
                     <span className="font-medium text-gray-700">1 AED = {projectedRates.current_rate?.toFixed(2)} {selectedCurrency}</span>
                     {projectedRates.trend && (
                       <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] ${
-                        projectedRates.trend.direction === 'increasing'
-                    {projectedRates.trend && (
-                      <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] ${
                         projectedRates.trend.direction === 'increasing' 
-                          ? 'bg-green-100 text-green-600' 
+                          ? 'bg-green-50 text-green-600' 
                           : projectedRates.trend.direction === 'decreasing'
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-gray-100 text-gray-600'
+                            ? 'bg-red-50 text-red-600'
+                            : 'bg-gray-100 text-gray-500'
                       }`}>
                         {projectedRates.trend.direction === 'increasing' ? (
-                          <TrendingUp className="h-2.5 w-2.5" />
+                          <TrendingUp className="h-2 w-2" />
                         ) : projectedRates.trend.direction === 'decreasing' ? (
-                          <TrendingDown className="h-2.5 w-2.5" />
+                          <TrendingDown className="h-2 w-2" />
                         ) : null}
                         {projectedRates.trend.avg_annual_change_percent > 0 ? '+' : ''}{projectedRates.trend.avg_annual_change_percent?.toFixed(1)}%/yr
                       </span>
                     )}
                   </div>
-                  <span className="text-gray-500">
-                    5yr: {projectedRates.historical_summary?.min_rate?.toFixed(2)} - {projectedRates.historical_summary?.max_rate?.toFixed(2)}
-                  </span>
                 </div>
-                {/* Mini projected rates bar */}
+                {/* Projected rates from today */}
                 {projectedRates.projected_rates && projectedRates.projected_rates.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-blue-100">
-                    <span className="text-[9px] text-gray-500">Projected:</span>
-                    {projectedRates.projected_rates.slice(0, 4).map((pr, idx) => (
+                  <div className="flex items-center gap-1 mt-1 text-[8px]">
+                    <span className="text-gray-400">Projected:</span>
+                    {projectedRates.projected_rates.filter(pr => pr.is_projected).slice(0, 4).map((pr, idx) => (
                       <span 
                         key={idx} 
-                        className={`text-[9px] px-1 py-0.5 rounded ${
-                          pr.is_projected ? 'bg-purple-50 text-purple-600' : 'bg-blue-100 text-blue-700 font-medium'
-                        }`}
+                        className="px-1 py-0.5 bg-purple-50 text-purple-600 rounded"
                       >
-                        {pr.year.toString().slice(-2)}: {pr.rate?.toFixed(1)}
+                        '{pr.year.toString().slice(-2)}: {pr.rate?.toFixed(1)}
                       </span>
                     ))}
                   </div>
