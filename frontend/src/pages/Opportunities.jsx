@@ -527,48 +527,41 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation Slides - embedded and scrollable with navigation */}
-        {bond.presentations && bond.presentations.length > 0 && (() => {
-          const [currentPage, setCurrentPage] = React.useState(1);
-          const totalPages = bond.presentations[0].total_pages || 11; // Default to 11 if not set
-          
-          return (
-            <div className="mb-3 -mx-5 -mt-5">
-              <div className="relative h-52 overflow-hidden rounded-t-lg bg-gray-100">
-                {/* Use Google Docs Viewer for universal PDF rendering */}
-                <iframe
-                  src={`https://docs.google.com/gview?url=${encodeURIComponent(BACKEND_URL + bond.presentations[0].url)}&embedded=true`}
-                  title={bond.presentations[0].original_filename || 'Presentation'}
-                  className="w-full h-full border-0"
-                  loading="lazy"
-                />
-                
-                {/* Document count badge */}
-                <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
-                  {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
-                </div>
-                
-                {/* Navigation controls overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 z-10">
-                  <div className="flex items-center justify-between">
-                    {/* Page info */}
-                    <span className="text-white text-[10px]">Scroll in viewer to navigate pages</span>
-                    
-                    {/* Open in new tab link */}
-                    <a 
-                      href={`${BACKEND_URL}${bond.presentations[0].url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-white/20 text-white text-[10px] px-2 py-1 rounded hover:bg-white/30 transition-colors flex items-center gap-1"
-                    >
-                      <Eye className="h-3 w-3" /> Open Full Screen
-                    </a>
-                  </div>
+        {/* Presentation Slides - embedded viewer with better navigation */}
+        {bond.presentations && bond.presentations.length > 0 && (
+          <div className="mb-3 -mx-5 -mt-5">
+            <div className="relative h-52 overflow-hidden rounded-t-lg bg-gray-900">
+              {/* Use Office Online viewer for better navigation (supports arrows) */}
+              <iframe
+                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(BACKEND_URL + bond.presentations[0].url)}`}
+                title={bond.presentations[0].original_filename || 'Presentation'}
+                className="w-full h-full border-0"
+                loading="lazy"
+                allowFullScreen
+              />
+              
+              {/* Document count badge */}
+              <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
+                {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
+              </div>
+              
+              {/* Bottom bar with controls hint */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 z-10">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/80 text-[10px]">Use ← → arrows or scroll to navigate</span>
+                  <a 
+                    href={`${BACKEND_URL}${bond.presentations[0].url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-amber-500 text-white text-[10px] px-3 py-1 rounded hover:bg-amber-600 transition-colors flex items-center gap-1"
+                  >
+                    <Download className="h-3 w-3" /> Download
+                  </a>
                 </div>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
         
         {/* Header - Bond Name */}
         <div className="flex items-start justify-between mb-3">
