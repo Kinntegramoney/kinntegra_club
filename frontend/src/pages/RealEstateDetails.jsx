@@ -5337,7 +5337,7 @@ function XirrComparisonModal({ opportunity, investor, onClose, onOpenCurrencySet
                   variant="outline" 
                   size="sm" 
                   onClick={() => {
-                    setShowCurrencySettingsModal(true);
+                    if (onOpenCurrencySettings) onOpenCurrencySettings();
                   }}
                   className="text-amber-600 border-amber-200 hover:bg-amber-50"
                 >
