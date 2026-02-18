@@ -2199,8 +2199,8 @@ export default function Holdings() {
                               Payment Timeline - All Properties
                             </h3>
                             
-                            {/* Progress Bar */}
-                            <div className="mb-4">
+                            {/* Overall Progress Bar */}
+                            <div className="mb-6">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-2">
@@ -2237,30 +2237,112 @@ export default function Holdings() {
                               </div>
                             </div>
                             
-                            {/* Payment Timeline - Upcoming Payments */}
+                            {/* Monthly Timeline Bar Chart */}
+                            {monthlyData.length > 0 && (
+                              <div className="mb-6">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Schedule by Month</h4>
+                                <div className="relative">
+                                  {/* Chart container */}
+                                  <div className="flex items-end gap-1 h-32 overflow-x-auto pb-6">
+                                    {monthlyData.map((month, idx) => {
+                                      const paidHeight = maxMonthAmount > 0 ? (month.paid / maxMonthAmount) * 100 : 0;
+                                      const unpaidHeight = maxMonthAmount > 0 ? (month.unpaid / maxMonthAmount) * 100 : 0;
+                                      const totalMonth = month.paid + month.unpaid;
+                                      const isPastMonth = new Date(month.date + '-01') < new Date();
+                                      
+                                      return (
+                                        <div 
+                                          key={idx} 
+                                          className="flex flex-col items-center min-w-[50px] group relative"
+                                          title={`${formatMonth(month.date)}: AED ${new Intl.NumberFormat('en-AE').format(Math.round(totalMonth))}`}
+                                        >
+                                          {/* Stacked bar */}
+                                          <div className="flex flex-col-reverse w-8 h-24 bg-gray-50 rounded-t-sm overflow-hidden border border-gray-200">
+                                            {month.paid > 0 && (
+                                              <div 
+                                                className="w-full bg-gradient-to-t from-green-500 to-green-400 transition-all duration-300"
+                                                style={{ height: `${paidHeight}%` }}
+                                              />
+                                            )}
+                                            {month.unpaid > 0 && (
+                                              <div 
+                                                className={`w-full transition-all duration-300 ${isPastMonth ? 'bg-gradient-to-t from-red-500 to-red-400' : 'bg-gradient-to-t from-amber-500 to-amber-400'}`}
+                                                style={{ height: `${unpaidHeight}%` }}
+                                              />
+                                            )}
+                                          </div>
+                                          
+                                          {/* Month label */}
+                                          <span className="text-[10px] text-gray-500 mt-1 whitespace-nowrap transform -rotate-45 origin-top-left translate-y-2">
+                                            {formatMonth(month.date)}
+                                          </span>
+                                          
+                                          {/* Hover tooltip */}
+                                          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                                            <div className="font-semibold">{formatMonth(month.date)}</div>
+                                            {month.paid > 0 && <div className="text-green-300">Paid: AED {new Intl.NumberFormat('en-AE').format(Math.round(month.paid))}</div>}
+                                            {month.unpaid > 0 && <div className="text-amber-300">Due: AED {new Intl.NumberFormat('en-AE').format(Math.round(month.unpaid))}</div>}
+                                            <div className="text-gray-300 text-[10px] mt-1">{month.payments.length} payment(s)</div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  
+                                  {/* Chart legend */}
+                                  <div className="flex items-center gap-4 mt-2 text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-3 h-3 rounded bg-green-500"></div>
+                                      <span className="text-gray-600">Paid</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-3 h-3 rounded bg-amber-500"></div>
+                                      <span className="text-gray-600">Upcoming</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <div className="w-3 h-3 rounded bg-red-500"></div>
+                                      <span className="text-gray-600">Overdue</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Upcoming Payments List */}
                             {upcomingPayments.length > 0 && (
-                              <div className="mt-4 pt-4 border-t">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Upcoming Payments</h4>
+                              <div className="pt-4 border-t">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Upcoming Payments ({upcomingPayments.length})</h4>
                                 <div className="space-y-2">
-                                  {upcomingPayments.map((payment, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                        <div>
-                                          <p className="text-sm font-medium text-gray-800">{payment.description}</p>
-                                          <p className="text-xs text-gray-500">{payment.propertyName}</p>
+                                  {upcomingPayments.map((payment, idx) => {
+                                    const isOverdue = new Date(payment.date) < new Date();
+                                    return (
+                                      <div 
+                                        key={idx} 
+                                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                                          isOverdue 
+                                            ? 'bg-red-50 border-red-200' 
+                                            : 'bg-amber-50 border-amber-100'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-2 h-2 rounded-full ${isOverdue ? 'bg-red-500' : 'bg-amber-500'}`}></div>
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-800">{payment.description}</p>
+                                            <p className="text-xs text-gray-500">{payment.propertyName}</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className={`text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                            AED {new Intl.NumberFormat('en-AE').format(Math.round(payment.amount))}
+                                          </p>
+                                          <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-gray-500'}`}>
+                                            {new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            {isOverdue && ' (Overdue)'}
+                                          </p>
                                         </div>
                                       </div>
-                                      <div className="text-right">
-                                        <p className="text-sm font-semibold text-amber-600">
-                                          AED {new Intl.NumberFormat('en-AE').format(Math.round(payment.amount))}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                          {new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
