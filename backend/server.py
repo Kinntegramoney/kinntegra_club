@@ -27637,7 +27637,7 @@ async def get_projected_currency_rates(
                 slope = 0
                 intercept = y_mean
             
-            # Current rate
+            # Current rate (actual from latest API data)
             current_rate = y_values[-1] if y_values else 22.75
             
             # Calculate average annual change percentage
@@ -27647,8 +27647,12 @@ async def get_projected_currency_rates(
             else:
                 avg_annual_change = 0
             
-            # Project future rates - starting from current rate
+            # Project future rates using regression line
+            # The regression gives us y = intercept + slope * x where x=0 is today
+            # For projections, we use: rate(year_n) = intercept + slope * n
+            # But we anchor to the current actual rate and apply slope for future years
             projected_rates = []
+            
             # Year 0 is current year with actual current rate
             projected_rates.append({
                 "year": today.year,
@@ -27656,15 +27660,17 @@ async def get_projected_currency_rates(
                 "is_projected": False
             })
             
-            # Project future years based on slope (rate change per year)
+            # Project future years using regression slope
+            # Use regression line anchored at current year: rate = current_rate + slope * years_ahead
             for year in range(1, years_ahead + 1):
-                prev_rate = projected_rates[-1]["rate"]
-                # Apply annual change based on slope
-                projected_rate = prev_rate + slope
-                # Apply dampening factor - max 5% annual change
-                max_change = prev_rate * 0.05
-                if abs(projected_rate - prev_rate) > max_change:
-                    projected_rate = prev_rate + (max_change if slope > 0 else -max_change)
+                # Project directly from current rate using slope * year
+                # This avoids compounding errors from iterative addition
+                projected_rate = current_rate + slope * year
+                
+                # Apply dampening factor - max 5% annual change from current rate for each year
+                max_total_change = current_rate * 0.05 * year
+                if abs(projected_rate - current_rate) > max_total_change:
+                    projected_rate = current_rate + (max_total_change if slope > 0 else -max_total_change)
                 
                 projected_rates.append({
                     "year": today.year + year,
