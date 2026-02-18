@@ -1190,7 +1190,7 @@ export default function Opportunities() {
           <div className="mb-3">
             {/* Currency Selector - filtered by participant payment currencies */}
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-gray-500 text-[10px] font-medium">Projected Future Value</span>
+              <span className="text-gray-500 text-[10px] font-medium">Remaining Payments</span>
               <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
@@ -1213,25 +1213,35 @@ export default function Opportunities() {
               </div>
             </div>
             
-            {/* Future Value Projection based on remaining payments */}
+            {/* Timeline showing only REMAINING payments */}
+            {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+              <HorizontalPaymentTimeline 
+                milestones={opp.payment_schedule
+                  .map((p, idx) => ({
+                    date: p.date,
+                    description: p.description || `Payment ${idx + 1}`,
+                    percentage: p.percentage,
+                    amount: (p.percentage / 100) * (opp.investment_amount || opp.total_cost || 0),
+                    isPaid: idx < (opp.payments_completed || 0)
+                  }))
+                  .filter(m => !m.isPaid)  // Only show unpaid/remaining payments
+                }
+                totalAmount={opp.investment_amount || opp.total_cost || 0}
+                showShareValues={true}
+                sharePercent={100}  // Show full amounts for funded
+                compact={true}
+                currency={selectedCurrency}
+                conversionRate={currencyRates[selectedCurrency] || 1}
+              />
+            )}
+            
+            {/* Projected Sale Value & Profit */}
             {(() => {
               const totalCost = opp.total_cost || 0;
-              const paymentsCompleted = opp.payments_completed || 0;
-              const schedule = opp.payment_schedule || [];
-              
-              // Calculate remaining payments
-              const remainingPayments = schedule.slice(paymentsCompleted);
-              const paidPercentage = schedule.slice(0, paymentsCompleted).reduce((sum, p) => sum + (p.percentage || 0), 0);
-              const remainingPercentage = 100 - paidPercentage;
-              const remainingAmount = (remainingPercentage / 100) * totalCost;
-              
-              // Expected sale value
               const expectedSaleValue = (opp.expected_sale_rate || 0) * (opp.total_area || 0);
               const projectedProfit = expectedSaleValue - totalCost;
               
-              // Convert to selected currency
               const rate = currencyRates[selectedCurrency] || 1;
-              const convertedRemaining = remainingAmount * rate;
               const convertedSaleValue = expectedSaleValue * rate;
               const convertedProfit = projectedProfit * rate;
               
@@ -1246,58 +1256,25 @@ export default function Opportunities() {
               };
               
               return (
-                <div className="space-y-2">
-                  {/* Remaining Payments */}
-                  {remainingPayments.length > 0 && (
-                    <div className="bg-amber-50 rounded-lg p-2.5 border border-amber-200">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] text-amber-700 font-medium">Remaining Payments ({remainingPercentage}%)</span>
-                        <span className="text-sm font-bold text-amber-700">{currencySymbol} {formatValue(convertedRemaining)}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {remainingPayments.map((p, idx) => (
-                          <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded">
-                            {new Date(p.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}: {p.percentage}%
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
+                <div className="space-y-1.5 mt-2">
                   {/* Projected Sale Value */}
                   {opp.expected_sale_rate && opp.estimated_sell_date && (
-                    <div className="bg-green-50 rounded-lg p-2.5 border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-green-700 font-medium block">Expected Sale Value</span>
-                          <span className="text-[8px] text-green-600">
-                            @ {opp.expected_sale_rate?.toLocaleString()} AED/sqft • {new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-green-700">{currencySymbol} {formatValue(convertedSaleValue)}</span>
+                    <div className="flex items-center justify-between bg-green-50 rounded px-2 py-1.5 border border-green-200">
+                      <div>
+                        <span className="text-[9px] text-green-700 font-medium">Expected Sale</span>
+                        <span className="text-[8px] text-green-600 ml-1">
+                          ({new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })})
+                        </span>
                       </div>
+                      <span className="text-xs font-bold text-green-700">{currencySymbol} {formatValue(convertedSaleValue)}</span>
                     </div>
                   )}
                   
                   {/* Projected Profit */}
                   {projectedProfit > 0 && (
-                    <div className="bg-purple-50 rounded-lg p-2.5 border border-purple-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-purple-700 font-medium">Projected Profit</span>
-                        <span className="text-sm font-bold text-purple-700">{currencySymbol} {formatValue(convertedProfit)}</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Currency Rate Info */}
-                  {selectedCurrency !== 'AED' && projectedRates && (
-                    <div className="text-[8px] text-gray-500 text-center mt-1">
-                      Rate: 1 AED = {projectedRates.current_rate?.toFixed(2)} {selectedCurrency}
-                      {projectedRates.projected_rates?.find(p => p.year === new Date(opp.estimated_sell_date).getFullYear()) && (
-                        <span className="ml-1 text-purple-600">
-                          (Projected '{new Date(opp.estimated_sell_date).getFullYear().toString().slice(-2)}: {projectedRates.projected_rates.find(p => p.year === new Date(opp.estimated_sell_date).getFullYear())?.rate?.toFixed(2)})
-                        </span>
-                      )}
+                    <div className="flex items-center justify-between bg-purple-50 rounded px-2 py-1.5 border border-purple-200">
+                      <span className="text-[9px] text-purple-700 font-medium">Projected Profit</span>
+                      <span className="text-xs font-bold text-purple-700">{currencySymbol} {formatValue(convertedProfit)}</span>
                     </div>
                   )}
                 </div>
