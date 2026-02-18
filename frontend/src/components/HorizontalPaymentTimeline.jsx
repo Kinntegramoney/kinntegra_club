@@ -38,6 +38,7 @@ const CURRENCY_SYMBOLS = {
  * @param {number} sharePercent - Share percentage (25, 50, 75, 100) default 25%
  * @param {string} currency - Currency code to display amounts in (default: AED)
  * @param {number} conversionRate - Conversion rate from AED to selected currency
+ * @param {boolean} showConsolidated - Show consolidated view with grouped payments
  */
 export default function HorizontalPaymentTimeline({ 
   milestones = [], 
@@ -47,7 +48,8 @@ export default function HorizontalPaymentTimeline({
   sharePercent = 25,
   currency = "AED",
   conversionRate = 1,
-  className = ""
+  className = "",
+  showConsolidated = false
 }) {
   if (!milestones || milestones.length === 0) return null;
   
