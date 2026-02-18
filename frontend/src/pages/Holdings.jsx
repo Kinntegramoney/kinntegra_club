@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
+import HorizontalPaymentTimeline from "@/components/HorizontalPaymentTimeline";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import React from "react";
