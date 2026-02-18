@@ -44,6 +44,15 @@ const formatINRCrores = (value) => {
   return `₹${value.toLocaleString('en-IN')}`;
 };
 
+// Format currency for INR (Lakhs) - for smaller amounts like P/I bifurcation
+const formatINRLakhs = (value) => {
+  if (value === undefined || value === null || value === 0) return "₹0";
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`;
+  if (value >= 100000) return `₹${(value / 100000).toFixed(1)} L`;
+  if (value >= 1000) return `₹${(value / 1000).toFixed(0)} K`;
+  return `₹${Math.round(value).toLocaleString('en-IN')}`;
+};
+
 // Format currency for AED (Millions)
 const formatAEDMillions = (value) => {
   if (value === undefined || value === null || value === 0) return "AED 0";
