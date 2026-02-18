@@ -98,12 +98,12 @@ export default function HorizontalPaymentTimeline({
   };
   
   if (compact) {
-    // Compact version for opportunity cards - simple horizontal bar
+    // Compact version for opportunity cards - subtle horizontal bar
     return (
       <div className={`w-full ${className}`}>
-        <div className="flex items-center h-8">
+        <div className="flex items-center h-6">
           {/* Timeline bar */}
-          <div className="flex-1 flex items-center h-2.5 relative">
+          <div className="flex-1 flex items-center h-1.5 relative rounded-full bg-gray-100">
             {sortedMilestones.map((milestone, idx) => {
               const color = milestone.isPaid ? PAID_COLOR : COLORS[idx % COLORS.length];
               const isFirst = idx === 0;
@@ -118,28 +118,21 @@ export default function HorizontalPaymentTimeline({
                 >
                   {/* Segment */}
                   <div 
-                    className={`h-2.5 w-full ${color.bg} ${isFirst ? 'rounded-l-full' : ''} ${isLast ? 'rounded-r-full' : ''}`}
-                    style={{
-                      clipPath: isFirst 
-                        ? 'polygon(0 50%, 8px 0, 100% 0, calc(100% - 4px) 50%, 100% 100%, 8px 100%)'
-                        : isLast 
-                          ? 'polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 4px 50%)'
-                          : 'polygon(0 0, calc(100% - 4px) 0, 100% 50%, calc(100% - 4px) 100%, 0 100%, 4px 50%)'
-                    }}
+                    className={`h-1.5 w-full ${color.bg} ${isFirst ? 'rounded-l-full' : ''} ${isLast ? 'rounded-r-full' : ''}`}
                   />
                   
-                  {/* Node marker */}
+                  {/* Node marker - smaller and subtler */}
                   <div 
-                    className={`absolute -top-0.5 left-1/2 transform -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 ${color.border} bg-white flex items-center justify-center z-10`}
+                    className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border ${color.border} bg-white shadow-sm z-10`}
                   >
                     {milestone.isPaid && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                      <div className="w-full h-full rounded-full bg-emerald-400/50"></div>
                     )}
                   </div>
                   
                   {/* Tooltip on hover */}
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                    <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                    <div className="bg-gray-800/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
                       <div className="font-medium">{milestone.description || `${milestone.percentage}%`}</div>
                       <div className="text-gray-300">{formatDate(milestone.date)}</div>
                       {showShareValues && totalAmount > 0 && (
@@ -154,8 +147,8 @@ export default function HorizontalPaymentTimeline({
           </div>
         </div>
         
-        {/* Labels row */}
-        <div className="flex mt-1">
+        {/* Labels row - more subtle */}
+        <div className="flex mt-0.5">
           {sortedMilestones.map((milestone, idx) => (
             <div 
               key={idx} 
