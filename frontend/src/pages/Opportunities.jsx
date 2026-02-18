@@ -987,42 +987,54 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Interest & Confirmed Participants */}
-        <div className="flex items-center justify-between mb-4 py-3 border-t border-b border-gray-100">
-          {canSeeDetails ? (
-            <>
-              <div className="text-center flex-1">
-                <p className="text-xs text-gray-500">Interested</p>
-                <p className="font-bold text-etihad-gold-600">{opp.interested_count || 0}</p>
-              </div>
-              <div className="w-px h-8 bg-gray-200"></div>
-              <div className="text-center flex-1">
-                <div className="flex items-center justify-center gap-1 mb-0.5">
-                  <UserCheck className="h-3 w-3 text-emerald-500" />
-                  <p className="text-xs text-gray-500">Confirmed</p>
+        {/* Interest & Confirmed Participants - Only for available, not funded */}
+        {status === 'available' && (
+          <div className="flex items-center justify-between mb-4 py-3 border-t border-b border-gray-100">
+            {canSeeDetails ? (
+              <>
+                <div className="text-center flex-1">
+                  <p className="text-xs text-gray-500">Interested</p>
+                  <p className="font-bold text-etihad-gold-600">{opp.interested_count || 0}</p>
                 </div>
-                <p className="font-bold text-emerald-600">
-                  {opp.current_investors || 0} <span className="text-gray-400 font-normal">participants</span>
-                </p>
-                <p className="text-[10px] text-emerald-500 font-medium">
-                  {((opp.current_investors || 0) * 25)}% committed
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-center flex-1">
-                <p className="text-xs text-gray-500">Status</p>
-                <p className="font-medium text-gray-700 capitalize">{status}</p>
-              </div>
-              <div className="w-px h-8 bg-gray-200"></div>
-              <div className="text-center flex-1 flex items-center justify-center gap-1">
-                <Lock className="h-3 w-3 text-gray-400" />
-                <p className="text-xs text-gray-400">Invest to view details</p>
-              </div>
-            </>
-          )}
-        </div>
+                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="text-center flex-1">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <UserCheck className="h-3 w-3 text-emerald-500" />
+                    <p className="text-xs text-gray-500">Confirmed</p>
+                  </div>
+                  <p className="font-bold text-emerald-600">
+                    {opp.current_investors || 0} <span className="text-gray-400 font-normal">participants</span>
+                  </p>
+                  <p className="text-[10px] text-emerald-500 font-medium">
+                    {((opp.current_investors || 0) * 25)}% committed
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-center flex-1">
+                  <p className="text-xs text-gray-500">Status</p>
+                  <p className="font-medium text-gray-700 capitalize">{status}</p>
+                </div>
+                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="text-center flex-1 flex items-center justify-center gap-1">
+                  <Lock className="h-3 w-3 text-gray-400" />
+                  <p className="text-xs text-gray-400">Invest to view details</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
+        {/* For funded/invested - Show participants as filled */}
+        {(status === 'invested' || status === 'funded') && canSeeDetails && (
+          <div className="flex items-center justify-center mb-4 py-2 bg-emerald-50 rounded-lg border border-emerald-200">
+            <UserCheck className="h-4 w-4 text-emerald-600 mr-2" />
+            <p className="text-sm font-medium text-emerald-700">
+              Fully Invested • {opp.current_investors || 4} participants • 100% committed
+            </p>
+          </div>
+        )}
 
         {/* Payment Schedule Timeline - only show for users with detailed access */}
         {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
