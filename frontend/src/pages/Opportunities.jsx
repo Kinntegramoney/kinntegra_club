@@ -849,6 +849,25 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
+        {/* Property Image - if available */}
+        {opp.images && opp.images.length > 0 && (
+          <div className="mb-3 -mx-5 -mt-5">
+            <div className="relative h-32 overflow-hidden rounded-t-lg">
+              <img 
+                src={opp.images[0]} 
+                alt={opp.building_name}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              {opp.images.length > 1 && (
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                  +{opp.images.length - 1} photos
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Header - Property Name */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
