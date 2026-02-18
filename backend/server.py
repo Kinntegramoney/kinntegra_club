@@ -13889,23 +13889,45 @@ async def client_approve_reinvestment(
     elif current_status in ['pending', 'pending_reapproval']:
         # Standard new or re-approval request
         new_status = 'approved' if is_approved else 'rejected'
+        cashflow_id = log_entry.get('cashflow_id')
         
-        # Update the log entry
-        await db.reinvestment_logs.update_one(
-            {"id": log_id},
-            {"$set": {
-                "approval_status": new_status,
-                "client_approved": is_approved,
-                "approval_notes": approval.notes,
-                "approved_by": current_user['id'],
-                "approved_at": datetime.now(timezone.utc).isoformat()
-            }}
-        )
+        # Update ALL log entries for the same cashflow (important for split allocations)
+        # This ensures all allocations (multiple UCCs) are approved/rejected together
+        if cashflow_id:
+            update_result = await db.reinvestment_logs.update_many(
+                {
+                    "cashflow_id": cashflow_id,
+                    "client_id": client['id'],
+                    "approval_status": {"$in": ["pending", "pending_reapproval"]}
+                },
+                {"$set": {
+                    "approval_status": new_status,
+                    "client_approved": is_approved,
+                    "approval_notes": approval.notes,
+                    "approved_by": current_user['id'],
+                    "approved_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            logs_updated = update_result.modified_count
+            logger.info(f"Client approval: Updated {logs_updated} log entries for cashflow {cashflow_id}")
+        else:
+            # Fallback: update just this log entry
+            await db.reinvestment_logs.update_one(
+                {"id": log_id},
+                {"$set": {
+                    "approval_status": new_status,
+                    "client_approved": is_approved,
+                    "approval_notes": approval.notes,
+                    "approved_by": current_user['id'],
+                    "approved_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            logs_updated = 1
         
         # Also update the cashflow entry if it exists
-        if log_entry.get('cashflow_id'):
+        if cashflow_id:
             await db.holding_cashflows.update_one(
-                {"id": log_entry['cashflow_id']},
+                {"id": cashflow_id},
                 {"$set": {
                     "client_approved": is_approved,
                     "approval_status": new_status,
@@ -13919,13 +13941,13 @@ async def client_approve_reinvestment(
         if is_approved:
             try:
                 # Get cashflow data for API call
-                cashflow = await db.holding_cashflows.find_one({"id": log_entry.get('cashflow_id')})
+                cashflow = await db.holding_cashflows.find_one({"id": cashflow_id})
                 if cashflow:
                     kinntegra_result = await call_kinntegra_mf_buy_scheduler(cashflow, client)
                     
-                    # Update log with API submission status
-                    await db.reinvestment_logs.update_one(
-                        {"id": log_id},
+                    # Update ALL logs for this cashflow with API submission status
+                    await db.reinvestment_logs.update_many(
+                        {"cashflow_id": cashflow_id, "client_id": client['id']},
                         {"$set": {
                             "api_submitted": True,
                             "api_result": kinntegra_result,
