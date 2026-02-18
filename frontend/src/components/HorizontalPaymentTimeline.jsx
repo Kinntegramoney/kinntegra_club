@@ -33,9 +33,10 @@ const CURRENCY_SYMBOLS = {
 /**
  * HorizontalPaymentTimeline
  * @param {Array} milestones - Array of { date, description, percentage, amount, isPaid }
- * @param {number} totalAmount - Total investment amount (for calculating 25% values)
+ * @param {number} totalAmount - Total investment amount (for calculating share values)
  * @param {boolean} compact - Show compact version for opportunity cards
- * @param {boolean} show25Percent - Show 25% values instead of actual amounts
+ * @param {boolean} showShareValues - Show share values based on sharePercent
+ * @param {number} sharePercent - Share percentage (25, 50, 75, 100) default 25%
  * @param {string} currency - Currency code to display amounts in (default: AED)
  * @param {number} conversionRate - Conversion rate from AED to selected currency
  */
@@ -43,7 +44,8 @@ export default function HorizontalPaymentTimeline({
   milestones = [], 
   totalAmount = 0, 
   compact = false,
-  show25Percent = false,
+  showShareValues = false,
+  sharePercent = 25,
   currency = "AED",
   conversionRate = 1,
   className = ""
