@@ -1258,7 +1258,7 @@ export default function Opportunities() {
               </div>
             </div>
             
-            {/* Projected Rate Info - simplified */}
+            {/* Projected Rate Info - with 5-year history */}
             {selectedCurrency !== "AED" && projectedRates && (
               <div className="mb-2 px-2 py-1.5 bg-gray-50 rounded border border-gray-100">
                 <div className="flex items-center justify-between text-[9px]">
@@ -1283,14 +1283,43 @@ export default function Opportunities() {
                     )}
                   </div>
                 </div>
+                
+                {/* 5-Year History - Appreciation/Depreciation */}
+                {projectedRates.historical_summary && (
+                  <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-gray-200">
+                    <span className="text-[8px] text-gray-400">5yr History:</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
+                        Min: {projectedRates.historical_summary.min_rate?.toFixed(2)}
+                      </span>
+                      <span className="text-[8px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded">
+                        Max: {projectedRates.historical_summary.max_rate?.toFixed(2)}
+                      </span>
+                      {(() => {
+                        const minRate = projectedRates.historical_summary.min_rate;
+                        const currentRate = projectedRates.current_rate;
+                        const totalChange = ((currentRate - minRate) / minRate * 100).toFixed(1);
+                        const isPositive = totalChange > 0;
+                        return (
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${
+                            isPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                          }`}>
+                            {isPositive ? '↑' : '↓'} {isPositive ? '+' : ''}{totalChange}% (5yr)
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Projected rates from today */}
                 {projectedRates.projected_rates && projectedRates.projected_rates.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1 text-[8px]">
-                    <span className="text-gray-400">Projected:</span>
+                  <div className="flex items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-200 text-[8px]">
+                    <span className="text-gray-400">Future:</span>
                     {projectedRates.projected_rates.filter(pr => pr.is_projected).slice(0, 4).map((pr, idx) => (
                       <span 
                         key={idx} 
-                        className="px-1 py-0.5 bg-purple-50 text-purple-600 rounded"
+                        className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded"
                       >
                         '{pr.year.toString().slice(-2)}: {pr.rate?.toFixed(1)}
                       </span>
