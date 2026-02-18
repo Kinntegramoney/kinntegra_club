@@ -194,6 +194,12 @@ export default function Opportunities() {
   const [xirrModalData, setXirrModalData] = useState(null); // For XIRR calculation popup
   const [interestModal, setInterestModal] = useState(null); // For client interest modal {type: 'bond'/'real_estate', opportunity: {...}}
   
+  // Currency state for payment schedule display
+  const [selectedCurrency, setSelectedCurrency] = useState("AED");
+  const [currencyRates, setCurrencyRates] = useState({ AED: 1, INR: 22.75, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36 });
+  const [projectedRates, setProjectedRates] = useState(null);
+  const [loadingRates, setLoadingRates] = useState(false);
+  
   // Permission checks
   const canCreateBond = hasPermission("opportunities_bonds", "create");
   const canEditBond = hasPermission("opportunities_bonds", "edit");
