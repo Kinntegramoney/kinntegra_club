@@ -64,26 +64,36 @@ export default function HorizontalPaymentTimeline({
     return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
   };
   
-  // Format amount with currency conversion
-  const formatAmount = (amount, showSymbol = true) => {
+  // Format amount with commas (absolute values)
+  const formatAmount = (amount, showSymbol = true, abbreviated = false) => {
     const convertedAmount = amount * conversionRate;
     let formatted;
-    if (convertedAmount >= 1000000) {
-      formatted = `${(convertedAmount / 1000000).toFixed(2)}M`;
-    } else if (convertedAmount >= 1000) {
-      formatted = `${(convertedAmount / 1000).toFixed(0)}K`;
+    
+    if (abbreviated) {
+      // Abbreviated format for very compact display
+      if (convertedAmount >= 10000000) {
+        formatted = `${(convertedAmount / 10000000).toFixed(2)}Cr`;
+      } else if (convertedAmount >= 100000) {
+        formatted = `${(convertedAmount / 100000).toFixed(2)}L`;
+      } else if (convertedAmount >= 1000) {
+        formatted = `${(convertedAmount / 1000).toFixed(1)}K`;
+      } else {
+        formatted = Math.round(convertedAmount).toLocaleString('en-IN');
+      }
     } else {
-      formatted = convertedAmount.toFixed(0);
+      // Full format with commas
+      formatted = Math.round(convertedAmount).toLocaleString('en-IN');
     }
+    
     return showSymbol ? `${currencySymbol} ${formatted}` : formatted;
   };
   
-  // Calculate 25% value
-  const get25PercentValue = (percentage) => {
-    if (!show25Percent || !totalAmount) return null;
+  // Calculate share value based on share percentage
+  const getShareValue = (percentage) => {
+    if (!totalAmount) return null;
     const fullAmount = (percentage / 100) * totalAmount;
-    const quarterAmount = fullAmount * 0.25; // 25% of total for one investor share
-    return quarterAmount;
+    const shareAmount = fullAmount * (sharePercent / 100);
+    return shareAmount;
   };
   
   if (compact) {
