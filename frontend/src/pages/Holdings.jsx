@@ -2115,6 +2115,129 @@ export default function Holdings() {
                         </div>
                       </div>
 
+                      {/* Payment Status Overview */}
+                      {(() => {
+                        // Calculate total paid and outstanding across all properties
+                        let totalInvestment = 0;
+                        let totalPaid = 0;
+                        let totalOutstanding = 0;
+                        let paymentTimeline = [];
+                        
+                        clientRealEstate.forEach(property => {
+                          const investmentAmount = property.investment_amount || 0;
+                          totalInvestment += investmentAmount;
+                          
+                          // Calculate paid amount based on completed milestones
+                          const schedule = property.payment_schedule || [];
+                          let propertyPaid = 0;
+                          
+                          schedule.forEach((milestone, idx) => {
+                            const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                            const isPaid = idx < (property.payments_completed || 0);
+                            
+                            if (isPaid) {
+                              propertyPaid += milestoneAmount;
+                            }
+                            
+                            // Add to timeline
+                            paymentTimeline.push({
+                              date: milestone.date,
+                              description: milestone.description,
+                              amount: milestoneAmount,
+                              isPaid: isPaid,
+                              propertyName: property.building_name
+                            });
+                          });
+                          
+                          totalPaid += propertyPaid;
+                        });
+                        
+                        totalOutstanding = totalInvestment - totalPaid;
+                        const paidPercent = totalInvestment > 0 ? (totalPaid / totalInvestment) * 100 : 0;
+                        const outstandingPercent = 100 - paidPercent;
+                        
+                        // Sort timeline by date
+                        paymentTimeline.sort((a, b) => new Date(a.date) - new Date(b.date));
+                        
+                        // Get upcoming payments (next 3 unpaid)
+                        const upcomingPayments = paymentTimeline.filter(p => !p.isPaid).slice(0, 3);
+                        
+                        return (
+                          <div className="bg-white rounded-lg border border-gray-200 p-5">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                              <Calendar className="h-5 w-5 text-teal-600" />
+                              Payment Status
+                            </h3>
+                            
+                            {/* Progress Bar */}
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <span className="text-sm text-gray-600">Paid:</span>
+                                    <span className="text-sm font-semibold text-green-600">
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(totalPaid))}
+                                    </span>
+                                    <span className="text-xs text-gray-500">({paidPercent.toFixed(1)}%)</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                                    <span className="text-sm text-gray-600">Outstanding:</span>
+                                    <span className="text-sm font-semibold text-amber-600">
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(totalOutstanding))}
+                                    </span>
+                                    <span className="text-xs text-gray-500">({outstandingPercent.toFixed(1)}%)</span>
+                                  </div>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">
+                                  Total: AED {new Intl.NumberFormat('en-AE').format(Math.round(totalInvestment))}
+                                </span>
+                              </div>
+                              
+                              <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex">
+                                <div 
+                                  className="bg-gradient-to-r from-green-400 to-green-500 h-full transition-all duration-500"
+                                  style={{ width: `${paidPercent}%` }}
+                                />
+                                <div 
+                                  className="bg-gradient-to-r from-amber-400 to-amber-500 h-full transition-all duration-500"
+                                  style={{ width: `${outstandingPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Payment Timeline - Upcoming Payments */}
+                            {upcomingPayments.length > 0 && (
+                              <div className="mt-4 pt-4 border-t">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Upcoming Payments</h4>
+                                <div className="space-y-2">
+                                  {upcomingPayments.map((payment, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-800">{payment.description}</p>
+                                          <p className="text-xs text-gray-500">{payment.propertyName}</p>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-sm font-semibold text-amber-600">
+                                          AED {new Intl.NumberFormat('en-AE').format(Math.round(payment.amount))}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* Properties List */}
                       <div className="space-y-4">
                         {clientRealEstate.map((property, idx) => (
