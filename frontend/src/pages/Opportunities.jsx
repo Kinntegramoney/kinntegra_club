@@ -543,14 +543,16 @@ export default function Opportunities() {
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="text-center">
                     <FileText className="h-8 w-8 text-amber-500 mx-auto mb-1" />
-                    <p className="text-xs text-amber-700 font-medium">{bond.presentations[0].original_name || 'Presentation'}</p>
-                    <p className="text-[10px] text-amber-600">{bond.presentations.length} document{bond.presentations.length > 1 ? 's' : ''}</p>
+                    <p className="text-xs text-amber-700 font-medium truncate max-w-[200px] px-2">
+                      {bond.presentations[0].original_filename || bond.presentations[0].original_name || 'Presentation'}
+                    </p>
+                    <p className="text-[10px] text-amber-600">{bond.presentations.length} document{bond.presentations.length > 1 ? 's' : ''} available</p>
                   </div>
                 </div>
               )}
               {bond.presentations.length > 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                  +{bond.presentations.length - 1} docs
+                  +{bond.presentations.length - 1} more
                 </div>
               )}
             </div>
