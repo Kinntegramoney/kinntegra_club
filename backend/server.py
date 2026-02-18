@@ -27580,18 +27580,73 @@ async def get_projected_currency_rates(
     Base currency is AED.
     
     Uses linear regression on historical data to project future rates.
+    Note: USD is pegged to AED at 3.6725, so no historical variation.
     """
     import httpx
     from datetime import datetime, timedelta
     import statistics
+    
+    # USD is pegged to AED - constant rate
+    if target == "USD":
+        today = datetime.now()
+        usd_rate = 1 / AED_USD_RATE  # ~0.2723
+        projected_rates = [{"year": today.year, "rate": round(usd_rate, 4), "is_projected": False}]
+        for i in range(1, years_ahead + 1):
+            projected_rates.append({"year": today.year + i, "rate": round(usd_rate, 4), "is_projected": True})
+        
+        return {
+            "base": "AED",
+            "target": "USD",
+            "current_rate": round(usd_rate, 4),
+            "projected_rates": projected_rates,
+            "historical_summary": {
+                "min_rate": round(usd_rate, 4),
+                "max_rate": round(usd_rate, 4),
+                "data_points": 1
+            },
+            "trend": {
+                "direction": "stable",
+                "avg_annual_change_percent": 0
+            },
+            "confidence": "high",
+            "source": "AED-USD peg (fixed rate)",
+            "note": "USD and AED are pegged at a fixed rate of 1 USD = 3.6725 AED"
+        }
     
     try:
         # Fetch 5 years of historical data
         historical_rates = []
         today = datetime.now()
         
-        # Get rates for the past 5 years (sample monthly)
+        # First get current rate from the same API as dashboard
+        current_rate = None
         async with httpx.AsyncClient(timeout=30) as client:
+            # Try primary API (same as dashboard)
+            try:
+                response = await client.get(
+                    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json",
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    current_rate = data.get('aed', {}).get(target.lower())
+            except Exception:
+                pass
+            
+            # Fallback to exchangerate-api
+            if not current_rate:
+                try:
+                    response = await client.get(
+                        "https://api.exchangerate-api.com/v4/latest/AED",
+                        timeout=5
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        current_rate = data.get('rates', {}).get(target)
+                except Exception:
+                    pass
+            
+            # Get historical rates for trend analysis
             for year_offset in range(5, -1, -1):
                 for month in [1, 4, 7, 10]:  # Quarterly samples
                     try:
