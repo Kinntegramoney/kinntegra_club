@@ -12,7 +12,22 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 ### Completed Features (Feb 2026)
 
-#### Session: Feb 18, 2026
+#### Session: Feb 18, 2026 (Latest)
+**P0 Bug Fixes:**
+1. **Currency Projection Calculation Fixed** - Changed from regression slope to simple 5-year average:
+   - Now uses `(current_rate - oldest_rate) / 5` for annual change
+   - Projections: 2027=25.21, 2028=26.00, 2029=26.80, etc. (for INR)
+   - More intuitive and matches user expectations
+2. **Custom Share % State Fixed** - Each RealEstateCard now has independent local state:
+   - `cardSharePercent`, `cardCustomInput`, `showCardCustomInput` per card
+   - Changing share % on one card no longer affects other cards
+
+**UI Improvements:**
+3. **Timeline Dates Visible** - Payment schedule dates now shown directly above timeline (not as hover)
+4. **Confirmed Participants Display** - Shows "X participants" with "Y% committed"
+5. **Removed "Available Slots"** - Simplified UI by removing available slots from opportunity cards
+
+#### Previous Session: Feb 18, 2026
 1. **Currency Settings on Dashboard** - Moved Currency Settings button to Dashboard's Market Rates section for global access
 2. **Horizontal Payment Timeline Component** - Created `/app/frontend/src/components/HorizontalPaymentTimeline.jsx`:
    - Colorful horizontal bar with segments (amber→orange→red→pink→purple→teal)
@@ -22,20 +37,13 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
    - Supports currency conversion with conversionRate prop
 3. **Opportunities Page Enhancements**:
    - Replaced "Payment Progress" bar with horizontal payment timeline
-   - Shows 25% share values for each payment milestone
-   - Added "Confirmed Participants" count with % taken
-   - Added "Available Slots" with % remaining
+   - Shows share values for each payment milestone
    - **Currency Selector** dropdown (AED, INR, USD, EUR, GBP, SGD)
-   - **Projected Rate Display** showing:
-     - Current exchange rate (1 AED = X currency)
-     - 5-year historical range (min-max)
-     - Trend direction with % annual change
-     - Future projected rates for next 4 years
+   - **Projected Rate Display** showing current rate and future projections
 4. **Holdings Page Timeline** - Updated real estate holdings to use new horizontal timeline
 5. **Backend: Projected Currency Rates API** - `/api/currency/projected-rates`:
    - Fetches 5 years of historical data from Frankfurter API
-   - Calculates trend using linear regression
-   - Projects future rates with dampening factor
+   - Uses 5-year average for projection calculations
    - Returns confidence level based on data consistency
 
 #### Session: Feb 16, 2026
