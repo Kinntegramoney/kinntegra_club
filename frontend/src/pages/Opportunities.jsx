@@ -906,11 +906,11 @@ export default function Opportunities() {
     };
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
-        {/* Property Images Carousel - scrollable */}
-        {opp.images && opp.images.length > 0 && (
-          <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-36 overflow-hidden rounded-t-lg bg-gray-100">
+      <div className="bg-white border border-gray-200 rounded-lg hover:border-teal-500 transition-colors flex flex-col h-full">
+        {/* Property Images Carousel - Always show placeholder area for alignment */}
+        <div className="relative h-36 overflow-hidden rounded-t-lg bg-gray-100 flex-shrink-0">
+          {opp.images && opp.images.length > 0 ? (
+            <>
               {/* Current Image */}
               <img 
                 src={getImageSrc(opp.images[currentImageIndex])}
@@ -964,9 +964,20 @@ export default function Opportunities() {
                   1 photo
                 </div>
               )}
+            </>
+          ) : (
+            /* Placeholder for cards without images */
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50">
+              <div className="text-center">
+                <Building2 className="h-10 w-10 text-teal-300 mx-auto mb-1" />
+                <p className="text-[10px] text-teal-400">No images</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        
+        {/* Card Content */}
+        <div className="p-5 flex-1 flex flex-col">
         
         {/* Header - Property Name */}
         <div className="flex items-start justify-between mb-3">
