@@ -2115,7 +2115,7 @@ export default function Holdings() {
                         </div>
                       </div>
 
-                      {/* Payment Status Overview */}
+                      {/* Payment Status Overview - Consolidated Timeline */}
                       {(() => {
                         // Calculate total paid and outstanding across all properties
                         let totalInvestment = 0;
@@ -2145,7 +2145,8 @@ export default function Holdings() {
                               description: milestone.description,
                               amount: milestoneAmount,
                               isPaid: isPaid,
-                              propertyName: property.building_name
+                              propertyName: property.building_name,
+                              percentage: milestone.percentage
                             });
                           });
                           
@@ -2159,14 +2160,43 @@ export default function Holdings() {
                         // Sort timeline by date
                         paymentTimeline.sort((a, b) => new Date(a.date) - new Date(b.date));
                         
-                        // Get upcoming payments (next 3 unpaid)
-                        const upcomingPayments = paymentTimeline.filter(p => !p.isPaid).slice(0, 3);
+                        // Get upcoming payments (next 5 unpaid)
+                        const upcomingPayments = paymentTimeline.filter(p => !p.isPaid).slice(0, 5);
+                        
+                        // Group payments by month for the timeline bar chart
+                        const groupByMonth = (payments) => {
+                          const groups = {};
+                          payments.forEach(p => {
+                            const date = new Date(p.date);
+                            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                            if (!groups[monthKey]) {
+                              groups[monthKey] = { date: monthKey, paid: 0, unpaid: 0, payments: [] };
+                            }
+                            if (p.isPaid) {
+                              groups[monthKey].paid += p.amount;
+                            } else {
+                              groups[monthKey].unpaid += p.amount;
+                            }
+                            groups[monthKey].payments.push(p);
+                          });
+                          return Object.values(groups).sort((a, b) => a.date.localeCompare(b.date));
+                        };
+                        
+                        const monthlyData = groupByMonth(paymentTimeline);
+                        const maxMonthAmount = Math.max(...monthlyData.map(m => m.paid + m.unpaid), 1);
+                        
+                        // Format month for display
+                        const formatMonth = (dateStr) => {
+                          const [year, month] = dateStr.split('-');
+                          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                          return `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`;
+                        };
                         
                         return (
                           <div className="bg-white rounded-lg border border-gray-200 p-5">
                             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                               <Calendar className="h-5 w-5 text-teal-600" />
-                              Payment Status
+                              Payment Timeline - All Properties
                             </h3>
                             
                             {/* Progress Bar */}
