@@ -12,7 +12,15 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 ### Completed Features (Feb 2026)
 
-#### Session: Feb 18, 2026 (Latest)
+#### Session: Feb 18, 2026 (Latest Update)
+**Bug Fixes:**
+1. **Email Shows Sub-broker Name** - Reinvestment approval emails now show sub-broker's name instead of broker's name when client is linked to a sub-broker
+2. **"Maturity Amount" → "Repayment Amount"** - Updated text in ClientApprovals.jsx:
+   - Info box: "upcoming repayment amounts" (was "maturity amounts")
+   - Date label: "Repayment:" (was "Maturity:")
+3. **Back Button Navigation Fixed** - In RealEstateDetails.jsx, client back button now goes to `/client/opportunities` instead of `/client/real-estate`
+
+**Previous Session Updates (Feb 18, 2026):**
 **P0 Bug Fixes:**
 1. **Currency Projection Calculation Fixed** - Changed from regression slope to simple 5-year average:
    - Now uses `(current_rate - oldest_rate) / 5` for annual change
