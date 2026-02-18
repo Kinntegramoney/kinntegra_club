@@ -264,6 +264,42 @@ export default function Opportunities() {
     }
   };
 
+  // Fetch projected currency rates when currency changes
+  const fetchProjectedRates = async (currency) => {
+    if (currency === "AED") {
+      setCurrencyRates({ AED: 1 });
+      setProjectedRates(null);
+      return;
+    }
+    
+    setLoadingRates(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/currency/projected-rates`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { target: currency, years_ahead: 5 }
+      });
+      
+      if (response.data) {
+        setCurrencyRates(prev => ({ ...prev, [currency]: response.data.current_rate }));
+        setProjectedRates(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching projected rates:", error);
+      // Use default rates
+      const defaults = { INR: 22.75, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36 };
+      setCurrencyRates(prev => ({ ...prev, [currency]: defaults[currency] || 1 }));
+    } finally {
+      setLoadingRates(false);
+    }
+  };
+
+  // Handle currency change
+  const handleCurrencyChange = (currency) => {
+    setSelectedCurrency(currency);
+    fetchProjectedRates(currency);
+  };
+
   // Check if client has detailed access to a property
   const hasDetailedAccess = (propertyId) => {
     if (!user) return false;
