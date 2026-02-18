@@ -202,9 +202,9 @@ export default function HorizontalPaymentTimeline({
                   <p className={`text-xs font-semibold ${color.text}`}>
                     {milestone.description || `${milestone.percentage}%`}
                   </p>
-                  {show25Percent && totalAmount > 0 && (
+                  {showShareValues && totalAmount > 0 && (
                     <p className="text-xs text-gray-600 mt-0.5">
-                      {formatAmount(get25PercentValue(milestone.percentage))}
+                      {formatAmount(getShareValue(milestone.percentage))}
                     </p>
                   )}
                   {milestone.isPaid && (
