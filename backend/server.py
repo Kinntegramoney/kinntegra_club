@@ -27647,22 +27647,29 @@ async def get_projected_currency_rates(
             else:
                 avg_annual_change = 0
             
-            # Project future rates
+            # Project future rates - starting from current rate
             projected_rates = []
-            for year in range(0, years_ahead + 1):
-                projected_rate = intercept + slope * year
-                # Apply dampening factor to prevent unrealistic projections
-                if year > 0:
-                    # Max 5% annual change from previous year
-                    prev_rate = projected_rates[-1]["rate"] if projected_rates else current_rate
-                    max_change = prev_rate * 0.05
-                    if abs(projected_rate - prev_rate) > max_change:
-                        projected_rate = prev_rate + (max_change if slope > 0 else -max_change)
+            # Year 0 is current year with actual current rate
+            projected_rates.append({
+                "year": today.year,
+                "rate": round(current_rate, 4),
+                "is_projected": False
+            })
+            
+            # Project future years based on slope (rate change per year)
+            for year in range(1, years_ahead + 1):
+                prev_rate = projected_rates[-1]["rate"]
+                # Apply annual change based on slope
+                projected_rate = prev_rate + slope
+                # Apply dampening factor - max 5% annual change
+                max_change = prev_rate * 0.05
+                if abs(projected_rate - prev_rate) > max_change:
+                    projected_rate = prev_rate + (max_change if slope > 0 else -max_change)
                 
                 projected_rates.append({
                     "year": today.year + year,
                     "rate": round(projected_rate, 4),
-                    "is_projected": year > 0
+                    "is_projected": True
                 })
             
             # Calculate confidence level based on data consistency
