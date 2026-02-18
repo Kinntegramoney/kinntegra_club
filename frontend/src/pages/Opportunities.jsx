@@ -1192,25 +1192,28 @@ export default function Opportunities() {
                   
                   {/* Custom input toggle/field */}
                   {showCardCustomInput ? (
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-1">
                       <input
                         type="number"
                         value={cardCustomInput}
                         onChange={(e) => setCardCustomInput(e.target.value)}
-                        placeholder="%"
-                        className="w-8 px-1 py-0.5 text-[8px] border border-purple-300 rounded focus:outline-none focus:border-purple-500"
+                        placeholder="Enter %"
+                        className="w-14 px-2 py-1 text-[10px] border border-purple-300 rounded focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200"
                         onKeyDown={(e) => e.key === 'Enter' && handleCardCustomSubmit()}
                         autoFocus
+                        min="0"
+                        max="100"
+                        step="0.5"
                       />
                       <button
                         onClick={handleCardCustomSubmit}
-                        className="px-1 py-0.5 text-[8px] bg-purple-500 text-white rounded"
+                        className="px-2 py-1 text-[10px] bg-purple-500 text-white rounded hover:bg-purple-600"
                       >
                         ✓
                       </button>
                       <button
                         onClick={() => { setShowCardCustomInput(false); setCardCustomInput(''); }}
-                        className="px-1 py-0.5 text-[8px] bg-gray-200 text-gray-500 rounded"
+                        className="px-2 py-1 text-[10px] bg-gray-200 text-gray-500 rounded hover:bg-gray-300"
                       >
                         ✕
                       </button>
@@ -1218,14 +1221,14 @@ export default function Opportunities() {
                   ) : (
                     <button
                       onClick={() => setShowCardCustomInput(true)}
-                      className={`px-1 py-0.5 text-[8px] rounded transition-all ${
+                      className={`px-2 py-1 text-[9px] rounded transition-all ${
                         !presetPercentages.includes(cardSharePercent)
                           ? 'bg-purple-500 text-white font-medium'
                           : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                       title="Enter custom percentage"
                     >
-                      {!presetPercentages.includes(cardSharePercent) ? `${cardSharePercent}%` : '...'}
+                      {!presetPercentages.includes(cardSharePercent) ? `${cardSharePercent}%` : 'Custom'}
                     </button>
                   )}
                 </div>
