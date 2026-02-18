@@ -27692,14 +27692,17 @@ async def get_projected_currency_rates(
                 slope = 0
                 intercept = y_mean
             
-            # Current rate (actual from latest API data)
-            current_rate = y_values[-1] if y_values else 22.75
+            # Current rate - prefer the live API rate if available, otherwise use historical data
+            historical_current = y_values[-1] if y_values else 22.75
+            if current_rate is None:
+                current_rate = historical_current
+            
             oldest_rate = y_values[0] if y_values else current_rate  # Rate from 5 years ago
             
             # Calculate average annual change over last 5 years
             # Simple calculation: (current - oldest) / 5 years
             if len(y_values) >= 2:
-                total_absolute_change = current_rate - oldest_rate
+                total_absolute_change = historical_current - oldest_rate
                 avg_annual_change_absolute = total_absolute_change / 5  # 5 years of data
                 total_change_percent = (total_absolute_change / oldest_rate * 100) if oldest_rate != 0 else 0
                 avg_annual_change = total_change_percent / 5
@@ -27711,7 +27714,7 @@ async def get_projected_currency_rates(
             # This uses the average annual change (not regression slope) for more intuitive projections
             projected_rates = []
             
-            # Year 0 is current year with actual current rate
+            # Year 0 is current year with actual current rate (from live API)
             projected_rates.append({
                 "year": today.year,
                 "rate": round(current_rate, 4),
