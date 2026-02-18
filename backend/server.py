@@ -13684,9 +13684,11 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
     
     # Get pending reinvestment logs (including cancellation_pending, edit_pending, pending_reapproval)
     # First get main investment allocations (with UCC and real portfolio)
+    pending_statuses = ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]
+    
     main_logs = await db.reinvestment_logs.find({
         "client_id": client['id'],
-        "approval_status": {"$in": ["pending", "cancellation_pending", "edit_pending", "pending_reapproval"]},
+        "approval_status": {"$in": pending_statuses},
         # Only include entries with UCC and portfolio (actual investment entries)
         "$or": [
             {"ucc": {"$exists": True, "$ne": None, "$ne": ""}},
@@ -13698,11 +13700,11 @@ async def get_client_pending_approvals(current_user: dict = Depends(get_current_
     # Get unique cashflow_ids from main logs
     cashflow_ids = list(set(log.get('cashflow_id') for log in main_logs if log.get('cashflow_id')))
     
-    # Now get ALL allocations for these cashflows (including 'none' portfolio for bifurcation display)
-    # IMPORTANT: Don't filter by approval_status here - we need ALL allocations for the cashflow
-    # to display the full bifurcation/grouping correctly
+    # Now get allocations for these cashflows - but ONLY those still pending approval
+    # Filter by approval_status to exclude already approved/rejected entries
     all_logs = await db.reinvestment_logs.find({
-        "cashflow_id": {"$in": cashflow_ids}
+        "cashflow_id": {"$in": cashflow_ids},
+        "approval_status": {"$in": pending_statuses}  # Only pending entries
     }, {"_id": 0}).sort([("cashflow_id", 1), ("allocation_index", 1)]).to_list(500)
     
     logs = all_logs
