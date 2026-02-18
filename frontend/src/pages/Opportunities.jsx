@@ -987,7 +987,7 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Interest & Investors - Different visibility based on role */}
+        {/* Interest & Confirmed Participants */}
         <div className="flex items-center justify-between mb-4 py-3 border-t border-b border-gray-100">
           {canSeeDetails ? (
             <>
@@ -1002,25 +1002,11 @@ export default function Opportunities() {
                   <p className="text-xs text-gray-500">Confirmed</p>
                 </div>
                 <p className="font-bold text-emerald-600">
-                  {opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span>
+                  {opp.current_investors || 0} <span className="text-gray-400 font-normal">participants</span>
                 </p>
-                {(opp.current_investors || 0) > 0 && (
-                  <p className="text-[10px] text-emerald-500 font-medium">
-                    {((opp.current_investors || 0) * 25)}% taken
-                  </p>
-                )}
-              </div>
-              <div className="w-px h-8 bg-gray-200"></div>
-              <div className="text-center flex-1">
-                <p className="text-xs text-gray-500">Available</p>
-                <p className="font-bold text-purple-600">
-                  {Math.max(0, 4 - (opp.current_investors || 0))} <span className="text-gray-400 font-normal">slots</span>
+                <p className="text-[10px] text-emerald-500 font-medium">
+                  {((opp.current_investors || 0) * 25)}% committed
                 </p>
-                {(opp.current_investors || 0) < 4 && (
-                  <p className="text-[10px] text-purple-500 font-medium">
-                    {(4 - (opp.current_investors || 0)) * 25}% left
-                  </p>
-                )}
               </div>
             </>
           ) : (
