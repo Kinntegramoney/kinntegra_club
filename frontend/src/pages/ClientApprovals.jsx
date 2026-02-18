@@ -511,7 +511,7 @@ export default function ClientApprovals() {
                 )}
               </div>
               <p className="text-sm text-gray-500 mt-0.5">
-                Maturity: {formatDate(item.expected_date)}
+                Repayment: {formatDate(item.expected_date)}
               </p>
               
               {/* Cancellation Reason */}
@@ -663,7 +663,7 @@ export default function ClientApprovals() {
             <div>
               <p className="text-sm text-blue-800 font-medium">About Reinvestment Approvals</p>
               <p className="text-sm text-blue-700 mt-1">
-                Your broker has tagged upcoming maturity amounts for reinvestment. 
+                Your broker has tagged upcoming repayment amounts for reinvestment. 
                 Once approved, the funds will be automatically invested in mutual funds through Kinntegra.
               </p>
             </div>
