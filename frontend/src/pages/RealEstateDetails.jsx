@@ -5401,6 +5401,29 @@ function XirrComparisonModal({ opportunity, investor, onClose }) {
                         <span className="text-gray-500">Investment:</span>
                         <span className="font-medium text-emerald-700">AED {formatCurrency(report.summary.total_investment_aed)}</span>
                       </div>
+                      {/* Passport Details */}
+                      {report.investor.passport_number && (
+                        <>
+                          <div className="flex justify-between pt-1 border-t border-emerald-100 mt-1">
+                            <span className="text-gray-500">Passport:</span>
+                            <span className="font-medium text-gray-700">{report.investor.passport_number}</span>
+                          </div>
+                          {report.investor.passport_expiry && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Expiry:</span>
+                              <span className="font-medium text-gray-700">
+                                {new Date(report.investor.passport_expiry).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {!report.investor.passport_number && (
+                        <div className="flex justify-between pt-1 border-t border-emerald-100 mt-1">
+                          <span className="text-gray-500">Passport:</span>
+                          <span className="text-amber-600 text-xs">Pending</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
