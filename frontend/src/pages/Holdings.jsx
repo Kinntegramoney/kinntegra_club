@@ -2227,22 +2227,37 @@ export default function Holdings() {
                               </div>
                             </div>
                             
-                            {/* Horizontal Payment Timeline */}
-                            {paymentTimeline.length > 0 && (
+                            {/* Horizontal Payment Timeline - Consolidated by Month */}
+                            {monthlyData.length > 0 && (
                               <div className="mb-6">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Milestones</h4>
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Milestones (Consolidated by Month)</h4>
                                 <HorizontalPaymentTimeline 
-                                  milestones={paymentTimeline.map(p => ({
-                                    date: p.date,
-                                    description: `${p.description} (${p.propertyName})`,
-                                    percentage: p.percentage,
-                                    amount: p.amount,
-                                    isPaid: p.isPaid
-                                  }))}
+                                  milestones={monthlyData.map(m => {
+                                    // Get unique properties in this month
+                                    const properties = [...new Set(m.payments.map(p => p.propertyName))];
+                                    const totalAmount = m.paid + m.unpaid;
+                                    const paidAmount = m.paid;
+                                    const isPaidFully = m.unpaid === 0 && m.paid > 0;
+                                    
+                                    return {
+                                      date: `${m.date}-01`, // First day of month for sorting
+                                      description: properties.length > 1 
+                                        ? `${m.payments.length} payments (${properties.length} properties)`
+                                        : `${m.payments.length} payment${m.payments.length > 1 ? 's' : ''} (${properties[0]})`,
+                                      percentage: totalInvestment > 0 ? (totalAmount / totalInvestment) * 100 : 0,
+                                      amount: totalAmount,
+                                      isPaid: isPaidFully,
+                                      properties: properties,
+                                      paidAmount: paidAmount,
+                                      unpaidAmount: m.unpaid,
+                                      paymentCount: m.payments.length
+                                    };
+                                  })}
                                   totalAmount={totalInvestment}
                                   showShareValues={false}
                                   sharePercent={100}
                                   compact={false}
+                                  showConsolidated={true}
                                 />
                               </div>
                             )}
