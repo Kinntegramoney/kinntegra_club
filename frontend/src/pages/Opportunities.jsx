@@ -530,26 +530,35 @@ export default function Opportunities() {
         {/* Presentation Slides - embedded and scrollable */}
         {bond.presentations && bond.presentations.length > 0 && (
           <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-44 overflow-hidden rounded-t-lg bg-gradient-to-br from-amber-50 to-orange-50">
-              {/* Embedded document viewer */}
-              <iframe
-                src={`${BACKEND_URL}${bond.presentations[0].url}#toolbar=0&navpanes=0&scrollbar=1`}
-                title={bond.presentations[0].original_filename || 'Presentation'}
-                className="w-full h-full border-0"
-                style={{ backgroundColor: 'transparent' }}
-              />
+            <div className="relative h-48 overflow-hidden rounded-t-lg bg-white">
+              {/* Embedded PDF viewer using object tag for better compatibility */}
+              <object
+                data={`${BACKEND_URL}${bond.presentations[0].url}`}
+                type="application/pdf"
+                className="w-full h-full"
+              >
+                {/* Fallback for browsers that don't support object tag */}
+                <embed
+                  src={`${BACKEND_URL}${bond.presentations[0].url}`}
+                  type="application/pdf"
+                  className="w-full h-full"
+                />
+              </object>
               
               {/* Document count badge */}
-              <div className="absolute top-2 right-2 bg-amber-600/80 text-white text-[10px] px-2 py-0.5 rounded-full z-10">
+              <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
                 {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
               </div>
               
-              {/* Multiple docs indicator */}
-              {bond.presentations.length > 1 && (
-                <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded z-10">
-                  Scroll ↓ | +{bond.presentations.length - 1} more docs
-                </div>
-              )}
+              {/* Open in new tab link */}
+              <a 
+                href={`${BACKEND_URL}${bond.presentations[0].url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded z-10 hover:bg-black/90 transition-colors flex items-center gap-1"
+              >
+                <Eye className="h-3 w-3" /> Full View
+              </a>
             </div>
           </div>
         )}
