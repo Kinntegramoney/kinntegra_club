@@ -820,6 +820,24 @@ export default function Opportunities() {
     const isSubBroker = user?.role === 'sub_broker';
     const isClient = user?.role === 'client';
     const canSeeDetails = hasDetailedAccess(opp.id);
+    
+    // Per-card state for custom share input
+    const [cardSharePercent, setCardSharePercent] = useState(25);
+    const [cardCustomInput, setCardCustomInput] = useState('');
+    const [showCardCustomInput, setShowCardCustomInput] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    
+    // Handle custom share for this card
+    const handleCardCustomSubmit = () => {
+      const value = parseFloat(cardCustomInput);
+      if (value > 0 && value <= 100) {
+        setCardSharePercent(value);
+        setShowCardCustomInput(false);
+        setCardCustomInput('');
+      } else {
+        toast.error("Please enter a valid percentage between 0 and 100");
+      }
+    };
 
     // Cost breakdown for tooltip (only for users with access)
     const costBreakdown = canSeeDetails ? [
@@ -831,33 +849,72 @@ export default function Opportunities() {
     ].filter(item => item.value > 0) : [];
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-teal-500 transition-colors">
-        {/* Header - Property Name */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-teal-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">{opp.building_name}</h3>
-              <p className="text-sm text-gray-500">Unit {opp.unit_no} • Floor {opp.floor}</p>
-              {opp.unit_type && (
-                <p className="text-xs text-teal-600 font-medium">{opp.unit_type}</p>
+      <div className="bg-white border border-gray-200 rounded-xl p-4 hover:border-teal-400 hover:shadow-md transition-all">
+        {/* Image Gallery - if images exist */}
+        {opp.images && opp.images.length > 0 && (
+          <div className="relative mb-3 rounded-lg overflow-hidden bg-gray-100" style={{ height: '140px' }}>
+            <img 
+              src={opp.images[currentImageIndex]?.url || opp.images[currentImageIndex]} 
+              alt={`${opp.building_name} - ${currentImageIndex + 1}`}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.src = 'https://via.placeholder.com/400x200?text=Property+Image'; }}
+            />
+            {/* Image navigation */}
+            {opp.images.length > 1 && (
+              <>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? opp.images.length - 1 : prev - 1); }}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white text-sm"
+                >
+                  ‹
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === opp.images.length - 1 ? 0 : prev + 1); }}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white text-sm"
+                >
+                  ›
+                </button>
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/50 rounded-full text-white text-[10px]">
+                  {currentImageIndex + 1} / {opp.images.length}
+                </div>
+              </>
+            )}
+            {/* Status badge overlay */}
+            <div className="absolute top-2 right-2 flex gap-1">
+              <Badge className="bg-purple-500/90 text-white text-[10px] hover:bg-purple-500">Off-Plan</Badge>
+              {status === 'available' && (
+                <span className="px-1.5 py-0.5 bg-green-500/90 text-white text-[10px] font-medium rounded">Available</span>
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
-            {status === 'available' && (
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
+        )}
+        
+        {/* Header - Property Name */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {/* Only show icon if no images */}
+            {(!opp.images || opp.images.length === 0) && (
+              <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center">
+                <Building2 className="h-4 w-4 text-teal-600" />
+              </div>
             )}
-            {status === 'invested' && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Invested</span>
-            )}
-            {status === 'closed' && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Closed</span>
-            )}
+            <div>
+              <h3 className="text-base font-semibold text-gray-800 leading-tight">{opp.building_name}</h3>
+              <p className="text-xs text-gray-500">Unit {opp.unit_no} • Floor {opp.floor}</p>
+              {opp.unit_type && (
+                <p className="text-[10px] text-teal-600 font-medium">{opp.unit_type}</p>
+              )}
+            </div>
           </div>
+          {/* Only show badges here if no images */}
+          {(!opp.images || opp.images.length === 0) && (
+            <div className="flex flex-col items-end gap-1">
+              <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px]">Off-Plan</Badge>
+              {status === 'available' && (
+                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-medium rounded-full">Available</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Property Info Grid */}
