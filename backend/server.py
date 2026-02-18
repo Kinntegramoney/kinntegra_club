@@ -27639,18 +27639,21 @@ async def get_projected_currency_rates(
             
             # Current rate (actual from latest API data)
             current_rate = y_values[-1] if y_values else 22.75
+            oldest_rate = y_values[0] if y_values else current_rate
             
-            # Calculate average annual change percentage
+            # Calculate average annual change (absolute, not percentage)
+            # This gives the actual rate change per year over the 5-year period
             if len(y_values) >= 2:
-                total_change = (y_values[-1] - y_values[0]) / y_values[0] * 100 if y_values[0] != 0 else 0
-                avg_annual_change = total_change / 5  # 5 years of data
+                total_absolute_change = current_rate - oldest_rate
+                avg_annual_change_absolute = total_absolute_change / 5  # 5 years of data
+                total_change_percent = (total_absolute_change / oldest_rate * 100) if oldest_rate != 0 else 0
+                avg_annual_change = total_change_percent / 5
             else:
+                avg_annual_change_absolute = 0
                 avg_annual_change = 0
             
-            # Project future rates using regression line
-            # The regression gives us y = intercept + slope * x where x=0 is today
-            # For projections, we use: rate(year_n) = intercept + slope * n
-            # But we anchor to the current actual rate and apply slope for future years
+            # Project future rates using simple linear extrapolation
+            # This uses the average annual change (not regression slope) for more intuitive projections
             projected_rates = []
             
             # Year 0 is current year with actual current rate
@@ -27660,17 +27663,15 @@ async def get_projected_currency_rates(
                 "is_projected": False
             })
             
-            # Project future years using regression slope
-            # Use regression line anchored at current year: rate = current_rate + slope * years_ahead
+            # Project future years using average annual change
             for year in range(1, years_ahead + 1):
-                # Project directly from current rate using slope * year
-                # This avoids compounding errors from iterative addition
-                projected_rate = current_rate + slope * year
+                # Project directly from current rate using avg annual change * year
+                projected_rate = current_rate + avg_annual_change_absolute * year
                 
                 # Apply dampening factor - max 5% annual change from current rate for each year
                 max_total_change = current_rate * 0.05 * year
                 if abs(projected_rate - current_rate) > max_total_change:
-                    projected_rate = current_rate + (max_total_change if slope > 0 else -max_total_change)
+                    projected_rate = current_rate + (max_total_change if avg_annual_change_absolute > 0 else -max_total_change)
                 
                 projected_rates.append({
                     "year": today.year + year,
