@@ -527,6 +527,36 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
+        {/* Presentation Slides - if available */}
+        {bond.presentations && bond.presentations.length > 0 && (
+          <div className="mb-3 -mx-5 -mt-5">
+            <div className="relative h-32 overflow-hidden rounded-t-lg bg-gradient-to-br from-amber-50 to-orange-50">
+              {/* Show first presentation as thumbnail or preview */}
+              {bond.presentations[0].thumbnail ? (
+                <img 
+                  src={bond.presentations[0].thumbnail}
+                  alt={bond.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.target.parentElement.classList.add('presentation-fallback'); }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <FileText className="h-8 w-8 text-amber-500 mx-auto mb-1" />
+                    <p className="text-xs text-amber-700 font-medium">{bond.presentations[0].original_name || 'Presentation'}</p>
+                    <p className="text-[10px] text-amber-600">{bond.presentations.length} document{bond.presentations.length > 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+              )}
+              {bond.presentations.length > 1 && (
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                  +{bond.presentations.length - 1} docs
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Header - Bond Name */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
