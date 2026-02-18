@@ -3254,6 +3254,18 @@ async def process_reinvestment_approval(
         # Send client approval email
         if request.send_client_email and client and client.get('email'):
             from email_service import send_reinvestment_client_approval_email
+            
+            # Get the representative name (prefer sub-broker if available from submission)
+            representative_name = 'Your Broker'
+            if submission.get('sub_broker_id'):
+                subbroker = await db.partners.find_one({"id": submission['sub_broker_id']}, {"_id": 0, "name": 1})
+                if not subbroker:
+                    subbroker = await db.sub_brokers.find_one({"id": submission['sub_broker_id']}, {"_id": 0, "name": 1})
+                if subbroker:
+                    representative_name = subbroker.get('name', 'Your Broker')
+            else:
+                representative_name = current_user.get('name', 'Your Broker')
+            
             background_tasks.add_task(
                 send_reinvestment_client_approval_email,
                 client_name=client.get('name', ''),
@@ -3261,7 +3273,7 @@ async def process_reinvestment_approval(
                 total_amount=submission['total_amount'],
                 cashflows_count=submission['cashflows_count'],
                 approval_token=approval_token,
-                broker_name=current_user.get('name', 'Your Broker')
+                broker_name=representative_name
             )
         
         return {
