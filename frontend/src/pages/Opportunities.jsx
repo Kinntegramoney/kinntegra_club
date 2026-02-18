@@ -1219,7 +1219,7 @@ export default function Opportunities() {
               }))}
               totalAmount={opp.investment_amount || opp.total_cost || 0}
               showShareValues={true}
-              sharePercent={selectedSharePercent}
+              sharePercent={cardSharePercent}
               compact={true}
               currency={selectedCurrency}
               conversionRate={currencyRates[selectedCurrency] || 1}
