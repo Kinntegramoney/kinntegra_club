@@ -3049,6 +3049,7 @@ export default function RealEstateDetails() {
             setShowXirrComparisonModal(false);
             setSelectedInvestorForXirr(null);
           }}
+          onOpenCurrencySettings={() => setShowCurrencySettingsModal(true)}
         />
       )}
       
