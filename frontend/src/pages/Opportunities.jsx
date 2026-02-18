@@ -920,8 +920,30 @@ export default function Opportunities() {
               </div>
               <div className="w-px h-8 bg-gray-200"></div>
               <div className="text-center flex-1">
-                <p className="text-xs text-gray-500">Investors</p>
-                <p className="font-bold text-purple-600">{opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span></p>
+                <div className="flex items-center justify-center gap-1 mb-0.5">
+                  <UserCheck className="h-3 w-3 text-emerald-500" />
+                  <p className="text-xs text-gray-500">Confirmed</p>
+                </div>
+                <p className="font-bold text-emerald-600">
+                  {opp.current_investors || 0} <span className="text-gray-400 font-normal">/ 4</span>
+                </p>
+                {(opp.current_investors || 0) > 0 && (
+                  <p className="text-[10px] text-emerald-500 font-medium">
+                    {((opp.current_investors || 0) * 25)}% taken
+                  </p>
+                )}
+              </div>
+              <div className="w-px h-8 bg-gray-200"></div>
+              <div className="text-center flex-1">
+                <p className="text-xs text-gray-500">Available</p>
+                <p className="font-bold text-purple-600">
+                  {Math.max(0, 4 - (opp.current_investors || 0))} <span className="text-gray-400 font-normal">slots</span>
+                </p>
+                {(opp.current_investors || 0) < 4 && (
+                  <p className="text-[10px] text-purple-500 font-medium">
+                    {(4 - (opp.current_investors || 0)) * 25}% left
+                  </p>
+                )}
               </div>
             </>
           ) : (
@@ -939,16 +961,25 @@ export default function Opportunities() {
           )}
         </div>
 
-        {/* Payment Progress - only show for users with detailed access */}
+        {/* Payment Schedule Timeline - only show for users with detailed access */}
         {canSeeDetails && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-gray-500">Payment Progress</span>
-              <span className="font-medium text-teal-600">{opp.total_payment_percentage_completed || 0}%</span>
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-gray-600 font-medium">Payment Schedule (25% share)</span>
+              <span className="font-medium text-teal-600">{opp.total_payment_percentage_completed || 0}% paid</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div className="bg-teal-500 h-1.5 rounded-full" style={{ width: `${opp.total_payment_percentage_completed || 0}%` }} />
-            </div>
+            <HorizontalPaymentTimeline 
+              milestones={opp.payment_schedule.map((p, idx) => ({
+                date: p.date,
+                description: p.description || `Payment ${idx + 1}`,
+                percentage: p.percentage,
+                amount: (p.percentage / 100) * (opp.investment_amount || opp.total_cost || 0),
+                isPaid: idx < (opp.payments_completed || 0)
+              }))}
+              totalAmount={opp.investment_amount || opp.total_cost || 0}
+              show25Percent={true}
+              compact={true}
+            />
           </div>
         )}
 
