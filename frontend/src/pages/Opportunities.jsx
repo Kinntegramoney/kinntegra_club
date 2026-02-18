@@ -527,23 +527,17 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation Slides - embedded and scrollable */}
+        {/* Presentation Slides - embedded and scrollable using Google Docs Viewer */}
         {bond.presentations && bond.presentations.length > 0 && (
           <div className="mb-3 -mx-5 -mt-5">
-            <div className="relative h-48 overflow-hidden rounded-t-lg bg-white">
-              {/* Embedded PDF viewer using object tag for better compatibility */}
-              <object
-                data={`${BACKEND_URL}${bond.presentations[0].url}`}
-                type="application/pdf"
-                className="w-full h-full"
-              >
-                {/* Fallback for browsers that don't support object tag */}
-                <embed
-                  src={`${BACKEND_URL}${bond.presentations[0].url}`}
-                  type="application/pdf"
-                  className="w-full h-full"
-                />
-              </object>
+            <div className="relative h-48 overflow-hidden rounded-t-lg bg-gray-100">
+              {/* Use Google Docs Viewer for universal PDF rendering */}
+              <iframe
+                src={`https://docs.google.com/gview?url=${encodeURIComponent(BACKEND_URL + bond.presentations[0].url)}&embedded=true`}
+                title={bond.presentations[0].original_filename || 'Presentation'}
+                className="w-full h-full border-0"
+                loading="lazy"
+              />
               
               {/* Document count badge */}
               <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
