@@ -14420,9 +14420,20 @@ async def send_reinvestment_approval_email(
     try:
         from email_service import send_reinvestment_client_approval_email
         
-        # Get broker name
-        broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
-        broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
+        # Get the representative name (prefer sub-broker if client is linked to one)
+        representative_name = 'Your Broker'
+        
+        # Check if client has a linked sub-broker
+        if client.get('linked_subbroker_id'):
+            subbroker = await db.partners.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
+            if not subbroker:
+                subbroker = await db.sub_brokers.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
+            if subbroker:
+                representative_name = subbroker.get('name', 'Your Broker')
+        else:
+            # Fall back to broker name
+            broker = await db.users.find_one({"id": current_user['id']}, {"_id": 0, "name": 1})
+            representative_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
         
         background_tasks.add_task(
             send_reinvestment_client_approval_email,
@@ -14431,7 +14442,7 @@ async def send_reinvestment_approval_email(
             total_amount=total_amount,
             cashflows_count=len(valid_cashflows),
             approval_token=approval_token,
-            broker_name=broker_name
+            broker_name=representative_name
         )
     except Exception as e:
         logger.error(f"Error sending approval email: {e}")

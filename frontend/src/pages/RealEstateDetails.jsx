@@ -787,7 +787,7 @@ export default function RealEstateDetails() {
   
   const getBackPath = () => {
     if (user.role === 'sub_broker') return '/sub-broker/opportunities';
-    if (user.role === 'client') return '/client/real-estate';
+    if (user.role === 'client') return '/client/opportunities';
     return '/broker/opportunities';
   };
 
