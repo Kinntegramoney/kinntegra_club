@@ -952,6 +952,17 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      
+      {/* Currency Settings Modal */}
+      {showCurrencySettingsModal && (
+        <CurrencySettingsModal
+          onClose={() => setShowCurrencySettingsModal(false)}
+          onSuccess={() => {
+            fetchForexRate();
+            toast.success("Currency settings updated successfully");
+          }}
+        />
+      )}
     </div>
   );
 }
