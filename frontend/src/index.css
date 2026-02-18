@@ -123,3 +123,32 @@ code {
 .flip-card-back {
     transform: rotateY(180deg);
 }
+
+/* Custom scrollbar for presentation carousel */
+.scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: rgba(251, 191, 36, 0.2);
+    border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(217, 119, 6, 0.5);
+    border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(217, 119, 6, 0.7);
+}
+
+/* Hide scrollbar but allow scroll */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
