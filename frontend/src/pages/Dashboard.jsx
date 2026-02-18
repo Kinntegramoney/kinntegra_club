@@ -170,6 +170,9 @@ export default function Dashboard() {
   const [fixDataResults, setFixDataResults] = useState(null);
   const [availableBonds, setAvailableBonds] = useState([]);
   const [selectedBondForFix, setSelectedBondForFix] = useState("");
+  
+  // Currency settings state
+  const [showCurrencySettingsModal, setShowCurrencySettingsModal] = useState(false);
 
   // Set page title and update time
   useEffect(() => {
