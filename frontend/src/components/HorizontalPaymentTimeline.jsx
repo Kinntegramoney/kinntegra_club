@@ -185,26 +185,56 @@ export default function HorizontalPaymentTimeline({
             if (idx % 2 !== 0) return <div key={idx} style={{ width: `${100 / sortedMilestones.length}%` }} />;
             
             const color = milestone.isPaid ? PAID_COLOR : COLORS[idx % COLORS.length];
+            const hasPartialPayment = showConsolidated && milestone.paidAmount > 0 && milestone.unpaidAmount > 0;
+            
             return (
               <div key={idx} className="flex flex-col items-center" style={{ width: `${100 / sortedMilestones.length}%` }}>
                 {/* Circle with date */}
-                <div className={`w-14 h-14 rounded-full border-2 ${color.border} bg-white flex items-center justify-center shadow-sm`}>
+                <div className={`w-14 h-14 rounded-full border-2 ${color.border} bg-white flex items-center justify-center shadow-sm relative`}>
                   <span className={`text-xs font-bold ${color.text}`}>
                     {formatDate(milestone.date)}
                   </span>
+                  {/* Badge for payment count in consolidated view */}
+                  {showConsolidated && milestone.paymentCount > 1 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-700 text-white text-[9px] font-bold flex items-center justify-center">
+                      {milestone.paymentCount}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Title and description */}
-                <div className="mt-2 text-center">
-                  <p className={`text-xs font-semibold ${color.text}`}>
-                    {milestone.description || `${milestone.percentage}%`}
-                  </p>
-                  {showShareValues && totalAmount > 0 && (
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {formatAmount(getShareValue(milestone.percentage))}
-                    </p>
+                <div className="mt-2 text-center max-w-[100px]">
+                  {showConsolidated ? (
+                    <>
+                      <p className={`text-xs font-semibold ${color.text}`}>
+                        AED {new Intl.NumberFormat('en-AE').format(Math.round(milestone.amount))}
+                      </p>
+                      {milestone.properties && milestone.properties.length > 0 && (
+                        <p className="text-[9px] text-gray-500 truncate" title={milestone.properties.join(', ')}>
+                          {milestone.properties.length === 1 
+                            ? milestone.properties[0].split(' ').slice(0, 2).join(' ')
+                            : `${milestone.properties.length} properties`}
+                        </p>
+                      )}
+                      {hasPartialPayment && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded font-medium">
+                          Partial
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className={`text-xs font-semibold ${color.text}`}>
+                        {milestone.description || `${milestone.percentage}%`}
+                      </p>
+                      {showShareValues && totalAmount > 0 && (
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          {formatAmount(getShareValue(milestone.percentage))}
+                        </p>
+                      )}
+                    </>
                   )}
-                  {milestone.isPaid && (
+                  {milestone.isPaid && !hasPartialPayment && (
                     <span className="inline-block mt-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded font-medium">
                       Paid
                     </span>
