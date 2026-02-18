@@ -5194,7 +5194,7 @@ function CurrencySettingsModal({ onClose, onSuccess }) {
 }
 
 // XIRR Comparison Report Modal Component
-function XirrComparisonModal({ opportunity, investor, onClose }) {
+function XirrComparisonModal({ opportunity, investor, onClose, onOpenCurrencySettings }) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
