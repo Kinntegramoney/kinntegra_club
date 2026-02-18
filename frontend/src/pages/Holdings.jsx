@@ -2240,7 +2240,8 @@ export default function Holdings() {
                                     isPaid: p.isPaid
                                   }))}
                                   totalAmount={totalInvestment}
-                                  show25Percent={false}
+                                  showShareValues={false}
+                                  sharePercent={100}
                                   compact={false}
                                 />
                               </div>
