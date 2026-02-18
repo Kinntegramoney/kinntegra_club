@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
+import CurrencySettingsModal from "@/components/CurrencySettingsModal";
 import { 
   TrendingUp, 
   Users, 
@@ -13,7 +14,8 @@ import {
   AlertTriangle,
   X,
   ArrowRightLeft,
-  Mail
+  Mail,
+  Settings
 } from "lucide-react";
 import { toast } from "sonner";
 
