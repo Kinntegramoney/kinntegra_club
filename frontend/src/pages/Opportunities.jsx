@@ -1026,31 +1026,73 @@ export default function Opportunities() {
           <div className="mb-4">
             {/* Currency & Share Selector Header */}
             <div className="flex items-center justify-between text-xs mb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-gray-600 font-medium">Payment Schedule</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-gray-500 text-[10px]">Schedule</span>
                 
-                {/* Share Percentage Selector */}
-                <div className="relative">
-                  <select
-                    value={selectedSharePercent}
-                    onChange={(e) => setSelectedSharePercent(parseInt(e.target.value))}
-                    className="appearance-none bg-purple-50 border border-purple-200 rounded px-2 py-0.5 text-[10px] font-medium text-purple-700 cursor-pointer hover:bg-purple-100 pr-5"
-                    data-testid="share-selector"
-                  >
-                    <option value={25}>25% share</option>
-                    <option value={50}>50% share</option>
-                    <option value={75}>75% share</option>
-                    <option value={100}>100% (Full)</option>
-                  </select>
-                  <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-purple-500 pointer-events-none" />
+                {/* Share Percentage Pills - matching View Details */}
+                <div className="flex items-center gap-1">
+                  {presetPercentages.map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => { setSelectedSharePercent(pct); setShowCustomInput(false); }}
+                      className={`px-1.5 py-0.5 text-[9px] rounded transition-all ${
+                        selectedSharePercent === pct && !showCustomInput
+                          ? 'bg-purple-500 text-white font-medium'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                  
+                  {/* Custom input toggle/field */}
+                  {showCustomInput ? (
+                    <div className="flex items-center gap-0.5">
+                      <input
+                        type="number"
+                        value={customShareInput}
+                        onChange={(e) => setCustomShareInput(e.target.value)}
+                        placeholder="%"
+                        className="w-10 px-1 py-0.5 text-[9px] border border-purple-300 rounded focus:outline-none focus:border-purple-500"
+                        onKeyDown={(e) => e.key === 'Enter' && handleCustomShareSubmit()}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleCustomShareSubmit}
+                        className="px-1 py-0.5 text-[9px] bg-purple-500 text-white rounded"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => { setShowCustomInput(false); setCustomShareInput(''); }}
+                        className="px-1 py-0.5 text-[9px] bg-gray-200 text-gray-600 rounded"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowCustomInput(true)}
+                      className={`px-1.5 py-0.5 text-[9px] rounded transition-all ${
+                        !presetPercentages.includes(selectedSharePercent)
+                          ? 'bg-purple-500 text-white font-medium'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title="Enter custom percentage"
+                    >
+                      {!presetPercentages.includes(selectedSharePercent) ? `${selectedSharePercent}%` : '...'}
+                    </button>
+                  )}
                 </div>
+                
+                <div className="w-px h-3 bg-gray-300 mx-0.5"></div>
                 
                 {/* Currency Selector */}
                 <div className="relative">
                   <select
                     value={selectedCurrency}
                     onChange={(e) => handleCurrencyChange(e.target.value)}
-                    className="appearance-none bg-gray-100 border border-gray-200 rounded px-2 py-0.5 text-[10px] font-medium text-gray-700 cursor-pointer hover:bg-gray-200 pr-5"
+                    className="appearance-none bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-medium text-gray-600 cursor-pointer hover:bg-gray-100 pr-4"
                     data-testid="currency-selector"
                   >
                     <option value="AED">AED</option>
@@ -1060,24 +1102,24 @@ export default function Opportunities() {
                     <option value="GBP">GBP £</option>
                     <option value="SGD">SGD S$</option>
                   </select>
-                  <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-500 pointer-events-none" />
+                  <ChevronDown className="absolute right-0.5 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
                 </div>
                 {loadingRates && (
-                  <span className="text-[10px] text-gray-400 animate-pulse">Loading...</span>
+                  <span className="text-[9px] text-gray-400 animate-pulse">...</span>
                 )}
               </div>
-              <span className="font-medium text-teal-600">{opp.total_payment_percentage_completed || 0}% paid</span>
             </div>
             
-            {/* Projected Rate Info */}
+            {/* Projected Rate Info - simplified */}
             {selectedCurrency !== "AED" && projectedRates && (
-              <div className="mb-2 p-2 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
-                <div className="flex items-center justify-between text-[10px]">
+              <div className="mb-2 px-2 py-1.5 bg-gray-50 rounded border border-gray-100">
+                <div className="flex items-center justify-between text-[9px]">
                   <div className="flex items-center gap-1.5">
-                    <Coins className="h-3 w-3 text-blue-500" />
-                    <span className="text-gray-600">
-                      1 AED = <span className="font-semibold text-blue-600">{projectedRates.current_rate?.toFixed(2)}</span> {selectedCurrency}
-                    </span>
+                    <span className="text-gray-500">Today:</span>
+                    <span className="font-medium text-gray-700">1 AED = {projectedRates.current_rate?.toFixed(2)} {selectedCurrency}</span>
+                    {projectedRates.trend && (
+                      <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] ${
+                        projectedRates.trend.direction === 'increasing'
                     {projectedRates.trend && (
                       <span className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] ${
                         projectedRates.trend.direction === 'increasing' 
