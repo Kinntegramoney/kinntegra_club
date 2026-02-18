@@ -19,12 +19,24 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
    - Circular nodes positioned on the timeline
    - Alternating info above/below for full version
    - Compact version for opportunity cards
+   - Supports currency conversion with conversionRate prop
 3. **Opportunities Page Enhancements**:
    - Replaced "Payment Progress" bar with horizontal payment timeline
    - Shows 25% share values for each payment milestone
    - Added "Confirmed Participants" count with % taken
    - Added "Available Slots" with % remaining
+   - **Currency Selector** dropdown (AED, INR, USD, EUR, GBP, SGD)
+   - **Projected Rate Display** showing:
+     - Current exchange rate (1 AED = X currency)
+     - 5-year historical range (min-max)
+     - Trend direction with % annual change
+     - Future projected rates for next 4 years
 4. **Holdings Page Timeline** - Updated real estate holdings to use new horizontal timeline
+5. **Backend: Projected Currency Rates API** - `/api/currency/projected-rates`:
+   - Fetches 5 years of historical data from Frankfurter API
+   - Calculates trend using linear regression
+   - Projects future rates with dampening factor
+   - Returns confidence level based on data consistency
 
 #### Session: Feb 16, 2026
 1. **Client Approval Count Fix** - Fixed pending approvals count to match all statuses
