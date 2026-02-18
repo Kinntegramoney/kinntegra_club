@@ -887,16 +887,6 @@ export default function RealEstateDetails() {
                   Sell Unit
                 </Button>
               )}
-              {/* Currency Settings - Global setting for all properties */}
-              <Button 
-                variant="outline" 
-                className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                onClick={() => setShowCurrencySettingsModal(true)}
-                data-testid="currency-settings-btn"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Currency Settings
-              </Button>
               {/* Delete - Only for broker, not client */}
               {user?.role === 'broker' && (
                 <Button 
