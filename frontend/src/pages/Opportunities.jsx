@@ -1451,9 +1451,9 @@ export default function Opportunities() {
               const expectedSaleValue = (opp.expected_sale_rate || 0) * (opp.total_area || 0);
               const projectedProfit = expectedSaleValue - totalCost;
               
-              const rate = currencyRates[selectedCurrency] || 1;
-              const convertedSaleValue = expectedSaleValue * rate;
-              const convertedProfit = projectedProfit * rate;
+              const currentRate = currencyRates[selectedCurrency] || 1;
+              const convertedSaleValue = expectedSaleValue * currentRate;
+              const convertedProfit = projectedProfit * currentRate;
               
               const currencySymbol = selectedCurrency === 'INR' ? '₹' : selectedCurrency === 'USD' ? '$' : selectedCurrency === 'EUR' ? '€' : selectedCurrency === 'GBP' ? '£' : selectedCurrency;
               
@@ -1464,6 +1464,24 @@ export default function Opportunities() {
                 }
                 return val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
               };
+              
+              // Calculate currency gain/loss based on projected vs current rate
+              // Get the projected rate for the sale year
+              const saleYear = opp.estimated_sell_date ? new Date(opp.estimated_sell_date).getFullYear() : null;
+              const projectedRateForSaleYear = projectedRates?.projected_rates?.find(pr => pr.year === saleYear)?.rate;
+              
+              // Currency gain/loss calculation
+              let currencyGainLoss = 0;
+              let currencyGainLossPercent = 0;
+              
+              if (selectedCurrency !== 'AED' && projectedRateForSaleYear && currentRate) {
+                // If projected rate at sale time is higher than today's rate, it's a gain (currency depreciation favorable)
+                // If projected rate at sale time is lower than today's rate, it's a loss
+                const saleValueAtProjectedRate = expectedSaleValue * projectedRateForSaleYear;
+                const saleValueAtCurrentRate = expectedSaleValue * currentRate;
+                currencyGainLoss = saleValueAtProjectedRate - saleValueAtCurrentRate;
+                currencyGainLossPercent = ((projectedRateForSaleYear - currentRate) / currentRate * 100);
+              }
               
               return (
                 <div className="space-y-1.5 mt-2">
@@ -1485,6 +1503,37 @@ export default function Opportunities() {
                     <div className="flex items-center justify-between bg-purple-50 rounded px-2 py-1.5 border border-purple-200">
                       <span className="text-[9px] text-purple-700 font-medium">Projected Profit</span>
                       <span className="text-xs font-bold text-purple-700">{currencySymbol} {formatValue(convertedProfit)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Currency Gain/Loss - only show for non-AED currencies */}
+                  {selectedCurrency !== 'AED' && projectedRateForSaleYear && Math.abs(currencyGainLoss) > 0 && (
+                    <div className={`rounded px-2 py-1.5 border ${
+                      currencyGainLoss > 0 
+                        ? 'bg-emerald-50 border-emerald-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={`text-[9px] font-medium ${currencyGainLoss > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                            Currency {currencyGainLoss > 0 ? 'Gain' : 'Loss'}
+                          </span>
+                          <span className="text-[8px] text-gray-500 ml-1">
+                            (Projected vs Today)
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold ${currencyGainLoss > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {currencyGainLoss > 0 ? '+' : ''}{currencySymbol} {formatValue(Math.abs(currencyGainLoss))}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[8px]">
+                        <span className="text-gray-500">
+                          Rate: {currentRate.toFixed(2)} → {projectedRateForSaleYear.toFixed(2)} ({saleYear})
+                        </span>
+                        <span className={`font-medium ${currencyGainLoss > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {currencyGainLossPercent > 0 ? '+' : ''}{currencyGainLossPercent.toFixed(1)}% movement
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
