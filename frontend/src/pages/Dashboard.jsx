@@ -634,6 +634,11 @@ export default function Dashboard() {
                 <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
                   <p className="text-xs text-emerald-600 uppercase tracking-wide">Repaid</p>
                   <p className="text-lg font-bold text-emerald-700 mt-1">{formatINRCrores(summary?.bond_aum?.total_repaid || 0)}</p>
+                  <div className="flex gap-2 mt-1">
+                    <span className="text-xs text-gray-500">P: {formatINRLakhs(summary?.bond_aum?.principal_repaid || 0)}</span>
+                    <span className="text-xs text-gray-400">|</span>
+                    <span className="text-xs text-gray-500">I: {formatINRLakhs(summary?.bond_aum?.interest_repaid || 0)}</span>
+                  </div>
                 </div>
                 <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wide">Pending</p>
