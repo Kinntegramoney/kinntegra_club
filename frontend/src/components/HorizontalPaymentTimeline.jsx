@@ -20,24 +20,41 @@ const COLORS = [
 // Paid color (green)
 const PAID_COLOR = { bg: 'bg-emerald-500', border: 'border-emerald-600', text: 'text-emerald-600', fill: '#10b981' };
 
+// Currency symbols
+const CURRENCY_SYMBOLS = {
+  AED: 'AED',
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  SGD: 'S$'
+};
+
 /**
  * HorizontalPaymentTimeline
  * @param {Array} milestones - Array of { date, description, percentage, amount, isPaid }
  * @param {number} totalAmount - Total investment amount (for calculating 25% values)
  * @param {boolean} compact - Show compact version for opportunity cards
  * @param {boolean} show25Percent - Show 25% values instead of actual amounts
+ * @param {string} currency - Currency code to display amounts in (default: AED)
+ * @param {number} conversionRate - Conversion rate from AED to selected currency
  */
 export default function HorizontalPaymentTimeline({ 
   milestones = [], 
   totalAmount = 0, 
   compact = false,
   show25Percent = false,
+  currency = "AED",
+  conversionRate = 1,
   className = ""
 }) {
   if (!milestones || milestones.length === 0) return null;
   
   // Sort milestones by date
   const sortedMilestones = [...milestones].sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  // Get currency symbol
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || currency;
   
   // Format date for display
   const formatDate = (dateStr) => {
@@ -47,14 +64,18 @@ export default function HorizontalPaymentTimeline({
     return `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
   };
   
-  // Format amount
-  const formatAmount = (amount) => {
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(2)}M`;
-    } else if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(0)}K`;
+  // Format amount with currency conversion
+  const formatAmount = (amount, showSymbol = true) => {
+    const convertedAmount = amount * conversionRate;
+    let formatted;
+    if (convertedAmount >= 1000000) {
+      formatted = `${(convertedAmount / 1000000).toFixed(2)}M`;
+    } else if (convertedAmount >= 1000) {
+      formatted = `${(convertedAmount / 1000).toFixed(0)}K`;
+    } else {
+      formatted = convertedAmount.toFixed(0);
     }
-    return amount.toFixed(0);
+    return showSymbol ? `${currencySymbol} ${formatted}` : formatted;
   };
   
   // Calculate 25% value
@@ -111,7 +132,7 @@ export default function HorizontalPaymentTimeline({
                       <div className="font-medium">{milestone.description || `${milestone.percentage}%`}</div>
                       <div className="text-gray-300">{formatDate(milestone.date)}</div>
                       {show25Percent && totalAmount > 0 && (
-                        <div className="text-emerald-300">AED {formatAmount(get25PercentValue(milestone.percentage))}</div>
+                        <div className="text-emerald-300">{formatAmount(get25PercentValue(milestone.percentage))}</div>
                       )}
                       {milestone.isPaid && <span className="text-emerald-400 text-[10px]">Paid</span>}
                     </div>
@@ -135,7 +156,7 @@ export default function HorizontalPaymentTimeline({
               </p>
               {show25Percent && totalAmount > 0 && (
                 <p className="text-[8px] text-gray-500">
-                  {formatAmount(get25PercentValue(milestone.percentage))}
+                  {formatAmount(get25PercentValue(milestone.percentage), false)}
                 </p>
               )}
             </div>
@@ -171,7 +192,7 @@ export default function HorizontalPaymentTimeline({
                   </p>
                   {show25Percent && totalAmount > 0 && (
                     <p className="text-xs text-gray-600 mt-0.5">
-                      AED {formatAmount(get25PercentValue(milestone.percentage))}
+                      {formatAmount(get25PercentValue(milestone.percentage))}
                     </p>
                   )}
                   {milestone.isPaid && (
@@ -239,7 +260,7 @@ export default function HorizontalPaymentTimeline({
                   </p>
                   {show25Percent && totalAmount > 0 && (
                     <p className="text-xs text-gray-600 mt-0.5">
-                      AED {formatAmount(get25PercentValue(milestone.percentage))}
+                      {formatAmount(get25PercentValue(milestone.percentage))}
                     </p>
                   )}
                   {milestone.isPaid && (
