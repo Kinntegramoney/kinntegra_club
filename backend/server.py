@@ -21067,6 +21067,7 @@ async def get_xirr_comparison_report(
             "id": opportunity_id,
             "building_name": opp.get('building_name', ''),
             "unit_number": opp.get('unit_number', ''),
+            "unit_price": unit_price,
             "estimated_sell_date": sell_date,
             "expected_sale_rate": expected_sale_rate
         },
@@ -21074,7 +21075,11 @@ async def get_xirr_comparison_report(
             "id": investor_id,
             "name": client.get('name', 'Unknown') if client else 'Unknown',
             "share_percentage": share_percentage,
-            "currency": client_currency
+            "currency": client_currency,
+            # Passport details from the investor record in opportunity
+            "passport_number": investor.get('passport_details', {}).get('passport_number') if investor.get('passport_details') else None,
+            "passport_expiry": investor.get('passport_details', {}).get('expiry_date') if investor.get('passport_details') else None,
+            "has_passport_document": bool(investor.get('passport_document'))
         },
         "summary": {
             "total_investment_aed": total_aed_amount,
