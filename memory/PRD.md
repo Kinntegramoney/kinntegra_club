@@ -14,12 +14,17 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 #### Session: Feb 18, 2026
 1. **Currency Settings on Dashboard** - Moved Currency Settings button to Dashboard's Market Rates section for global access
-2. **Real Estate Payment Timeline** - Consolidated all properties into a single timeline bar chart with:
-   - Monthly grouping of payments
-   - Visual bar chart showing paid vs upcoming amounts
-   - Overdue payment detection (red highlighting)
-   - Enhanced upcoming payments list (5 items)
-3. **CurrencySettingsModal Component** - Created shared component at `/app/frontend/src/components/CurrencySettingsModal.jsx`
+2. **Horizontal Payment Timeline Component** - Created `/app/frontend/src/components/HorizontalPaymentTimeline.jsx`:
+   - Colorful horizontal bar with segments (amber→orange→red→pink→purple→teal)
+   - Circular nodes positioned on the timeline
+   - Alternating info above/below for full version
+   - Compact version for opportunity cards
+3. **Opportunities Page Enhancements**:
+   - Replaced "Payment Progress" bar with horizontal payment timeline
+   - Shows 25% share values for each payment milestone
+   - Added "Confirmed Participants" count with % taken
+   - Added "Available Slots" with % remaining
+4. **Holdings Page Timeline** - Updated real estate holdings to use new horizontal timeline
 
 #### Session: Feb 16, 2026
 1. **Client Approval Count Fix** - Fixed pending approvals count to match all statuses
