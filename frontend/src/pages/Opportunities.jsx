@@ -200,6 +200,9 @@ export default function Opportunities() {
   const [projectedRates, setProjectedRates] = useState(null);
   const [loadingRates, setLoadingRates] = useState(false);
   
+  // Share percentage for payment calculations
+  const [selectedSharePercent, setSelectedSharePercent] = useState(25);
+  
   // Permission checks
   const canCreateBond = hasPermission("opportunities_bonds", "create");
   const canEditBond = hasPermission("opportunities_bonds", "edit");
