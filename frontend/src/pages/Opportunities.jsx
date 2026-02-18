@@ -1112,7 +1112,8 @@ export default function Opportunities() {
                 isPaid: idx < (opp.payments_completed || 0)
               }))}
               totalAmount={opp.investment_amount || opp.total_cost || 0}
-              show25Percent={true}
+              showShareValues={true}
+              sharePercent={selectedSharePercent}
               compact={true}
               currency={selectedCurrency}
               conversionRate={currencyRates[selectedCurrency] || 1}
