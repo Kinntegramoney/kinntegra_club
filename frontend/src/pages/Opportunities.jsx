@@ -318,12 +318,12 @@ export default function Opportunities() {
     }
   };
 
-  // Check if client has detailed access to a property
+  // Check if user has detailed access to a property
+  // All logged-in users (broker, sub_broker, client) can see full opportunity details
   const hasDetailedAccess = (propertyId) => {
     if (!user) return false;
-    if (user.role === 'broker' || user.role === 'sub_broker') return true;
-    // Client only has detailed access to properties they've invested in
-    return clientInvestments.includes(propertyId);
+    // All authenticated users can view full opportunity details
+    return true;
   };
 
   // Share functionality for sub-brokers
