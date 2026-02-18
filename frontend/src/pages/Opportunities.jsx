@@ -1284,8 +1284,8 @@ export default function Opportunities() {
                   </div>
                 </div>
                 
-                {/* 5-Year History - Appreciation/Depreciation */}
-                {projectedRates.historical_summary && (
+                {/* 5-Year History - Appreciation/Depreciation (skip for USD - pegged) */}
+                {projectedRates.historical_summary && selectedCurrency !== 'USD' && (
                   <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-gray-200">
                     <span className="text-[8px] text-gray-400">5yr History:</span>
                     <div className="flex items-center gap-1">
@@ -1309,6 +1309,13 @@ export default function Opportunities() {
                         );
                       })()}
                     </div>
+                  </div>
+                )}
+                
+                {/* USD Pegged Note */}
+                {selectedCurrency === 'USD' && projectedRates.note && (
+                  <div className="mt-1.5 pt-1.5 border-t border-gray-200">
+                    <span className="text-[8px] text-gray-500 italic">{projectedRates.note}</span>
                   </div>
                 )}
                 
