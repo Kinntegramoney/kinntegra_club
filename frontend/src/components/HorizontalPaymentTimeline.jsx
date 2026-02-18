@@ -98,9 +98,24 @@ export default function HorizontalPaymentTimeline({
   };
   
   if (compact) {
-    // Compact version for opportunity cards - subtle horizontal bar
+    // Compact version for opportunity cards - subtle horizontal bar with visible dates
     return (
       <div className={`w-full ${className}`}>
+        {/* Date labels row - above timeline */}
+        <div className="flex mb-1">
+          {sortedMilestones.map((milestone, idx) => (
+            <div 
+              key={idx} 
+              className="flex-1 text-center"
+              style={{ width: `${100 / sortedMilestones.length}%` }}
+            >
+              <p className={`text-[8px] ${milestone.isPaid ? 'text-emerald-600' : 'text-gray-400'}`}>
+                {formatDate(milestone.date)}
+              </p>
+            </div>
+          ))}
+        </div>
+        
         <div className="flex items-center h-6">
           {/* Timeline bar */}
           <div className="flex-1 flex items-center h-1.5 relative rounded-full bg-gray-100">
@@ -113,7 +128,7 @@ export default function HorizontalPaymentTimeline({
               return (
                 <div 
                   key={idx} 
-                  className="relative flex items-center group"
+                  className="relative flex items-center"
                   style={{ width }}
                 >
                   {/* Segment */}
@@ -129,25 +144,13 @@ export default function HorizontalPaymentTimeline({
                       <div className="w-full h-full rounded-full bg-emerald-400/50"></div>
                     )}
                   </div>
-                  
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                    <div className="bg-gray-800/90 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                      <div className="font-medium">{milestone.description || `${milestone.percentage}%`}</div>
-                      <div className="text-gray-300">{formatDate(milestone.date)}</div>
-                      {showShareValues && totalAmount > 0 && (
-                        <div className="text-emerald-300">{formatAmount(getShareValue(milestone.percentage))}</div>
-                      )}
-                      {milestone.isPaid && <span className="text-emerald-400 text-[10px]">Paid</span>}
-                    </div>
-                  </div>
                 </div>
               );
             })}
           </div>
         </div>
         
-        {/* Labels row - more subtle */}
+        {/* Percentage and amount labels row - below timeline */}
         <div className="flex mt-0.5">
           {sortedMilestones.map((milestone, idx) => (
             <div 
