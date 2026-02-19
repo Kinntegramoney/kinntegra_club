@@ -12,7 +12,22 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 ### Completed Features (Feb 2026)
 
-#### Session: Feb 18, 2026 (Latest Update)
+#### Session: Feb 19, 2026 (Latest Update)
+**Real Estate Holdings - Currency Projection Enhancement:**
+1. **Dual Currency Display in Holdings Table** - Investment Amount, Expected Sale Amount, and Total Profit columns now show:
+   - **Base Currency (AED)**: Original amounts in AED
+   - **Projected Currency (INR)**: Converted amounts using date-based projected exchange rates
+   - Clear separation between base and projected currencies with dividers
+2. **Payment-Date-Based Rate Calculation** - Implemented `getProjectedRateForDate()` helper:
+   - Paid amounts use actual/historical rates
+   - Payable amounts use projected rates based on payment milestone dates
+   - 3% annual depreciation rate assumption for INR against AED
+3. **Enhanced Profit Breakdown**:
+   - Property gain shown in AED (base)
+   - Sale profit and currency benefit shown separately in INR
+   - Projected exchange rate shown with expected sale date
+
+#### Session: Feb 18, 2026 (Previous Update)
 **Bug Fixes:**
 1. **Email Shows Sub-broker Name** - Reinvestment approval emails now show sub-broker's name instead of broker's name when client is linked to a sub-broker
 2. **"Maturity Amount" → "Repayment Amount"** - Updated text in ClientApprovals.jsx:
