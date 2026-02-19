@@ -25620,12 +25620,9 @@ async def debug_actual_repayments(client_id: str, current_user: dict = Depends(g
     }
 
 
-
-# Mount static files for uploads directory at /api/uploads
+# Static file mount is intentionally removed - files are served via the /uploads/{folder}/{filename} API route
+# This ensures proper logging, error handling, and content type detection for all uploaded files
 # The /api prefix ensures routing through the backend (K8s ingress routes /api to backend)
-uploads_path = Path("/app/uploads")
-if uploads_path.exists():
-    app.mount("/api/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
