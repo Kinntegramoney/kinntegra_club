@@ -2805,10 +2805,13 @@ export default function Holdings() {
                                           {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
                                         </span>
                                         {/* Schedule Tooltip */}
-                                        <div className="absolute hidden group-hover/actxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '360px'}}>
+                                        <div className="absolute hidden group-hover/actxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '380px'}}>
                                           <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
                                             <p className="font-bold text-amber-400">XIRR Schedule (Actual)</p>
                                             <p className="text-gray-400 text-[9px]">{property.payments_completed || 0}/{schedule.length} payments completed</p>
+                                            {isSellingBeforeCompletion && (
+                                              <p className="text-orange-400 text-[9px]">Selling before handover - completion payments excluded</p>
+                                            )}
                                           </div>
                                           <div className="p-3">
                                             <table className="w-full">
@@ -2826,35 +2829,38 @@ export default function Holdings() {
                                                   const isPaid = i < (property.payments_completed || 0);
                                                   const actualDate = isPaid ? (property.actual_payment_dates?.[i] || milestone.date) : milestone.date;
                                                   const rate = getProjectedRateForDate(actualDate);
+                                                  const milestoneDate = new Date(milestone.date);
+                                                  // Excluded if selling before completion and payment is after sale date and not yet paid
+                                                  const isExcluded = isSellingBeforeCompletion && !isPaid && milestoneDate > expectedSaleDate;
                                                   return (
-                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''}`}>
+                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''} ${isExcluded ? 'opacity-40 line-through' : ''}`}>
                                                       <td className="py-1.5">{new Date(actualDate).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
                                                       <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt))}</td>
                                                       <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt * rate))}</td>
-                                                      <td className="text-center py-1.5">{isPaid ? <span className="text-green-400">✓</span> : <span className="text-gray-500">-</span>}</td>
+                                                      <td className="text-center py-1.5">
+                                                        {isExcluded ? <span className="text-orange-400">✗</span> : isPaid ? <span className="text-green-400">✓</span> : <span className="text-gray-500">-</span>}
+                                                      </td>
                                                     </tr>
                                                   );
                                                 })}
                                                 <tr className="border-b border-gray-700 bg-green-900/30">
                                                   <td className="py-1.5 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} (Sale)</td>
-                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
-                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
-                                                  <td className="text-center py-1.5 text-gray-500">-</td>
+                                                  <td className="text-right py-1.5 text-green-400">+{new Intl.NumberFormat('en-IN').format(Math.round(netSaleValueForXirr))}</td>
+                                                  <td className="text-right py-1.5 text-green-400">+{new Intl.NumberFormat('en-IN').format(Math.round(netSaleValueForXirr * projectedAedToInr))}</td>
+                                                  <td className="text-center py-1.5 text-green-400">+</td>
                                                 </tr>
+                                                {isSellingBeforeCompletion && paymentsAfterSaleAed > 0 && (
+                                                  <tr className="border-b border-gray-700 bg-orange-900/20">
+                                                    <td colSpan="4" className="py-1.5 text-[9px] text-orange-400">
+                                                      Note: {formatAED(paymentsAfterSaleAed)} completion payments deducted from sale (buyer's obligation)
+                                                    </td>
+                                                  </tr>
+                                                )}
                                               </tbody>
                                               <tfoot>
                                                 <tr className="font-bold bg-gray-800">
                                                   <td className="py-1.5 text-amber-400">XIRR</td>
-                                                  <td className="text-right py-1.5">{(() => {
-                                                    const cf = schedule.map((m, i) => {
-                                                      const isPaid = i < (property.payments_completed || 0);
-                                                      return { date: isPaid ? (property.actual_payment_dates?.[i] || m.date) : m.date, amount: -((m.percentage / 100) * investmentAmount) };
-                                                    });
-                                                    cf.push({ date: expectedSaleDate.toISOString(), amount: expectedSalePrice });
-                                                    const x = calculateXIRR(cf);
-                                                    return x ? `${x.toFixed(1)}%` : '-';
-                                                  })()}</td>
-                                                  <td className="text-right py-1.5 text-green-400">{actualXirr ? `${actualXirr.toFixed(1)}%` : '-'}</td>
+                                                  <td colSpan="2" className="text-right py-1.5 text-green-400">{actualXirr ? `${actualXirr.toFixed(1)}%` : '-'}</td>
                                                   <td></td>
                                                 </tr>
                                               </tfoot>
