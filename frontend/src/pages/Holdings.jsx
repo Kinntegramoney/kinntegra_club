@@ -2589,54 +2589,34 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Total Profit - based on residency, AED as tooltip */}
-                                    <td className="px-3 py-3 text-right">
-                                      <div 
-                                        className="cursor-help group relative"
-                                        title={`Base (AED): Property Gain ${formatAED(profitFromSaleAed)}`}
-                                      >
+                                    {/* Total Profit - compact display */}
+                                    <td className="px-2 py-2 text-right">
+                                      <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                        {payableAmountAed > 0 ? (
-                                          <>
-                                            <p className="text-[10px] text-gray-500 mt-0.5">
-                                              Net Sale: {formatINR(netSaleProceedsInr)}
-                                            </p>
-                                            <p className="text-[10px] text-gray-400">
-                                              - Paid: {formatINR(paidAmountInr)}
-                                            </p>
-                                          </>
-                                        ) : (
-                                          <p className="text-[10px] text-gray-500 mt-0.5">
-                                            Sale - Cost
-                                          </p>
-                                        )}
-                                        <p className="text-[10px] text-amber-600">
-                                          Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
-                                        </p>
-                                        {/* Tooltip on hover */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg min-w-[200px]">
-                                          <p className="font-semibold mb-1 border-b border-gray-600 pb-1">Profit Breakdown</p>
-                                          <p className="text-gray-300">Base (AED):</p>
-                                          <p className="pl-2">Property Gain: {formatAED(profitFromSaleAed)}</p>
-                                          <p className="text-gray-300 mt-1">In INR:</p>
-                                          <p className="pl-2">Sale Proceeds: {formatINR(saleProceedsInr)}</p>
-                                          {payableAmountAed > 0 && (
-                                            <p className="pl-2 text-red-300">- Payable at Sale: {formatINR(payableAmountAed * projectedAedToInr)}</p>
+                                        <p className="text-[10px] text-gray-500">
+                                          {payableAmountAed > 0 ? (
+                                            <span>Net: {formatINR(netSaleProceedsInr)} - Paid: {formatINR(paidAmountInr)}</span>
+                                          ) : (
+                                            <span>Sale - Cost</span>
                                           )}
-                                          <p className="pl-2">- Already Paid: {formatINR(paidAmountInr)}</p>
-                                          <p className="pl-2 text-green-300 font-semibold border-t border-gray-600 mt-1 pt-1">Net Profit: {formatINR(totalProfitInr)}</p>
-                                          <p className="text-amber-300 mt-1">Forex Impact: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}</p>
+                                          <span className="mx-1">|</span>
+                                          <span className="text-amber-600">Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}</span>
+                                        </p>
+                                        {/* Tooltip */}
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+                                          <p className="font-semibold">AED Gain: {formatAED(profitFromSaleAed)}</p>
+                                          <p>Sale: {formatINR(saleProceedsInr)} {payableAmountAed > 0 ? `- Payable: ${formatINR(payableAmountAed * projectedAedToInr)}` : ''} - Paid: {formatINR(paidAmountInr)}</p>
                                         </div>
                                       </div>
                                     </td>
                                     
-                                    {/* Expected XIRR */}
-                                    <td className="px-3 py-3 text-center">
+                                    {/* Expected XIRR - compact */}
+                                    <td className="px-2 py-2 text-center">
                                       <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                         {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
                                       </span>
-                                      <p className="text-[10px] text-gray-400 mt-1">
-                                        {expectedSaleDate ? `Sale: ${expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : ''}
+                                      <p className="text-[10px] text-gray-400">
+                                        {expectedSaleDate ? expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : ''}
                                       </p>
                                     </td>
                                     
