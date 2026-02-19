@@ -2697,7 +2697,7 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Expected XIRR - with schedule tooltip */}
-                                    <td className="px-2 py-2 text-center">
+                                    <td className="px-2 py-2 text-center overflow-visible">
                                       <div className="cursor-help group/expxirr relative inline-block">
                                         <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
