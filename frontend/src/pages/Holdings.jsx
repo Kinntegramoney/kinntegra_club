@@ -2154,36 +2154,57 @@ export default function Holdings() {
                     </div>
                   ) : (
                     <>
-                      {/* Summary Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg p-5 text-white">
-                          <p className="text-teal-100 text-sm">Total Properties</p>
-                          <p className="text-2xl font-bold">{clientRealEstate.length}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-etihad-gold-500 to-etihad-gold-600 rounded-lg p-5 text-white">
-                          <p className="text-etihad-gold-100 text-sm">Invested Till Date</p>
-                          <p className="text-2xl font-bold">
-                            AED {new Intl.NumberFormat('en-AE').format(
-                              clientRealEstate.reduce((sum, re) => {
-                                // Calculate only paid amounts
-                                const investmentAmount = re.investment_amount || 0;
-                                const schedule = re.payment_schedule || [];
-                                let paidAmount = 0;
-                                schedule.forEach((milestone, idx) => {
-                                  if (idx < (re.payments_completed || 0)) {
-                                    paidAmount += (milestone.percentage / 100) * investmentAmount;
-                                  }
-                                });
-                                return sum + paidAmount;
-                              }, 0)
-                            )}
-                          </p>
-                        </div>
-                        <div className="bg-gradient-to-br from-etihad-maroon-500 to-etihad-maroon-600 rounded-lg p-5 text-white">
-                          <p className="text-etihad-maroon-100 text-sm">Avg Share</p>
-                          <p className="text-2xl font-bold">
-                            {(clientRealEstate.reduce((sum, re) => sum + (re.share_percentage || 0), 0) / clientRealEstate.length).toFixed(1)}%
-                          </p>
+                      {/* Summary Row - Clean design like the reference */}
+                      <div className="bg-white rounded-lg border border-gray-200 p-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Total Properties</p>
+                            <p className="text-lg font-semibold text-gray-800">{clientRealEstate.length}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Total Investment</p>
+                            <p className="text-lg font-semibold text-gray-800">
+                              AED {new Intl.NumberFormat('en-AE').format(
+                                clientRealEstate.reduce((sum, re) => sum + (re.investment_amount || 0), 0)
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Invested Till Date</p>
+                            <p className="text-lg font-semibold text-emerald-600">
+                              AED {new Intl.NumberFormat('en-AE').format(
+                                clientRealEstate.reduce((sum, re) => {
+                                  const investmentAmount = re.investment_amount || 0;
+                                  const schedule = re.payment_schedule || [];
+                                  let paidAmount = 0;
+                                  schedule.forEach((milestone, idx) => {
+                                    if (idx < (re.payments_completed || 0)) {
+                                      paidAmount += (milestone.percentage / 100) * investmentAmount;
+                                    }
+                                  });
+                                  return sum + paidAmount;
+                                }, 0)
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Outstanding Principal</p>
+                            <p className="text-lg font-semibold text-blue-600">
+                              AED {new Intl.NumberFormat('en-AE').format(
+                                clientRealEstate.reduce((sum, re) => {
+                                  const investmentAmount = re.investment_amount || 0;
+                                  const schedule = re.payment_schedule || [];
+                                  let paidAmount = 0;
+                                  schedule.forEach((milestone, idx) => {
+                                    if (idx < (re.payments_completed || 0)) {
+                                      paidAmount += (milestone.percentage / 100) * investmentAmount;
+                                    }
+                                  });
+                                  return sum + (investmentAmount - paidAmount);
+                                }, 0)
+                              )}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
