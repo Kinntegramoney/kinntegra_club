@@ -27772,6 +27772,9 @@ async def get_projected_currency_rates(
             rate_std = statistics.stdev(y_values) if len(y_values) > 1 else 0
             confidence = "high" if rate_std < 1 else "medium" if rate_std < 2 else "low"
             
+            # Include current rate in min/max calculation for accurate historical summary
+            all_rates_for_minmax = y_values + [current_rate]
+            
             return {
                 "base": "AED",
                 "target": target,
@@ -27783,10 +27786,10 @@ async def get_projected_currency_rates(
                     "slope": round(slope, 4)
                 },
                 "historical_summary": {
-                    "min_rate": round(min(y_values), 4),
-                    "max_rate": round(max(y_values), 4),
-                    "avg_rate": round(sum(y_values) / len(y_values), 4),
-                    "data_points": len(historical_rates)
+                    "min_rate": round(min(all_rates_for_minmax), 4),
+                    "max_rate": round(max(all_rates_for_minmax), 4),
+                    "avg_rate": round(sum(all_rates_for_minmax) / len(all_rates_for_minmax), 4),
+                    "data_points": len(historical_rates) + 1  # +1 for current rate
                 },
                 "confidence": confidence,
                 "source": "frankfurter.app + projection"
