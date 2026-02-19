@@ -2753,7 +2753,7 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Actual XIRR - with schedule tooltip */}
-                                    <td className="px-2 py-2 text-center">
+                                    <td className="px-2 py-2 text-center overflow-visible">
                                       <div className="cursor-help group/actxirr relative inline-block">
                                         <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
