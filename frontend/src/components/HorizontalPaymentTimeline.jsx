@@ -218,7 +218,7 @@ export default function HorizontalPaymentTimeline({
                   {showConsolidated ? (
                     <>
                       <p className={`text-xs font-semibold ${color.text}`}>
-                        AED {new Intl.NumberFormat('en-AE').format(Math.round(milestone.amount))}
+                        {currencySymbol}{new Intl.NumberFormat('en-AE').format(Math.round(milestone.amount * conversionRate))}
                       </p>
                       {milestone.properties && milestone.properties.length > 0 && (
                         <p className="text-[9px] text-gray-500 truncate" title={milestone.properties.join(', ')}>
@@ -310,7 +310,7 @@ export default function HorizontalPaymentTimeline({
                   {showConsolidated ? (
                     <>
                       <p className={`text-xs font-semibold ${color.text}`}>
-                        AED {new Intl.NumberFormat('en-AE').format(Math.round(milestone.amount))}
+                        {currencySymbol}{new Intl.NumberFormat('en-AE').format(Math.round(milestone.amount * conversionRate))}
                       </p>
                       {milestone.properties && milestone.properties.length > 0 && (
                         <p className="text-[9px] text-gray-500 truncate" title={milestone.properties.join(', ')}>
