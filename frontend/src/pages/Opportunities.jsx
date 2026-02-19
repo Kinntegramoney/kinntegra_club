@@ -1418,7 +1418,11 @@ export default function Opportunities() {
                   </select>
                   <ChevronDown className="absolute right-0.5 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
                 </div>
-                {loadingRates && <span className="text-[9px] text-gray-400 animate-pulse">...</span>}
+                {loadingRates && (
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
               </div>
             </div>
             
