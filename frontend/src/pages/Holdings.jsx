@@ -1697,89 +1697,122 @@ export default function Holdings() {
   const consolidatedCashflows = modalData ? getConsolidatedCashflowsByDate(modalData.trades) : [];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <SidebarComponent user={user} />
       
-      <div className="flex-1 flex overflow-hidden">
-        {/* Client List Panel - Wider for better display */}
-        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-3 border-b border-gray-200 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                data-testid="search-investor"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-sm"
-              />
-            </div>
-            <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
-              <SelectTrigger className="h-9 text-sm" data-testid="client-type-filter">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Clients</SelectItem>
-                <SelectItem value="bonds">Bond Clients</SelectItem>
-                <SelectItem value="real_estate">Real Estate Clients</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="p-3 text-center text-gray-500 text-sm">Loading...</div>
-            ) : filteredClients.length === 0 ? (
-              <div className="p-3 text-center text-gray-500 text-sm">No investors found</div>
-            ) : (
-              filteredClients.map((client) => (
-                <div
-                  key={client.id}
-                  onClick={() => handleClientSelect(client)}
-                  className={`px-3 py-2.5 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedClient?.id === client.id ? 'bg-etihad-gold-50 border-l-4 border-l-amber-600' : ''
-                  }`}
+      <main className="flex-1 overflow-auto">
+        {/* Header with Client Selector - Like Data Gathering */}
+        <div className="bg-white px-6 py-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Holdings</h1>
+                <p className="text-gray-500 text-sm mt-1">View client bond and real estate holdings</p>
+              </div>
+              
+              {/* Client Selector - Inline with header */}
+              <div className="flex items-center gap-3 border-l pl-6">
+                {/* Client Selector Dropdown */}
+                <Select 
+                  value={selectedClient?.id || ""} 
+                  onValueChange={(value) => {
+                    const client = clients.find(c => c.id === value);
+                    if (client) handleClientSelect(client);
+                  }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 text-sm truncate">{client.name}</div>
-                      <div className="text-xs text-gray-500">{client.pan_number}</div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                        {getClientDisplayValue(client)}
+                  <SelectTrigger className="w-72 h-9">
+                    <SelectValue placeholder="Select a client">
+                      {selectedClient ? (
+                        <span className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          {selectedClient.name?.length > 30 
+                            ? selectedClient.name.substring(0, 30) + '...' 
+                            : selectedClient.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Select a client</span>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Search & Filter inside dropdown */}
+                    <div className="p-2 border-b space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Search clients..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                          data-testid="search-investor"
+                        />
                       </div>
-                      {/* Show breakdown for 'all' filter */}
-                      {clientTypeFilter === 'all' && (client.has_bonds && client.has_real_estate) && (
-                        <div className="text-[10px] text-gray-400">
-                          B: {formatINR(client.bond_investment || 0)} | RE: {formatAED(client.real_estate_investment || 0)}
+                      <Select value={clientTypeFilter} onValueChange={setClientTypeFilter}>
+                        <SelectTrigger className="h-8 text-xs" data-testid="client-type-filter">
+                          <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Clients</SelectItem>
+                          <SelectItem value="bonds">Bond Clients</SelectItem>
+                          <SelectItem value="real_estate">Real Estate Clients</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Client list */}
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {loading ? (
+                        <div className="px-2 py-4 text-sm text-gray-500 text-center">Loading...</div>
+                      ) : filteredClients.length > 0 ? (
+                        filteredClients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            <div className="flex items-center justify-between w-full gap-4">
+                              <span className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-gray-400" />
+                                <span className="truncate max-w-[150px]">{client.name}</span>
+                                <span className="text-xs text-gray-400">({client.pan_number})</span>
+                              </span>
+                              <span className="text-xs font-medium text-gray-600">
+                                {getClientDisplayValue(client)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-4 text-sm text-gray-500 text-center">
+                          {searchQuery ? `No clients matching "${searchQuery}"` : "No clients found"}
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              ))
-            )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <Button variant="outline" size="sm" onClick={fetchClients} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
           </div>
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="p-6">
           {!selectedClient ? (
-            <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="h-[60vh] flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p>Select an investor to view holdings</p>
+                <p className="text-lg font-medium">Select a client to view holdings</p>
+                <p className="text-sm text-gray-400 mt-1">Use the dropdown above to choose a client</p>
               </div>
             </div>
           ) : loadingHoldings ? (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <p>Loading holdings...</p>
+            <div className="h-[60vh] flex items-center justify-center text-gray-500">
+              <RefreshCw className="h-8 w-8 animate-spin text-etihad-gold-600" />
             </div>
           ) : clientHoldings ? (
-            <div className="p-6">
+            <div>
               {/* Header Tabs */}
-              <div className="flex items-center gap-6 mb-6 border-b border-gray-200">
+              <div className="flex items-center gap-6 mb-6 border-b border-gray-200 bg-white -mx-6 px-6 -mt-6 pt-4">
                 <button 
                   onClick={() => setMainTab("holdings")}
                   className={`pb-3 border-b-2 font-medium transition-colors ${
@@ -1826,28 +1859,7 @@ export default function Holdings() {
                 >
                   Profile
                 </button>
-              </div>
-              
-              {/* Broker Tools - Quick Actions (Broker only) */}
-              {user?.role === 'broker' && (
-                <div className="flex items-center gap-3 mb-4 p-3 bg-gradient-to-r from-slate-50 to-gray-50 border border-gray-200 rounded-lg">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quick Tools:</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleSyncEmailRepayments}
-                    disabled={syncingEmails}
-                    className="text-blue-700 border-blue-200 hover:bg-blue-50"
-                    data-testid="sync-email-btn"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${syncingEmails ? 'animate-spin' : ''}`} />
-                    {syncingEmails ? 'Syncing...' : 'Sync Emails'}
-                  </Button>
-                  
-                  <label className="cursor-pointer">
-                    <input 
-                      type="file" 
-                      accept=".xlsx,.xls" 
+              </div> 
                       onChange={handleHistoricalUpload}
                       className="hidden"
                       data-testid="historical-upload-input"
