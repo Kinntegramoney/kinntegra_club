@@ -27854,8 +27854,8 @@ async def get_projected_currency_rates(
                 "current_rate": round(current_rate, 4),
                 "projected_rates": projected_rates,
                 "trend": {
-                    "direction": "increasing" if slope > 0 else "decreasing" if slope < 0 else "stable",
-                    "avg_annual_change_percent": round(avg_annual_change, 2),
+                    "direction": "increasing" if avg_annual_change_absolute > 0 else "decreasing" if avg_annual_change_absolute < 0 else "stable",
+                    "avg_annual_change_percent": round(avg_annual_change_percent, 2),
                     "slope": round(slope, 4)
                 },
                 "historical_summary": {
@@ -27865,7 +27865,7 @@ async def get_projected_currency_rates(
                     "data_points": len(historical_rates) + 1  # +1 for current rate
                 },
                 "confidence": confidence,
-                "source": "frankfurter.app + projection"
+                "source": "exchangerate-api + fawazahmed0 projection"
             }
         else:
             # Fallback with default projections
