@@ -2289,7 +2289,55 @@ export default function Holdings() {
                             {/* Horizontal Payment Timeline - Consolidated by Month */}
                             {monthlyData.length > 0 && (
                               <div className="mb-6">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Milestones (Consolidated by Month)</h4>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="text-sm font-medium text-gray-700">Payment Milestones (Consolidated by Month)</h4>
+                                  
+                                  {/* Currency Selector */}
+                                  <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                      <select
+                                        value={reSelectedCurrency}
+                                        onChange={(e) => handleRECurrencyChange(e.target.value)}
+                                        className="appearance-none bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs font-medium text-gray-600 cursor-pointer hover:bg-gray-100 pr-6"
+                                      >
+                                        <option value="AED">AED (د.إ)</option>
+                                        <option value="INR">INR (₹)</option>
+                                        <option value="USD">USD ($)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="GBP">GBP (£)</option>
+                                        <option value="CNY">CNY (¥)</option>
+                                        <option value="JPY">JPY (¥)</option>
+                                        <option value="CHF">CHF (Fr)</option>
+                                        <option value="CAD">CAD (C$)</option>
+                                        <option value="AUD">AUD (A$)</option>
+                                        <option value="SGD">SGD (S$)</option>
+                                        <option value="HKD">HKD (HK$)</option>
+                                        <option value="SAR">SAR (ريال)</option>
+                                        <option value="KWD">KWD (د.ك)</option>
+                                        <option value="QAR">QAR (ريال)</option>
+                                        <option value="BHD">BHD (د.ب.)</option>
+                                        <option value="OMR">OMR (ريال)</option>
+                                      </select>
+                                      <ChevronDown className="absolute right-1 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                                    </div>
+                                    {reLoadingRates && (
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-3 h-3 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                                        <span className="text-[10px] text-gray-400">Loading</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {reLoadingRates && reSelectedCurrency !== "AED" && (
+                                  <div className="mb-3 px-3 py-2 bg-gray-50 rounded border border-gray-100 animate-pulse">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                                      <span className="text-xs text-gray-500">Fetching {reSelectedCurrency} exchange rates...</span>
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 <HorizontalPaymentTimeline 
                                   milestones={monthlyData.map(m => {
                                     // Get unique properties in this month
@@ -2317,6 +2365,8 @@ export default function Holdings() {
                                   sharePercent={100}
                                   compact={false}
                                   showConsolidated={true}
+                                  currency={reSelectedCurrency}
+                                  conversionRate={reCurrencyRates[reSelectedCurrency] || 1}
                                 />
                               </div>
                             )}
