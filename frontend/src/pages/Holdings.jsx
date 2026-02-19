@@ -2580,21 +2580,55 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Investment Amount */}
+                                    {/* Investment Amount - with payment schedule tooltip */}
                                     <td className="px-2 py-2 text-right">
-                                      <div className="cursor-help group relative">
+                                      <div className="cursor-help group/inv relative">
                                         <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentProjected)}</p>
                                         <p className="text-[10px]">
                                           <span className="text-emerald-600">Paid: {formatINR(paidAmountProjected)}</span>
                                           <span className="mx-1 text-gray-400">|</span>
                                           <span className="text-blue-600">Due: {formatINR(payableAmountProjected)}</span>
                                         </p>
-                                        {/* Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '200px'}}>
-                                          <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Investment (AED)</p>
-                                          <p><span className="text-gray-400">Total:</span> <span className="float-right">{formatAED(investmentAmount)}</span></p>
-                                          <p><span className="text-emerald-400">Paid:</span> <span className="float-right">{formatAED(paidTillDate)}</span></p>
-                                          <p><span className="text-blue-400">Payable:</span> <span className="float-right">{formatAED(payableInFuture)}</span></p>
+                                        {/* Payment Schedule Tooltip */}
+                                        <div className="absolute hidden group-hover/inv:block left-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '380px'}}>
+                                          <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
+                                            <p className="font-bold text-amber-400">Payment Schedule</p>
+                                          </div>
+                                          <div className="p-3">
+                                            <table className="w-full">
+                                              <thead>
+                                                <tr className="text-gray-400 border-b border-gray-700">
+                                                  <th className="text-left py-1 font-medium">Date</th>
+                                                  <th className="text-right py-1 font-medium">AED</th>
+                                                  <th className="text-right py-1 font-medium">INR</th>
+                                                  <th className="text-center py-1 font-medium">Status</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {schedule.map((milestone, i) => {
+                                                  const amt = (milestone.percentage / 100) * investmentAmount;
+                                                  const isPaid = i < (property.payments_completed || 0);
+                                                  const rate = getProjectedRateForDate(milestone.date);
+                                                  return (
+                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''}`}>
+                                                      <td className="py-1.5">{new Date(milestone.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
+                                                      <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(amt))}</td>
+                                                      <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt * rate))}</td>
+                                                      <td className="text-center py-1.5">{isPaid ? <span className="text-green-400">✓ Paid</span> : <span className="text-gray-500">Pending</span>}</td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                              <tfoot>
+                                                <tr className="font-bold bg-gray-800">
+                                                  <td className="py-1.5 text-amber-400">Total</td>
+                                                  <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(investmentAmount))}</td>
+                                                  <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(totalInvestmentProjected))}</td>
+                                                  <td className="text-center py-1.5 text-gray-400">{property.payments_completed || 0}/{schedule.length}</td>
+                                                </tr>
+                                              </tfoot>
+                                            </table>
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
@@ -2609,18 +2643,23 @@ export default function Holdings() {
                                     
                                     {/* Expected Sale Amount */}
                                     <td className="px-2 py-2 text-right">
-                                      <div className="cursor-help group relative">
+                                      <div className="cursor-help group/sale relative">
                                         <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
                                         <p className="text-[10px] text-gray-500">
                                           @₹{projectedAedToInr.toFixed(2)}/AED • {expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                                         </p>
-                                        {/* Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '200px'}}>
-                                          <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Sale Projection</p>
-                                          <p><span className="text-gray-400">Sale (AED):</span> <span className="float-right">{formatAED(expectedSalePrice)}</span></p>
-                                          <p><span className="text-gray-400">Sale Date:</span> <span className="float-right">{expectedSaleDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></p>
-                                          <p><span className="text-gray-400">Rate @Sale:</span> <span className="float-right">₹{projectedAedToInr.toFixed(2)}/AED</span></p>
-                                          <p><span className="text-gray-400">Current Rate:</span> <span className="float-right">₹{AED_TO_INR_CURRENT}/AED</span></p>
+                                        {/* Sale Tooltip */}
+                                        <div className="absolute hidden group-hover/sale:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '220px'}}>
+                                          <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
+                                            <p className="font-bold text-amber-400">Sale Projection</p>
+                                          </div>
+                                          <div className="p-3 space-y-1">
+                                            <div className="flex justify-between"><span className="text-gray-400">Sale (AED):</span><span>{formatAED(expectedSalePrice)}</span></div>
+                                            <div className="flex justify-between"><span className="text-gray-400">Sale Date:</span><span>{expectedSaleDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+                                            <div className="flex justify-between"><span className="text-gray-400">Rate @Sale:</span><span>₹{projectedAedToInr.toFixed(2)}/AED</span></div>
+                                            <div className="flex justify-between"><span className="text-gray-400">Current Rate:</span><span>₹{AED_TO_INR_CURRENT}/AED</span></div>
+                                            <div className="flex justify-between border-t border-gray-700 pt-1 mt-1"><span className="text-gray-400">Sale (INR):</span><span className="text-green-400 font-bold">{formatINR(expectedSalePrice * projectedAedToInr)}</span></div>
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
