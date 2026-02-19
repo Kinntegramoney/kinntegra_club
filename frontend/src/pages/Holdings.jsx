@@ -2271,30 +2271,66 @@ export default function Holdings() {
                               Payment Timeline - All Properties
                             </h3>
                             
-                            {/* Overall Progress Summary */}
+                            {/* Clean Repayment Status Bar */}
                             <div className="mb-6">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-4">
+                              {/* Status Label */}
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-medium text-gray-700">Repayment Status:</span>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  AED {new Intl.NumberFormat('en-AE').format(Math.round(totalInvestment))}
+                                </span>
+                              </div>
+                              
+                              {/* Progress Bar */}
+                              <div className="h-8 rounded-lg overflow-hidden flex bg-gray-100">
+                                {/* Paid (Green) */}
+                                {paidPercent > 0 && (
+                                  <div 
+                                    className="bg-emerald-500 h-full flex items-center justify-center transition-all duration-300"
+                                    style={{ width: `${paidPercent}%` }}
+                                  >
+                                    {paidPercent >= 15 && (
+                                      <span className="text-white text-xs font-medium px-2 truncate">
+                                        {paidPercent.toFixed(0)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Outstanding (Blue) */}
+                                {outstandingPercent > 0 && (
+                                  <div 
+                                    className="bg-blue-500 h-full flex items-center justify-center transition-all duration-300"
+                                    style={{ width: `${outstandingPercent}%` }}
+                                  >
+                                    {outstandingPercent >= 15 && (
+                                      <span className="text-white text-xs font-medium px-2 truncate">
+                                        {outstandingPercent.toFixed(0)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Legend with amounts */}
+                              <div className="flex items-center justify-between mt-3">
+                                <div className="flex items-center gap-6">
                                   <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                    <span className="text-sm text-gray-600">Paid:</span>
-                                    <span className="text-sm font-semibold text-emerald-600">
+                                    <span className="text-sm text-gray-600">Received:</span>
+                                    <span className="text-sm font-semibold text-gray-800">
                                       AED {new Intl.NumberFormat('en-AE').format(Math.round(totalPaid))}
                                     </span>
-                                    <span className="text-xs text-gray-500">({paidPercent.toFixed(1)}%)</span>
+                                    <span className="text-xs text-gray-500">({paidPercent.toFixed(0)}%)</span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                                     <span className="text-sm text-gray-600">Outstanding:</span>
-                                    <span className="text-sm font-semibold text-amber-600">
+                                    <span className="text-sm font-semibold text-gray-800">
                                       AED {new Intl.NumberFormat('en-AE').format(Math.round(totalOutstanding))}
                                     </span>
-                                    <span className="text-xs text-gray-500">({outstandingPercent.toFixed(1)}%)</span>
+                                    <span className="text-xs text-gray-500">({outstandingPercent.toFixed(0)}%)</span>
                                   </div>
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">
-                                  Total: AED {new Intl.NumberFormat('en-AE').format(Math.round(totalInvestment))}
-                                </span>
                               </div>
                             </div>
                             
