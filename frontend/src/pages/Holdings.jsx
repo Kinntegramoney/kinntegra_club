@@ -2581,7 +2581,7 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Investment Amount - with payment schedule tooltip */}
-                                    <td className="px-2 py-2 text-right">
+                                    <td className="px-2 py-2 text-right overflow-visible">
                                       <div className="cursor-help group/inv relative">
                                         <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentProjected)}</p>
                                         <p className="text-[10px]">
