@@ -27742,26 +27742,6 @@ async def get_projected_currency_rates(
                             })
                 except Exception as e:
                     continue
-                    date_str = sample_date.strftime("%Y-%m-%d")
-                    
-                    response = await client.get(
-                        f"https://api.frankfurter.app/{date_str}",
-                        params={"base": "USD", "symbols": target}
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        rate = data.get("rates", {}).get(target, 0)
-                        if rate > 0:
-                            # Convert to AED base
-                            aed_rate = rate / AED_USD_RATE
-                            historical_rates.append({
-                                "date": data.get("date", date_str),
-                                "rate": aed_rate,
-                                "year_offset": 0
-                            })
-                except Exception:
-                    continue
         
         # Calculate trend using simple linear regression
         if len(historical_rates) >= 4:
