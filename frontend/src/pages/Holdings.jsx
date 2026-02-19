@@ -2390,6 +2390,27 @@ export default function Holdings() {
                           });
                           const outstandingAmount = investmentAmount - paidAmount;
                           
+                          // Currency conversion
+                          const conversionRate = reCurrencyRates[reSelectedCurrency] || 1;
+                          const currencySymbols = {
+                            AED: 'AED', INR: '₹', USD: '$', EUR: '€', GBP: '£', SGD: 'S$',
+                            CNY: '¥', JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$', HKD: 'HK$',
+                            SAR: 'SAR', KWD: 'KWD', QAR: 'QAR', BHD: 'BHD', OMR: 'OMR'
+                          };
+                          const symbol = currencySymbols[reSelectedCurrency] || reSelectedCurrency;
+                          
+                          const formatCurrencyAmount = (amount) => {
+                            const converted = amount * conversionRate;
+                            if (converted >= 10000000) {
+                              return `${symbol}${(converted / 10000000).toFixed(2)}Cr`;
+                            } else if (converted >= 100000) {
+                              return `${symbol}${(converted / 100000).toFixed(2)}L`;
+                            } else if (converted >= 1000) {
+                              return `${symbol}${(converted / 1000).toFixed(1)}K`;
+                            }
+                            return `${symbol}${new Intl.NumberFormat('en-AE').format(Math.round(converted))}`;
+                          };
+                          
                           return (
                             <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                               {/* Property Images */}
