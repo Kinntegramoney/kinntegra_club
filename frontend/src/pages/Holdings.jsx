@@ -2567,15 +2567,27 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Total Profit */}
+                                    {/* Total Profit - showing both AED (base) and projected INR */}
                                     <td className="px-3 py-3 text-right">
-                                      <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                      <p className="text-[10px] text-gray-500 mt-1">
-                                        Sale: {formatINR(profitFromSale * projectedAedToInr)}
-                                      </p>
-                                      <p className="text-[10px] text-amber-600">
-                                        Currency: {formatINR(currencyBenefit)}
-                                      </p>
+                                      <div className="space-y-1">
+                                        {/* AED (Base Currency) - Pure property profit */}
+                                        <div className="pb-1 border-b border-gray-100">
+                                          <p className="font-mono font-semibold text-gray-800 text-xs">{formatAED(profitFromSale)}</p>
+                                          <p className="text-[10px] text-gray-500">
+                                            Property gain
+                                          </p>
+                                        </div>
+                                        {/* Projected INR - Total including currency benefit */}
+                                        <div className="pt-0.5">
+                                          <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
+                                          <p className="text-[10px] text-gray-500">
+                                            Sale: {formatINR(profitFromSale * projectedAedToInr)}
+                                          </p>
+                                          <p className="text-[10px] text-amber-600">
+                                            Currency: {formatINR(currencyBenefit)}
+                                          </p>
+                                        </div>
+                                      </div>
                                     </td>
                                     
                                     {/* Expected XIRR */}
