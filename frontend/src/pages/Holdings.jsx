@@ -2571,9 +2571,9 @@ export default function Holdings() {
                                 };
                                 
                                 return (
-                                  <tr key={idx} className="hover:bg-gray-50">
+                                  <tr key={idx} className="hover:bg-gray-50 overflow-visible">
                                     {/* Property Details - compact */}
-                                    <td className="px-2 py-2">
+                                    <td className="px-2 py-2 overflow-visible">
                                       <p className="font-semibold text-gray-800 text-xs">{property.building_name || 'Property'}</p>
                                       <p className="text-[10px] text-gray-400">
                                         {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}%
