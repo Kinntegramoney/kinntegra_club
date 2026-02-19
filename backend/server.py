@@ -27619,7 +27619,8 @@ async def get_live_currency_rates(
             "base": base,
             "rates": {
                 "AED": 1, "INR": 24.72, "USD": 0.27, "EUR": 0.25, "GBP": 0.21,
-                "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42, "SGD": 0.36
+                "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42, "SGD": 0.36,
+                "HKD": 2.12, "SAR": 1.02, "KWD": 0.083, "QAR": 0.99, "BHD": 0.10, "OMR": 0.10
             },
             "source": "fallback"
         }
