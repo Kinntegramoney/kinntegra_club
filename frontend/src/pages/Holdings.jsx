@@ -2430,7 +2430,11 @@ export default function Holdings() {
                                     variant="outline"
                                     size="sm"
                                     className="text-xs"
-                                    onClick={() => navigate(`/broker/real-estate/${property.opportunity_id || property.id}`)}
+                                    onClick={() => {
+                                      const basePath = user?.role === 'sub_broker' ? '/sub-broker' : 
+                                                       user?.role === 'client' ? '/client' : '/broker';
+                                      navigate(`${basePath}/real-estate/${property.opportunity_id || property.id}`);
+                                    }}
                                   >
                                     <Eye className="h-3.5 w-3.5 mr-1" />
                                     View Details
@@ -2440,60 +2444,6 @@ export default function Holdings() {
                             </div>
                           );
                         })}
-                                    <p className="text-xs text-gray-500">Share</p>
-                                    <p className="font-semibold text-gray-800">{property.share_percentage?.toFixed(1)}%</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Investment</p>
-                                    <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.investment_amount || 0)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Unit Price</p>
-                                    <p className="font-semibold text-gray-800">AED {new Intl.NumberFormat('en-AE').format(property.unit_price || 0)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Invested On</p>
-                                    <p className="font-semibold text-gray-800">
-                                      {property.invested_at ? format(new Date(property.invested_at), 'dd MMM yyyy') : '-'}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Payment Progress */}
-                                {property.payment_schedule && property.payment_schedule.length > 0 && (
-                                  <div className="mt-4 pt-4 border-t border-gray-100">
-                                    <p className="text-xs text-gray-500 mb-2">Payment Progress</p>
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                        <div 
-                                          className="bg-teal-500 h-2 rounded-full transition-all" 
-                                          style={{ width: `${property.payments_completed_percent || 0}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-sm font-medium text-gray-600">
-                                        {property.payments_completed || 0}/{property.payment_schedule.length} milestones
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  // Navigate to correct route based on user role
-                                  const basePath = user?.role === 'sub_broker' ? '/sub-broker' : 
-                                                   user?.role === 'client' ? '/client' : '/broker';
-                                  navigate(`${basePath}/real-estate/${property.id}`);
-                                }}
-                                className="ml-4"
-                              >
-                                <Eye className="h-4 w-4 mr-1" /> View
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </>
                   )}
