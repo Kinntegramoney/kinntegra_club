@@ -747,6 +747,16 @@ export default function Holdings() {
     }
   };
 
+  // Memoized real estate financials - prevents expensive recalculations on every render
+  const computedRealEstateData = useMemo(() => {
+    if (!clientRealEstate || clientRealEstate.length === 0) return [];
+    const clientResidency = clientDetails?.country_of_residency;
+    return clientRealEstate.map(property => ({
+      property,
+      financials: computePropertyFinancials(property, clientResidency)
+    }));
+  }, [clientRealEstate, clientDetails?.country_of_residency]);
+
   // Set page title
   useEffect(() => {
     document.title = "Kinntegraa | Holdings";
