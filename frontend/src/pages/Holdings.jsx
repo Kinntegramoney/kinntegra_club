@@ -2503,9 +2503,9 @@ export default function Holdings() {
                                         size="sm"
                                         className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-xs"
                                         onClick={() => {
-                                          // Navigate to real estate details page (same as Opportunities)
+                                          // Navigate to real estate details page with holdings flag
                                           const prefix = user?.role === 'broker' ? '/broker' : user?.role === 'sub_broker' ? '/sub-broker' : '/client';
-                                          window.location.href = `${prefix}/real-estate/${property.opportunity_id || property.id}`;
+                                          window.location.href = `${prefix}/real-estate/${property.opportunity_id || property.id}?from=holdings`;
                                         }}
                                       >
                                         View Details
