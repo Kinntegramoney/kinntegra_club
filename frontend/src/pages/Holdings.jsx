@@ -2507,15 +2507,33 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Investment Amount */}
+                                    {/* Investment Amount - showing both AED (base) and projected INR */}
                                     <td className="px-3 py-3 text-right">
-                                      <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(investmentAmount * AED_TO_INR_CURRENT)}</p>
-                                      <p className="text-[10px] text-emerald-600 mt-1">
-                                        Paid: {formatINR(paidTillDate * AED_TO_INR_CURRENT)}
-                                      </p>
-                                      <p className="text-[10px] text-blue-600">
-                                        Payable: {formatINR(payableInFuture * AED_TO_INR_CURRENT)}
-                                      </p>
+                                      <div className="space-y-1">
+                                        {/* AED (Base Currency) */}
+                                        <div className="pb-1 border-b border-gray-100">
+                                          <p className="font-mono font-semibold text-gray-800 text-xs">{formatAED(investmentAmount)}</p>
+                                          <p className="text-[10px] text-emerald-600">
+                                            Paid: {formatAED(paidTillDate)}
+                                          </p>
+                                          <p className="text-[10px] text-blue-600">
+                                            Payable: {formatAED(payableInFuture)}
+                                          </p>
+                                        </div>
+                                        {/* Projected INR (with date-based rates) */}
+                                        <div className="pt-0.5">
+                                          <p className="font-mono font-semibold text-amber-700 text-xs">{formatINR(totalInvestmentProjected)}</p>
+                                          <p className="text-[10px] text-emerald-600">
+                                            Paid: {formatINR(paidAmountProjected)}
+                                          </p>
+                                          <p className="text-[10px] text-blue-600">
+                                            Payable: {formatINR(payableAmountProjected)}
+                                          </p>
+                                          <p className="text-[10px] text-gray-400 italic">
+                                            (projected rates)
+                                          </p>
+                                        </div>
+                                      </div>
                                     </td>
                                     
                                     {/* Apartment Size */}
