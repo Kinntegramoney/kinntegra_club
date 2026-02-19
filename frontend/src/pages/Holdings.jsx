@@ -2178,10 +2178,8 @@ export default function Holdings() {
                             if (isPaid) {
                               totalPaidTillDate += milestoneAmount;
                             } else if (milestoneDate < today) {
-                              // Payment is overdue (past due date but not paid)
                               paymentsDelayed += milestoneAmount;
                             } else {
-                              // Future payment (not yet due)
                               futurePayments += milestoneAmount;
                             }
                           });
@@ -2189,14 +2187,11 @@ export default function Holdings() {
                         
                         const pendingToInvest = totalInvestmentAmount - totalPaidTillDate;
                         const expectedProfitOnSale = totalExpectedSale - totalInvestmentAmount;
+                        const currencyProfitLoss = 0;
                         
-                        // Calculate percentages for the bar
+                        // Percentages for the investment bar
                         const paidPercent = totalInvestmentAmount > 0 ? (totalPaidTillDate / totalInvestmentAmount) * 100 : 0;
-                        const delayedPercent = totalInvestmentAmount > 0 ? (paymentsDelayed / totalInvestmentAmount) * 100 : 0;
-                        const futurePercent = totalInvestmentAmount > 0 ? (futurePayments / totalInvestmentAmount) * 100 : 0;
-                        
-                        // Currency profit/loss calculation (placeholder - would need actual currency rates)
-                        const currencyProfitLoss = 0; // To be calculated based on currency conversion rates
+                        const pendingPercent = 100 - paidPercent;
                         
                         const formatAmount = (amount) => {
                           if (amount >= 10000000) {
@@ -2207,93 +2202,81 @@ export default function Holdings() {
                           return `₹ ${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
                         };
                         
-                        // AED to INR conversion
                         const AED_TO_INR = 22.5;
                         
                         return (
                           <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                            {/* Top Summary Row */}
-                            <div className="flex flex-wrap gap-6 mb-4 pb-4 border-b border-gray-100">
-                              <div>
-                                <span className="text-sm text-gray-500">Total Investment Amount: </span>
-                                <span className="text-sm font-semibold text-gray-800">
+                            {/* Top Row: Summary Stats - matching bonds font size */}
+                            <div className="flex items-center gap-4 text-xs mb-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">Total Investment Amount:</span>
+                                <span className="font-mono font-semibold text-gray-800">
                                   {formatAmount(totalInvestmentAmount * AED_TO_INR)}
                                 </span>
                               </div>
-                              <div>
-                                <span className="text-sm text-gray-500">Expected Sale Amount: </span>
-                                <span className="text-sm font-semibold text-blue-600">
+                              <div className="h-4 w-px bg-gray-200"></div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">Expected Sale Amount:</span>
+                                <span className="font-mono font-semibold text-blue-600">
                                   {formatAmount(totalExpectedSale * AED_TO_INR)}
                                 </span>
                               </div>
-                              <div>
-                                <span className="text-sm text-gray-500">Expected Profit on Sale: </span>
-                                <span className="text-sm font-semibold text-green-600">
+                              <div className="h-4 w-px bg-gray-200"></div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">Expected Profit on Sale:</span>
+                                <span className="font-mono font-semibold text-green-600">
                                   {formatAmount(expectedProfitOnSale * AED_TO_INR)}
                                 </span>
                               </div>
-                              <div>
-                                <span className="text-sm text-gray-500">Expected Profit/Loss from Currency: </span>
-                                <span className={`text-sm font-semibold ${currencyProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <div className="h-4 w-px bg-gray-200"></div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">Expected Profit/Loss from Currency:</span>
+                                <span className={`font-mono font-semibold ${currencyProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                   {currencyProfitLoss >= 0 ? '+' : ''}{formatAmount(currencyProfitLoss * AED_TO_INR)}
                                 </span>
                               </div>
-                              <div>
-                                <span className="text-sm text-gray-500">Pending to Invest: </span>
-                                <span className="text-sm font-semibold text-red-600">
+                              <div className="h-4 w-px bg-gray-200"></div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">Pending to Invest:</span>
+                                <span className="font-mono font-semibold text-red-600">
                                   {formatAmount(pendingToInvest * AED_TO_INR)}
                                 </span>
                               </div>
                             </div>
                             
-                            {/* Total Investment Status Bar */}
-                            <div className="flex items-center gap-4">
-                              <span className="text-sm text-gray-600 whitespace-nowrap">Total Investment:</span>
-                              <div className="flex-1 h-6 rounded-full overflow-hidden flex bg-gray-100">
-                                {paidPercent > 0 && (
+                            {/* Total Investment Status Bar - shows paid till date */}
+                            <div className="pt-3 border-t border-gray-100">
+                              <div className="flex items-center gap-4">
+                                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Total Investment:</span>
+                                
+                                {/* Progress Bar */}
+                                <div className="flex-1 relative h-5 bg-gray-100 rounded-full overflow-hidden">
                                   <div 
-                                    className="bg-emerald-500 h-full transition-all duration-300"
+                                    className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
                                     style={{ width: `${paidPercent}%` }}
-                                    title={`Investment Amount: ${formatAmount(totalPaidTillDate * AED_TO_INR)}`}
                                   />
-                                )}
-                                {delayedPercent > 0 && (
                                   <div 
-                                    className="bg-red-500 h-full transition-all duration-300"
-                                    style={{ width: `${delayedPercent}%` }}
-                                    title={`Payments Delayed: ${formatAmount(paymentsDelayed * AED_TO_INR)}`}
+                                    className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
+                                    style={{ left: `${paidPercent}%`, width: `${pendingPercent}%` }}
                                   />
-                                )}
-                                {futurePercent > 0 && (
-                                  <div 
-                                    className="bg-blue-500 h-full transition-all duration-300"
-                                    style={{ width: `${futurePercent}%` }}
-                                    title={`Future Payments: ${formatAmount(futurePayments * AED_TO_INR)}`}
-                                  />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4 text-sm whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                                  <span className="text-gray-600">Investment Amount:</span>
-                                  <span className="font-semibold text-emerald-600">{formatAmount(totalPaidTillDate * AED_TO_INR)}</span>
-                                  <span className="text-gray-400">({paidPercent.toFixed(0)}%)</span>
                                 </div>
-                                {paymentsDelayed > 0 && (
+                                
+                                {/* Inline Legend */}
+                                <div className="flex items-center gap-4 text-xs whitespace-nowrap">
                                   <div className="flex items-center gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
-                                    <span className="text-gray-600">Payments Delayed:</span>
-                                    <span className="font-semibold text-red-600">{formatAmount(paymentsDelayed * AED_TO_INR)}</span>
-                                    <span className="text-gray-400">({delayedPercent.toFixed(0)}%)</span>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                                    <span className="text-gray-600">Paid Till Date:</span>
+                                    <span className="font-mono font-semibold text-green-700">{formatAmount(totalPaidTillDate * AED_TO_INR)}</span>
+                                    <span className="text-gray-400">({paidPercent.toFixed(0)}%)</span>
                                   </div>
-                                )}
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                                  <span className="text-gray-600">Future Payments:</span>
-                                  <span className="font-semibold text-blue-600">{formatAmount(futurePayments * AED_TO_INR)}</span>
-                                  <span className="text-gray-400">({futurePercent.toFixed(0)}%)</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                                    <span className="text-gray-600">Pending:</span>
+                                    <span className="font-mono font-semibold text-blue-700">{formatAmount(pendingToInvest * AED_TO_INR)}</span>
+                                    <span className="text-gray-400">({pendingPercent.toFixed(0)}%)</span>
+                                  </div>
+                                  <span className="text-gray-500">Total: <span className="font-mono font-semibold">{formatAmount(totalInvestmentAmount * AED_TO_INR)}</span></span>
                                 </div>
-                                <span className="text-gray-500">Total: <span className="font-semibold">{formatAmount(totalInvestmentAmount * AED_TO_INR)}</span></span>
                               </div>
                             </div>
                           </div>
