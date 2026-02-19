@@ -1251,12 +1251,23 @@ export default function Opportunities() {
                     className="appearance-none bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-medium text-gray-600 cursor-pointer hover:bg-gray-100 pr-4"
                     data-testid="currency-selector"
                   >
-                    <option value="AED">AED</option>
-                    <option value="INR">INR ₹</option>
-                    <option value="USD">USD $</option>
-                    <option value="EUR">EUR €</option>
-                    <option value="GBP">GBP £</option>
-                    <option value="SGD">SGD S$</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="CNY">CNY (¥)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CHF">CHF (Fr)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="SGD">SGD (S$)</option>
+                    <option value="HKD">HKD (HK$)</option>
+                    <option value="SAR">SAR (ريال)</option>
+                    <option value="KWD">KWD (د.ك)</option>
+                    <option value="QAR">QAR (ريال)</option>
+                    <option value="BHD">BHD (د.ب.)</option>
+                    <option value="OMR">OMR (ريال)</option>
                   </select>
                   <ChevronDown className="absolute right-0.5 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
                 </div>
