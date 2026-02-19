@@ -176,7 +176,7 @@ export default function HorizontalPaymentTimeline({
               </p>
               {showShareValues && totalAmount > 0 && (
                 <p className="text-[8px] text-gray-500 truncate" title={formatAmount(getShareValue(milestone.percentage), true)}>
-                  {formatAmount(getShareValue(milestone.percentage), false, true)}
+                  {currencySymbol}{formatAmount(getShareValue(milestone.percentage), false, true)}
                 </p>
               )}
             </div>
