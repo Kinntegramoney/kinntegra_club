@@ -27708,20 +27708,24 @@ async def get_projected_currency_rates(
             # Get historical rates using fawazahmed0 dated API (more accurate for AED-based rates)
             # This API provides direct AED rates without USD conversion
             
-            # Sample dates for 5-year history (weekly samples for recent year, monthly for older)
+            # Sample dates for 5-year history
             sample_dates = []
             
-            # Weekly samples for the last 3 months (to capture recent peaks)
-            for weeks_ago in range(12, 0, -1):
+            # Daily samples for the last 60 days (to capture recent peaks accurately)
+            for days_ago in range(60, 0, -3):  # Every 3 days for last 2 months
+                sample_dates.append(today - timedelta(days=days_ago))
+            
+            # Weekly samples for months 3-6
+            for weeks_ago in range(24, 8, -1):  # Weeks 9-24 (months 3-6)
                 sample_dates.append(today - timedelta(weeks=weeks_ago))
             
-            # Monthly samples for months 4-12
-            for months_ago in range(12, 3, -1):
-                sample_dates.append(today - timedelta(days=months_ago * 30))
+            # Bi-weekly samples for months 7-12
+            for weeks_ago in range(52, 24, -2):
+                sample_dates.append(today - timedelta(weeks=weeks_ago))
             
-            # Quarterly samples for years 2-5
+            # Monthly samples for years 2-5
             for year_offset in range(5, 1, -1):
-                for month in [1, 4, 7, 10]:
+                for month in range(1, 13, 2):  # Every 2 months
                     sample_dates.append(today - timedelta(days=year_offset * 365 + (12 - month) * 30))
             
             # Fetch historical rates
