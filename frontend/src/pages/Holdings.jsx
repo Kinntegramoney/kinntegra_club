@@ -526,12 +526,14 @@ export default function Holdings() {
     CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
     SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
   });
+  const [reProjectedRates, setReProjectedRates] = useState(null); // Stores {year: rate} mapping
   const [reLoadingRates, setReLoadingRates] = useState(false);
 
-  // Fetch currency rates for Real Estate
+  // Fetch currency rates for Real Estate - now includes projected rates by year
   const fetchRECurrencyRates = async (currency) => {
     if (currency === "AED") {
       setReCurrencyRates(prev => ({ ...prev, AED: 1 }));
+      setReProjectedRates(null);
       return;
     }
     
@@ -539,12 +541,21 @@ export default function Holdings() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${API}/currency/projected-rates`, {
-        params: { target: currency, years_ahead: 5 },
+        params: { target: currency, years_ahead: 10 },
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (res.data && res.data.current_rate) {
         setReCurrencyRates(prev => ({ ...prev, [currency]: res.data.current_rate }));
+        
+        // Build year-to-rate mapping from projected_rates
+        if (res.data.projected_rates && res.data.projected_rates.length > 0) {
+          const ratesByYear = {};
+          res.data.projected_rates.forEach(p => {
+            ratesByYear[p.year] = p.rate;
+          });
+          setReProjectedRates(ratesByYear);
+        }
       }
     } catch (error) {
       console.error("Error fetching currency rates:", error);
@@ -555,6 +566,7 @@ export default function Holdings() {
         SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
       };
       setReCurrencyRates(prev => ({ ...prev, [currency]: defaults[currency] || 1 }));
+      setReProjectedRates(null);
     } finally {
       setReLoadingRates(false);
     }
