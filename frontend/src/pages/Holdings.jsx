@@ -2547,15 +2547,24 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Expected Sale Amount */}
+                                    {/* Expected Sale Amount - showing both AED (base) and projected INR */}
                                     <td className="px-3 py-3 text-right">
-                                      <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
-                                      <p className="text-[10px] text-gray-500 mt-1">
-                                        {formatAED(expectedSalePrice)}
-                                      </p>
-                                      <p className="text-[10px] text-gray-400">
-                                        @₹{projectedAedToInr.toFixed(2)}/AED
-                                      </p>
+                                      <div className="space-y-1">
+                                        {/* AED (Base Currency) */}
+                                        <div className="pb-1 border-b border-gray-100">
+                                          <p className="font-mono font-semibold text-gray-800 text-xs">{formatAED(expectedSalePrice)}</p>
+                                        </div>
+                                        {/* Projected INR at sale date */}
+                                        <div className="pt-0.5">
+                                          <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
+                                          <p className="text-[10px] text-gray-400">
+                                            @₹{projectedAedToInr.toFixed(2)}/AED
+                                          </p>
+                                          <p className="text-[10px] text-gray-400 italic">
+                                            ({expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})
+                                          </p>
+                                        </div>
+                                      </div>
                                     </td>
                                     
                                     {/* Total Profit */}
