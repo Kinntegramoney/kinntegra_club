@@ -2289,8 +2289,8 @@ export default function Holdings() {
                         </div>
                         
                         {/* Table */}
-                        <div>
-                          <table className="w-full">
+                        <div className="overflow-visible">
+                          <table className="w-full overflow-visible">
                             <thead className="bg-gray-50 border-b border-gray-200">
                               <tr>
                                 <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Property</th>
@@ -2303,7 +2303,7 @@ export default function Holdings() {
                                 <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 overflow-visible">
                               {clientRealEstate.map((property, idx) => {
                                 const investmentAmount = property.investment_amount || 0;
                                 const expectedSalePrice = property.expected_sale_value || (investmentAmount * 1.4);
