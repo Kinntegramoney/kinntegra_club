@@ -21,12 +21,23 @@ const PAID_COLOR = { bg: 'bg-emerald-300/70', border: 'border-emerald-400', text
 
 // Currency symbols
 const CURRENCY_SYMBOLS = {
-  AED: 'AED',
+  AED: 'د.إ',
   INR: '₹',
   USD: '$',
   EUR: '€',
   GBP: '£',
-  SGD: 'S$'
+  SGD: 'S$',
+  CNY: '¥',
+  JPY: '¥',
+  CHF: 'Fr',
+  CAD: 'C$',
+  AUD: 'A$',
+  HKD: 'HK$',
+  SAR: 'ريال',
+  KWD: 'د.ك',
+  QAR: 'ريال',
+  BHD: 'د.ب.',
+  OMR: 'ريال'
 };
 
 /**
