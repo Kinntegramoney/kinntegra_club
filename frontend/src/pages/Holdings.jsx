@@ -2698,57 +2698,54 @@ export default function Holdings() {
                                     
                                     {/* Expected XIRR - with schedule tooltip */}
                                     <td className="px-2 py-2 text-center">
-                                      <div className="cursor-help group relative inline-block">
+                                      <div className="cursor-help group/expxirr relative inline-block">
                                         <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
                                         </span>
-                                        {/* Schedule Tooltip - positioned above */}
-                                        <div className="absolute hidden group-hover:block right-0 bottom-full mb-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
-                                          <div className="px-3 py-2 border-b border-gray-700">
+                                        {/* Schedule Tooltip */}
+                                        <div className="absolute hidden group-hover/expxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '340px'}}>
+                                          <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
                                             <p className="font-bold text-amber-400">XIRR Schedule (Expected)</p>
                                           </div>
-                                          <div className="px-3 py-2 max-h-64 overflow-y-auto">
-                                            <table className="w-full text-[10px]">
+                                          <div className="p-3">
+                                            <table className="w-full">
                                               <thead>
-                                                <tr className="border-b border-gray-700">
-                                                  <th className="text-left py-1 text-gray-400">Date</th>
-                                                  <th className="text-right py-1 text-gray-400">AED</th>
-                                                  <th className="text-right py-1 text-gray-400">INR (proj.)</th>
+                                                <tr className="text-gray-400 border-b border-gray-700">
+                                                  <th className="text-left py-1 font-medium">Date</th>
+                                                  <th className="text-right py-1 font-medium">AED</th>
+                                                  <th className="text-right py-1 font-medium">INR</th>
                                                 </tr>
                                               </thead>
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
-                                                  const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
-                                                  const rateAtMilestone = getProjectedRateForDate(milestone.date);
-                                                  const milestoneAmountInr = milestoneAmountAed * rateAtMilestone;
-                                                  const milestoneDate = new Date(milestone.date);
+                                                  const amt = (milestone.percentage / 100) * investmentAmount;
+                                                  const rate = getProjectedRateForDate(milestone.date);
                                                   return (
                                                     <tr key={i} className="border-b border-gray-800">
-                                                      <td className="py-1">{milestoneDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
-                                                      <td className="text-right py-1 text-red-400">{milestoneAmountAed > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountAed)) : '-'}</td>
-                                                      <td className="text-right py-1 text-red-400">{milestoneAmountInr > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountInr)) : '-'}</td>
+                                                      <td className="py-1.5">{new Date(milestone.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
+                                                      <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt))}</td>
+                                                      <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt * rate))}</td>
                                                     </tr>
                                                   );
                                                 })}
-                                                <tr className="border-b border-gray-700 bg-gray-800">
-                                                  <td className="py-1 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} (Sale)</td>
-                                                  <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
-                                                  <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
-                                                </tr>
-                                                <tr className="font-bold bg-gray-800">
-                                                  <td className="py-1 text-amber-400">XIRR</td>
-                                                  <td className="text-right py-1 text-white">{(() => {
-                                                    const aedCashflows = schedule.map((m, i) => ({
-                                                      date: m.date,
-                                                      amount: -((m.percentage / 100) * investmentAmount)
-                                                    }));
-                                                    aedCashflows.push({ date: expectedSaleDate.toISOString(), amount: expectedSalePrice });
-                                                    const aedXirr = calculateXIRR(aedCashflows);
-                                                    return aedXirr ? `${aedXirr.toFixed(0)}%` : '-';
-                                                  })()}</td>
-                                                  <td className="text-right py-1 text-green-400">{expectedXirr ? `${expectedXirr.toFixed(0)}%` : '-'}</td>
+                                                <tr className="border-b border-gray-700 bg-green-900/30">
+                                                  <td className="py-1.5 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} (Sale)</td>
+                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
+                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
                                                 </tr>
                                               </tbody>
+                                              <tfoot>
+                                                <tr className="font-bold bg-gray-800">
+                                                  <td className="py-1.5 text-amber-400">XIRR</td>
+                                                  <td className="text-right py-1.5">{(() => {
+                                                    const cf = schedule.map(m => ({ date: m.date, amount: -((m.percentage / 100) * investmentAmount) }));
+                                                    cf.push({ date: expectedSaleDate.toISOString(), amount: expectedSalePrice });
+                                                    const x = calculateXIRR(cf);
+                                                    return x ? `${x.toFixed(1)}%` : '-';
+                                                  })()}</td>
+                                                  <td className="text-right py-1.5 text-green-400">{expectedXirr ? `${expectedXirr.toFixed(1)}%` : '-'}</td>
+                                                </tr>
+                                              </tfoot>
                                             </table>
                                           </div>
                                         </div>
@@ -2757,64 +2754,64 @@ export default function Holdings() {
                                     
                                     {/* Actual XIRR - with schedule tooltip */}
                                     <td className="px-2 py-2 text-center">
-                                      <div className="cursor-help group relative inline-block">
+                                      <div className="cursor-help group/actxirr relative inline-block">
                                         <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
                                         </span>
-                                        {/* Schedule Tooltip - positioned above */}
-                                        <div className="absolute hidden group-hover:block right-0 bottom-full mb-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
-                                          <div className="px-3 py-2 border-b border-gray-700">
+                                        {/* Schedule Tooltip */}
+                                        <div className="absolute hidden group-hover/actxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '360px'}}>
+                                          <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
                                             <p className="font-bold text-amber-400">XIRR Schedule (Actual)</p>
                                             <p className="text-gray-400 text-[9px]">{property.payments_completed || 0}/{schedule.length} payments completed</p>
                                           </div>
-                                          <div className="px-3 py-2 max-h-64 overflow-y-auto">
-                                            <table className="w-full text-[10px]">
+                                          <div className="p-3">
+                                            <table className="w-full">
                                               <thead>
-                                                <tr className="border-b border-gray-700">
-                                                  <th className="text-left py-1 text-gray-400">Date</th>
-                                                  <th className="text-right py-1 text-gray-400">AED</th>
-                                                  <th className="text-right py-1 text-gray-400">INR (proj.)</th>
+                                                <tr className="text-gray-400 border-b border-gray-700">
+                                                  <th className="text-left py-1 font-medium">Date</th>
+                                                  <th className="text-right py-1 font-medium">AED</th>
+                                                  <th className="text-right py-1 font-medium">INR</th>
+                                                  <th className="text-center py-1 font-medium">Status</th>
                                                 </tr>
                                               </thead>
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
-                                                  const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+                                                  const amt = (milestone.percentage / 100) * investmentAmount;
                                                   const isPaid = i < (property.payments_completed || 0);
                                                   const actualDate = isPaid ? (property.actual_payment_dates?.[i] || milestone.date) : milestone.date;
-                                                  const rateAtDate = getProjectedRateForDate(actualDate);
-                                                  const milestoneAmountInr = milestoneAmountAed * rateAtDate;
-                                                  const displayDate = new Date(actualDate);
+                                                  const rate = getProjectedRateForDate(actualDate);
                                                   return (
-                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/20' : ''}`}>
-                                                      <td className="py-1">{displayDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} {isPaid && <span className="text-green-400">✓</span>}</td>
-                                                      <td className="text-right py-1 text-red-400">{milestoneAmountAed > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountAed)) : '-'}</td>
-                                                      <td className="text-right py-1 text-red-400">{milestoneAmountInr > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountInr)) : '-'}</td>
+                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''}`}>
+                                                      <td className="py-1.5">{new Date(actualDate).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
+                                                      <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt))}</td>
+                                                      <td className="text-right py-1.5 text-red-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt * rate))}</td>
+                                                      <td className="text-center py-1.5">{isPaid ? <span className="text-green-400">✓</span> : <span className="text-gray-500">-</span>}</td>
                                                     </tr>
                                                   );
                                                 })}
-                                                <tr className="border-b border-gray-700 bg-gray-800">
-                                                  <td className="py-1 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} (Sale)</td>
-                                                  <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
-                                                  <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
-                                                </tr>
-                                                <tr className="font-bold bg-gray-800">
-                                                  <td className="py-1 text-amber-400">XIRR</td>
-                                                  <td className="text-right py-1 text-white">{(() => {
-                                                    const aedCashflows = schedule.map((m, i) => {
-                                                      const isPaid = i < (property.payments_completed || 0);
-                                                      const actualDate = isPaid ? (property.actual_payment_dates?.[i] || m.date) : m.date;
-                                                      return {
-                                                        date: actualDate,
-                                                        amount: -((m.percentage / 100) * investmentAmount)
-                                                      };
-                                                    });
-                                                    aedCashflows.push({ date: expectedSaleDate.toISOString(), amount: expectedSalePrice });
-                                                    const aedXirr = calculateXIRR(aedCashflows);
-                                                    return aedXirr ? `${aedXirr.toFixed(0)}%` : '-';
-                                                  })()}</td>
-                                                  <td className="text-right py-1 text-green-400">{actualXirr ? `${actualXirr.toFixed(0)}%` : '-'}</td>
+                                                <tr className="border-b border-gray-700 bg-green-900/30">
+                                                  <td className="py-1.5 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})} (Sale)</td>
+                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
+                                                  <td className="text-right py-1.5 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
+                                                  <td className="text-center py-1.5 text-gray-500">-</td>
                                                 </tr>
                                               </tbody>
+                                              <tfoot>
+                                                <tr className="font-bold bg-gray-800">
+                                                  <td className="py-1.5 text-amber-400">XIRR</td>
+                                                  <td className="text-right py-1.5">{(() => {
+                                                    const cf = schedule.map((m, i) => {
+                                                      const isPaid = i < (property.payments_completed || 0);
+                                                      return { date: isPaid ? (property.actual_payment_dates?.[i] || m.date) : m.date, amount: -((m.percentage / 100) * investmentAmount) };
+                                                    });
+                                                    cf.push({ date: expectedSaleDate.toISOString(), amount: expectedSalePrice });
+                                                    const x = calculateXIRR(cf);
+                                                    return x ? `${x.toFixed(1)}%` : '-';
+                                                  })()}</td>
+                                                  <td className="text-right py-1.5 text-green-400">{actualXirr ? `${actualXirr.toFixed(1)}%` : '-'}</td>
+                                                  <td></td>
+                                                </tr>
+                                              </tfoot>
                                             </table>
                                           </div>
                                         </div>
