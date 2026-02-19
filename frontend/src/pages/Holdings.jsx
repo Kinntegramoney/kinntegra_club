@@ -2293,14 +2293,14 @@ export default function Holdings() {
                           <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                               <tr>
-                                <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Property Details</th>
-                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Investment Amount</th>
-                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Apartment Size</th>
-                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Expected Sale Amount</th>
-                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Total Profit</th>
-                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Expected XIRR</th>
-                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Actual XIRR</th>
-                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                                <th className="px-2 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Property</th>
+                                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Investment</th>
+                                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Area</th>
+                                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Sale Amount</th>
+                                <th className="px-2 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Profit</th>
+                                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Exp XIRR</th>
+                                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Act XIRR</th>
+                                <th className="px-2 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
