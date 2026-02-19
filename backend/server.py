@@ -27553,7 +27553,7 @@ async def get_live_currency_rates(
     """
     import httpx
     
-    targets = ["INR", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD", "USD"]
+    targets = ["INR", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD", "USD", "HKD", "SAR", "KWD", "QAR", "BHD", "OMR"]
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
