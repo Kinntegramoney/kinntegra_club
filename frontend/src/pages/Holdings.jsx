@@ -2663,12 +2663,12 @@ export default function Holdings() {
                                         <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
                                         </span>
-                                        {/* Schedule Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
+                                        {/* Schedule Tooltip - positioned above */}
+                                        <div className="absolute hidden group-hover:block right-0 bottom-full mb-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
                                           <div className="px-3 py-2 border-b border-gray-700">
                                             <p className="font-bold text-amber-400">XIRR Schedule (Expected)</p>
                                           </div>
-                                          <div className="px-3 py-2">
+                                          <div className="px-3 py-2 max-h-64 overflow-y-auto">
                                             <table className="w-full text-[10px]">
                                               <thead>
                                                 <tr className="border-b border-gray-700">
@@ -2691,14 +2691,14 @@ export default function Holdings() {
                                                     </tr>
                                                   );
                                                 })}
-                                                <tr className="border-b border-gray-700">
-                                                  <td className="py-1 text-green-400">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
+                                                <tr className="border-b border-gray-700 bg-gray-800">
+                                                  <td className="py-1 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} (Sale)</td>
                                                   <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
                                                   <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
                                                 </tr>
-                                                <tr className="font-bold">
+                                                <tr className="font-bold bg-gray-800">
                                                   <td className="py-1 text-amber-400">XIRR</td>
-                                                  <td className="text-right py-1">{(() => {
+                                                  <td className="text-right py-1 text-white">{(() => {
                                                     const aedCashflows = schedule.map((m, i) => ({
                                                       date: m.date,
                                                       amount: -((m.percentage / 100) * investmentAmount)
@@ -2722,13 +2722,13 @@ export default function Holdings() {
                                         <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                           {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
                                         </span>
-                                        {/* Schedule Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
+                                        {/* Schedule Tooltip - positioned above */}
+                                        <div className="absolute hidden group-hover:block right-0 bottom-full mb-1 z-50 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl border border-gray-700" style={{minWidth: '320px'}}>
                                           <div className="px-3 py-2 border-b border-gray-700">
                                             <p className="font-bold text-amber-400">XIRR Schedule (Actual)</p>
                                             <p className="text-gray-400 text-[9px]">{property.payments_completed || 0}/{schedule.length} payments completed</p>
                                           </div>
-                                          <div className="px-3 py-2">
+                                          <div className="px-3 py-2 max-h-64 overflow-y-auto">
                                             <table className="w-full text-[10px]">
                                               <thead>
                                                 <tr className="border-b border-gray-700">
@@ -2746,21 +2746,21 @@ export default function Holdings() {
                                                   const milestoneAmountInr = milestoneAmountAed * rateAtDate;
                                                   const displayDate = new Date(actualDate);
                                                   return (
-                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'text-white' : 'text-gray-500'}`}>
-                                                      <td className="py-1">{displayDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} {isPaid && '✓'}</td>
+                                                    <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/20' : ''}`}>
+                                                      <td className="py-1">{displayDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} {isPaid && <span className="text-green-400">✓</span>}</td>
                                                       <td className="text-right py-1 text-red-400">{milestoneAmountAed > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountAed)) : '-'}</td>
                                                       <td className="text-right py-1 text-red-400">{milestoneAmountInr > 0 ? new Intl.NumberFormat('en-IN').format(Math.round(milestoneAmountInr)) : '-'}</td>
                                                     </tr>
                                                   );
                                                 })}
-                                                <tr className="border-b border-gray-700">
-                                                  <td className="py-1 text-green-400">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
+                                                <tr className="border-b border-gray-700 bg-gray-800">
+                                                  <td className="py-1 text-green-400 font-semibold">{expectedSaleDate.toLocaleDateString('en-IN', {day: '2-digit', month: '2-digit', year: 'numeric'})} (Sale)</td>
                                                   <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice))}</td>
                                                   <td className="text-right py-1 text-green-400">-{new Intl.NumberFormat('en-IN').format(Math.round(expectedSalePrice * projectedAedToInr))}</td>
                                                 </tr>
-                                                <tr className="font-bold">
+                                                <tr className="font-bold bg-gray-800">
                                                   <td className="py-1 text-amber-400">XIRR</td>
-                                                  <td className="text-right py-1">{(() => {
+                                                  <td className="text-right py-1 text-white">{(() => {
                                                     const aedCashflows = schedule.map((m, i) => {
                                                       const isPaid = i < (property.payments_completed || 0);
                                                       const actualDate = isPaid ? (property.actual_payment_dates?.[i] || m.date) : m.date;
