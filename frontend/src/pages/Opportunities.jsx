@@ -536,35 +536,40 @@ export default function Opportunities() {
 
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation PDF - Using PDF.js viewer OR blank placeholder */}
+        {/* Presentation PDF - Using BondPdfViewer OR blank placeholder */}
         <div className="mb-3 -mx-5 -mt-5">
           {bond.presentations && bond.presentations.length > 0 ? (
             <div className="relative">
-              <PdfViewer 
+              <BondPdfViewer 
                 url={`${BACKEND_URL}${bond.presentations[0].url}`}
-                filename={bond.presentations[0].original_filename || 'Presentation'}
+                filename={bond.presentations[0].original_filename || bond.presentations[0].original_name || 'Presentation'}
               />
               
               {/* Document count badge */}
-              <div className="absolute top-2 right-20 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
-                {bond.presentations.length} doc{bond.presentations.length > 1 ? 's' : ''}
-              </div>
+              {bond.presentations.length > 1 && (
+                <div className="absolute top-12 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
+                  +{bond.presentations.length - 1} more
+                </div>
+              )}
               
               {/* Multiple docs - show list */}
               {bond.presentations.length > 1 && (
-                <div className="absolute bottom-12 left-2 right-2 flex gap-1 overflow-x-auto z-10">
-                  {bond.presentations.slice(1).map((pres, idx) => (
-                    <a
-                      key={idx}
-                      href={`${BACKEND_URL}${pres.url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 px-2 py-1 bg-white/90 text-[9px] text-amber-700 rounded shadow-sm hover:bg-amber-100 transition-colors truncate max-w-[100px]"
-                      title={pres.original_filename || `Document ${idx + 2}`}
-                    >
-                      {pres.original_filename || `Doc ${idx + 2}`}
-                    </a>
-                  ))}
+                <div className="bg-gray-50 border-t border-gray-200 px-3 py-2">
+                  <p className="text-[10px] text-gray-500 mb-1.5">More documents:</p>
+                  <div className="flex gap-1.5 overflow-x-auto">
+                    {bond.presentations.slice(1).map((pres, idx) => (
+                      <a
+                        key={idx}
+                        href={`${BACKEND_URL}${pres.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 px-2 py-1 bg-white border border-gray-200 text-[9px] text-gray-600 rounded shadow-sm hover:bg-amber-50 hover:border-amber-200 transition-colors truncate max-w-[120px]"
+                        title={pres.original_filename || `Document ${idx + 2}`}
+                      >
+                        {pres.original_filename || `Doc ${idx + 2}`}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
