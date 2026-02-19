@@ -20605,15 +20605,46 @@ async def upload_file(file: UploadFile = File(...), current_user: dict = Depends
     }
 
 
-# Serve uploaded files
+# Serve uploaded files with proper content type detection
 @api_router.get("/uploads/{folder}/{filename}")
 async def serve_upload(folder: str, filename: str):
-    """Serve uploaded files"""
-    file_path = f"/app/uploads/{folder}/{filename}"
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
+    """Serve uploaded files with automatic content type detection"""
+    import mimetypes
     
-    return FileResponse(file_path)
+    file_path = f"/app/uploads/{folder}/{filename}"
+    
+    # Log the request for debugging
+    logger.info(f"Serving file request: folder={folder}, filename={filename}, path={file_path}")
+    
+    if not os.path.exists(file_path):
+        logger.warning(f"File not found: {file_path}")
+        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+    
+    # Detect content type from filename extension
+    content_type, _ = mimetypes.guess_type(filename)
+    if not content_type:
+        # Default content types for common file types
+        ext = filename.lower().split('.')[-1] if '.' in filename else ''
+        content_type_map = {
+            'pdf': 'application/pdf',
+            'ppt': 'application/vnd.ms-powerpoint',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls': 'application/vnd.ms-excel',
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif'
+        }
+        content_type = content_type_map.get(ext, 'application/octet-stream')
+    
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type=content_type
+    )
 
 
 @api_router.get("/client/real-estate-investments")
