@@ -2550,60 +2550,41 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Investment Amount - based on residency, AED as tooltip */}
-                                    <td className="px-3 py-3 text-right">
-                                      <div 
-                                        className="cursor-help group relative"
-                                        title={`Base: ${formatAED(investmentAmount)}\nPaid: ${formatAED(paidTillDate)}\nPayable: ${formatAED(payableInFuture)}`}
-                                      >
+                                    {/* Investment Amount - compact display */}
+                                    <td className="px-2 py-2 text-right">
+                                      <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentProjected)}</p>
-                                        <p className="text-[10px] text-emerald-600 mt-0.5">
-                                          Paid: {formatINR(paidAmountProjected)}
+                                        <p className="text-[10px] text-gray-500">
+                                          <span className="text-emerald-600">Paid: {formatINR(paidAmountProjected)}</span>
+                                          <span className="mx-1">|</span>
+                                          <span className="text-blue-600">Payable: {formatINR(payableAmountProjected)}</span>
                                         </p>
-                                        <p className="text-[10px] text-blue-600">
-                                          Payable: {formatINR(payableAmountProjected)}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400 italic mt-0.5">
-                                          (projected rates)
-                                        </p>
-                                        {/* Tooltip on hover */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg">
-                                          <p className="font-semibold mb-1">Base Currency (AED)</p>
-                                          <p>Total: {formatAED(investmentAmount)}</p>
-                                          <p className="text-emerald-300">Paid: {formatAED(paidTillDate)}</p>
-                                          <p className="text-blue-300">Payable: {formatAED(payableInFuture)}</p>
+                                        {/* Tooltip */}
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+                                          <p className="font-semibold">AED: {formatAED(investmentAmount)}</p>
+                                          <p>Paid: {formatAED(paidTillDate)} | Payable: {formatAED(payableInFuture)}</p>
                                         </div>
                                       </div>
                                     </td>
                                     
-                                    {/* Apartment Size */}
-                                    <td className="px-3 py-3 text-center">
+                                    {/* Apartment Size - compact */}
+                                    <td className="px-2 py-2 text-center">
                                       <p className="font-mono font-semibold text-gray-800 text-xs">{totalSqft.toLocaleString()} sqft</p>
-                                      <p className="text-[10px] text-gray-500 mt-1">
-                                        Apt: {apartmentArea.toLocaleString()} sqft
-                                      </p>
                                       <p className="text-[10px] text-gray-500">
-                                        Balcony: {balconyArea.toLocaleString()} sqft
+                                        Apt: {apartmentArea.toLocaleString()} | Balcony: {balconyArea.toLocaleString()}
                                       </p>
                                     </td>
                                     
-                                    {/* Expected Sale Amount - based on residency, AED as tooltip */}
-                                    <td className="px-3 py-3 text-right">
-                                      <div 
-                                        className="cursor-help group relative"
-                                        title={`Base: ${formatAED(expectedSalePrice)}`}
-                                      >
+                                    {/* Expected Sale Amount - compact */}
+                                    <td className="px-2 py-2 text-right">
+                                      <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
-                                        <p className="text-[10px] text-gray-500 mt-0.5">
-                                          @₹{projectedAedToInr.toFixed(2)}/AED
+                                        <p className="text-[10px] text-gray-500">
+                                          @₹{projectedAedToInr.toFixed(2)}/AED • {expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                                         </p>
-                                        <p className="text-[10px] text-gray-400 italic">
-                                          ({expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })})
-                                        </p>
-                                        {/* Tooltip on hover */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg">
-                                          <p className="font-semibold mb-1">Base Currency (AED)</p>
-                                          <p>Sale Amount: {formatAED(expectedSalePrice)}</p>
+                                        {/* Tooltip */}
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+                                          <p>AED: {formatAED(expectedSalePrice)}</p>
                                         </div>
                                       </div>
                                     </td>
