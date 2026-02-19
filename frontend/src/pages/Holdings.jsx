@@ -1859,34 +1859,7 @@ export default function Holdings() {
                 >
                   Profile
                 </button>
-              </div> 
-                      onChange={handleHistoricalUpload}
-                      className="hidden"
-                      data-testid="historical-upload-input"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      as="span"
-                      disabled={historicalUploading}
-                      className="text-green-700 border-green-200 hover:bg-green-50 pointer-events-none"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {historicalUploading ? 'Uploading...' : 'Upload Data'}
-                    </Button>
-                  </label>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/broker/bulk-upload?tab=historical-trades')}
-                    className="text-etihad-gold-600 hover:text-etihad-gold-700 hover:bg-etihad-gold-50 ml-auto"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    Bulk Upload Module
-                  </Button>
-                </div>
-              )}
+              </div>
               
               {/* Profile Tab Content */}
               {mainTab === "profile" && clientDetails && (
