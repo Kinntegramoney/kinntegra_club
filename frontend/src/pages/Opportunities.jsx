@@ -298,7 +298,11 @@ export default function Opportunities() {
     } catch (error) {
       console.error("Error fetching projected rates:", error);
       // Use default rates
-      const defaults = { INR: 22.75, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36 };
+      const defaults = { 
+        INR: 24.72, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36,
+        CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
+        SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
+      };
       setCurrencyRates(prev => ({ ...prev, [currency]: defaults[currency] || 1 }));
     } finally {
       setLoadingRates(false);
