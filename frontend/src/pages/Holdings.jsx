@@ -2619,38 +2619,47 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Total Profit - compact display */}
+                                    {/* Total Profit - show Sale | Forex */}
                                     <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                        <p className="text-[10px] text-gray-500">
-                                          {payableAmountAed > 0 ? (
-                                            <span>Net: {formatINR(netSaleProceedsInr)} - Paid: {formatINR(paidAmountInr)}</span>
-                                          ) : (
-                                            <span>Sale - Cost</span>
-                                          )}
-                                          <span className="mx-1">|</span>
-                                          <span className="text-amber-600">Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}</span>
+                                        <p className="text-[10px]">
+                                          <span className="text-gray-500">Sale: {formatINR(profitFromSaleAed * projectedAedToInr)}</span>
+                                          <span className="mx-1 text-gray-400">|</span>
+                                          <span className={netCurrencyImpact >= 0 ? 'text-amber-600' : 'text-red-500'}>
+                                            Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
+                                          </span>
                                         </p>
-                                        {/* Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                                          <p className="font-semibold">AED Gain: {formatAED(profitFromSaleAed)}</p>
-                                          <p>Sale: {formatINR(saleProceedsInr)} {payableAmountAed > 0 ? `- Payable: ${formatINR(payableAmountAed * projectedAedToInr)}` : ''} - Paid: {formatINR(paidAmountInr)}</p>
+                                        {/* Tooltip with clear breakdown */}
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '220px'}}>
+                                          <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Profit Breakdown</p>
+                                          <div className="space-y-1">
+                                            <p><span className="text-gray-400">Property Gain (AED):</span> <span className="float-right">{formatAED(profitFromSaleAed)}</span></p>
+                                            <p><span className="text-gray-400">Sale Proceeds (INR):</span> <span className="float-right">{formatINR(saleProceedsInr)}</span></p>
+                                            <p><span className="text-gray-400">Total Invested (INR):</span> <span className="float-right text-red-400">-{formatINR(totalInvestmentInr)}</span></p>
+                                            <p className="border-t border-gray-600 pt-1 mt-1">
+                                              <span className="text-gray-400">Forex Impact:</span> 
+                                              <span className={`float-right ${netCurrencyImpact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
+                                              </span>
+                                            </p>
+                                            <p className="font-bold text-green-400 border-t border-gray-600 pt-1 mt-1">
+                                              Net Profit: <span className="float-right">{formatINR(totalProfitInr)}</span>
+                                            </p>
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
                                     
-                                    {/* Expected XIRR - compact */}
+                                    {/* Expected XIRR - with forex */}
                                     <td className="px-2 py-2 text-center">
                                       <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                         {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
                                       </span>
-                                      <p className="text-[10px] text-gray-400">
-                                        {expectedSaleDate ? expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : ''}
-                                      </p>
+                                      <p className="text-[10px] text-gray-400">incl. forex</p>
                                     </td>
                                     
-                                    {/* Actual XIRR - compact */}
+                                    {/* Actual XIRR - with forex */}
                                     <td className="px-2 py-2 text-center">
                                       <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                         {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
