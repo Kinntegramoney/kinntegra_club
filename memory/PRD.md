@@ -12,7 +12,28 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 
 ### Completed Features (Feb 2026)
 
-#### Session: Feb 19, 2026 (Latest Update)
+#### Session: Feb 19, 2026 (Latest Update - Session 2)
+**Real Estate XIRR Calculation - Sell Before Completion Logic:**
+1. **Sell-Before-Completion Scenario Handling** - When expected sale date is BEFORE handover date:
+   - Payments due AFTER the expected sale date are now EXCLUDED from XIRR calculation
+   - These completion payments become the buyer's obligation
+   - Sale value is reduced by the amount of remaining payments (net sale proceeds)
+2. **XIRR Tooltip Enhancement** - Both Expected and Actual XIRR tooltips now show:
+   - "Selling before handover - completion payments excluded" warning when applicable
+   - New "Incl?" column showing ✓ for included payments, ✗ for excluded payments
+   - Excluded payments shown with opacity-40 and strikethrough styling
+   - Note at bottom: "X AED completion payments deducted from sale (buyer's obligation)"
+3. **Logic Implementation**:
+   - `handoverDate` determined from `property.handover_date` or last payment milestone date
+   - `isSellingBeforeCompletion` flag set when `expectedSaleDate < handoverDate`
+   - `paymentsAfterSaleAed` calculated to track excluded amounts
+   - `netSaleValueForXirr` = `expectedSalePrice - paymentsAfterSaleAed`
+
+**Bond XIRR Tooltips (Session 1):**
+4. **Syntax Fix** - Removed duplicate `</td>` tag that was causing parsing issues
+5. **Overflow Fix** - Added `overflow-y-visible` to Bonds table container to prevent tooltip clipping
+
+#### Session: Feb 19, 2026 (Previous Update)
 **Real Estate Holdings - Currency Projection Enhancement:**
 1. **Dual Currency Display in Holdings Table** - Investment Amount, Expected Sale Amount, and Total Profit columns now show:
    - **Base Currency (AED)**: Original amounts in AED
