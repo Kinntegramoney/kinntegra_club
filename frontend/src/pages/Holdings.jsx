@@ -2620,29 +2620,28 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Actual XIRR */}
-                                    <td className="px-3 py-3 text-center">
+                                    {/* Actual XIRR - compact */}
+                                    <td className="px-2 py-2 text-center">
                                       <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                                         {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
                                       </span>
-                                      <p className="text-[10px] text-gray-400 mt-1">
+                                      <p className="text-[10px] text-gray-400">
                                         {property.payments_completed || 0}/{schedule.length} paid
                                       </p>
                                     </td>
                                     
-                                    {/* Action */}
-                                    <td className="px-3 py-3 text-center">
+                                    {/* Action - compact */}
+                                    <td className="px-2 py-2 text-center">
                                       <Button 
                                         variant="outline" 
                                         size="sm"
-                                        className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-xs"
+                                        className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-xs px-2 py-1"
                                         onClick={() => {
-                                          // Navigate to real estate details page with holdings flag
                                           const prefix = user?.role === 'broker' ? '/broker' : user?.role === 'sub_broker' ? '/sub-broker' : '/client';
                                           window.location.href = `${prefix}/real-estate/${property.opportunity_id || property.id}?from=holdings`;
                                         }}
                                       >
-                                        View Details
+                                        View
                                       </Button>
                                     </td>
                                   </tr>
