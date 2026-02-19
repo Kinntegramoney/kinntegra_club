@@ -2674,7 +2674,7 @@ export default function Holdings() {
             </div>
           ) : null}
         </div>
-      </div>
+      </main>
       
       {/* Cashflow Modal Popup */}
       {modalData && (
