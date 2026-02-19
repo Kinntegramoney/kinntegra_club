@@ -2154,47 +2154,235 @@ export default function Holdings() {
                     </div>
                   ) : (
                     <>
-                      {/* Summary Row - Shows only invested/paid amounts */}
-                      <div className="bg-white rounded-lg border border-gray-200 p-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Total Properties</p>
-                            <p className="text-lg font-semibold text-gray-800">{clientRealEstate.length}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Invested Till Date</p>
-                            <p className="text-lg font-semibold text-emerald-600">
-                              AED {new Intl.NumberFormat('en-AE').format(
-                                clientRealEstate.reduce((sum, re) => {
-                                  const investmentAmount = re.investment_amount || 0;
-                                  const schedule = re.payment_schedule || [];
-                                  let paidAmount = 0;
-                                  schedule.forEach((milestone, idx) => {
-                                    if (idx < (re.payments_completed || 0)) {
-                                      paidAmount += (milestone.percentage / 100) * investmentAmount;
-                                    }
-                                  });
-                                  return sum + paidAmount;
-                                }, 0)
-                              )}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">Avg Share %</p>
-                            <p className="text-lg font-semibold text-gray-800">
-                              {(clientRealEstate.reduce((sum, re) => sum + (re.share_percentage || 0), 0) / clientRealEstate.length).toFixed(1)}%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Payment Status Overview - Consolidated Timeline */}
+                      {/* Summary Row - Similar to Bonds layout */}
                       {(() => {
-                        // Calculate total paid and outstanding across all properties
+                        // Calculate totals across all properties
                         let totalInvestment = 0;
                         let totalPaid = 0;
-                        let totalOutstanding = 0;
-                        let paymentTimeline = [];
+                        let totalExpectedSale = 0;
+                        
+                        clientRealEstate.forEach(property => {
+                          const investmentAmount = property.investment_amount || 0;
+                          totalInvestment += investmentAmount;
+                          totalExpectedSale += property.expected_sale_value || (investmentAmount * 1.4); // Default 40% appreciation if not set
+                          
+                          const schedule = property.payment_schedule || [];
+                          schedule.forEach((milestone, idx) => {
+                            if (idx < (property.payments_completed || 0)) {
+                              totalPaid += (milestone.percentage / 100) * investmentAmount;
+                            }
+                          });
+                        });
+                        
+                        const totalOutstanding = totalInvestment - totalPaid;
+                        const totalExpectedProfit = totalExpectedSale - totalInvestment;
+                        const paidPercent = totalInvestment > 0 ? (totalPaid / totalInvestment) * 100 : 0;
+                        const outstandingPercent = 100 - paidPercent;
+                        
+                        const formatAmount = (amount) => {
+                          if (amount >= 10000000) {
+                            return `₹ ${(amount / 10000000).toFixed(2)} Cr`;
+                          } else if (amount >= 100000) {
+                            return `₹ ${(amount / 100000).toFixed(2)} L`;
+                          }
+                          return `₹ ${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
+                        };
+                        
+                        // AED to INR conversion (approximate)
+                        const AED_TO_INR = 22.5;
+                        
+                        return (
+                          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                            {/* Top Summary Row */}
+                            <div className="flex flex-wrap gap-6 mb-4 pb-4 border-b border-gray-100">
+                              <div>
+                                <span className="text-sm text-gray-500">Total Investment: </span>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {formatAmount(totalInvestment * AED_TO_INR)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-500">Total Gross Expected: </span>
+                                <span className="text-sm font-semibold text-blue-600">
+                                  {formatAmount(totalExpectedSale * AED_TO_INR)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-500">Total Gross Profit: </span>
+                                <span className="text-sm font-semibold text-green-600">
+                                  {formatAmount(totalExpectedProfit * AED_TO_INR)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-500">Total O/S Principal: </span>
+                                <span className="text-sm font-semibold text-red-600">
+                                  {formatAmount(totalOutstanding * AED_TO_INR)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Repayment Status Bar */}
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm text-gray-600 whitespace-nowrap">Repayment Status:</span>
+                              <div className="flex-1 h-6 rounded-full overflow-hidden flex bg-gray-100">
+                                {paidPercent > 0 && (
+                                  <div 
+                                    className="bg-emerald-500 h-full transition-all duration-300"
+                                    style={{ width: `${paidPercent}%` }}
+                                  />
+                                )}
+                                {outstandingPercent > 0 && (
+                                  <div 
+                                    className="bg-blue-500 h-full transition-all duration-300"
+                                    style={{ width: `${outstandingPercent}%` }}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                                  <span className="text-gray-600">Received:</span>
+                                  <span className="font-semibold text-emerald-600">{formatAmount(totalPaid * AED_TO_INR)}</span>
+                                  <span className="text-gray-400">({paidPercent.toFixed(0)}%)</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                                  <span className="text-gray-600">Outstanding:</span>
+                                  <span className="font-semibold text-blue-600">{formatAmount(totalOutstanding * AED_TO_INR)}</span>
+                                  <span className="text-gray-400">({outstandingPercent.toFixed(0)}%)</span>
+                                </div>
+                                <span className="text-gray-500">Total: <span className="font-semibold">{formatAmount(totalInvestment * AED_TO_INR)}</span></span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      
+                      {/* Holding Report Table - Similar to Bonds */}
+                      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        {/* Table Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-5 w-5 text-amber-600" />
+                            <h3 className="text-lg font-semibold text-gray-800">Holding Report</h3>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Download className="h-4 w-4" />
+                              DOWNLOAD
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Mail className="h-4 w-4" />
+                              EMAIL
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {/* Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Property</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Investment</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Paid</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Expected Sale</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Profit</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Expected XIRR</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actual XIRR</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {clientRealEstate.map((property, idx) => {
+                                const investmentAmount = property.investment_amount || 0;
+                                const expectedSale = property.expected_sale_value || (investmentAmount * 1.4);
+                                const expectedProfit = expectedSale - investmentAmount;
+                                const expectedXirr = property.expected_xirr || ((expectedProfit / investmentAmount) * 100 / 3).toFixed(2); // Simple annualized return
+                                const actualXirr = property.actual_xirr || null;
+                                
+                                // Calculate paid amount
+                                const schedule = property.payment_schedule || [];
+                                let paidAmount = 0;
+                                schedule.forEach((milestone, i) => {
+                                  if (i < (property.payments_completed || 0)) {
+                                    paidAmount += (milestone.percentage / 100) * investmentAmount;
+                                  }
+                                });
+                                
+                                // AED to INR
+                                const AED_TO_INR = 22.5;
+                                
+                                const formatAmount = (amount) => {
+                                  const inr = amount * AED_TO_INR;
+                                  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(inr);
+                                };
+                                
+                                return (
+                                  <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="px-4 py-4">
+                                      <div className="flex items-center gap-3">
+                                        {property.images && property.images.length > 0 ? (
+                                          <img 
+                                            src={property.images[0]} 
+                                            alt={property.building_name}
+                                            className="w-12 h-12 rounded-lg object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                            <Building2 className="h-6 w-6 text-gray-400" />
+                                          </div>
+                                        )}
+                                        <div>
+                                          <p className="font-medium text-gray-800">{property.building_name || 'Property'}</p>
+                                          <p className="text-xs text-gray-500">{property.share_percentage || 0}% Share</p>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                      <p className="font-medium text-gray-800">{formatAmount(investmentAmount)}</p>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                      <p className="font-medium text-emerald-600">{formatAmount(paidAmount)}</p>
+                                      <p className="text-xs text-gray-400">
+                                        {property.payments_completed || 0}/{schedule.length} milestones
+                                      </p>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                      <p className="font-medium text-blue-600">{formatAmount(expectedSale)}</p>
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                      <p className="font-medium text-green-600">{formatAmount(expectedProfit)}</p>
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                      <span className="font-medium text-gray-800">{expectedXirr}%</span>
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                      <span className={`font-medium ${actualXirr ? 'text-gray-800' : 'text-gray-400'}`}>
+                                        {actualXirr ? `${actualXirr}%` : '-'}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                                        onClick={() => {
+                                          // Navigate to property details
+                                          window.location.href = `/real-estate/${property.id}`;
+                                        }}
+                                      >
+                                        View Details
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
                         
                         clientRealEstate.forEach(property => {
                           const investmentAmount = property.investment_amount || 0;
