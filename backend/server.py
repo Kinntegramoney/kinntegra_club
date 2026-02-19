@@ -20647,6 +20647,49 @@ async def serve_upload(folder: str, filename: str):
     )
 
 
+# Debug endpoint to check file existence and upload directory status
+@api_router.get("/uploads/debug/{folder}")
+async def debug_uploads(folder: str, current_user: dict = Depends(get_current_user)):
+    """Debug endpoint to check uploaded files in a folder (broker only)"""
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can access this endpoint")
+    
+    folder_path = f"/app/uploads/{folder}"
+    
+    if not os.path.exists(folder_path):
+        return {
+            "folder": folder,
+            "exists": False,
+            "files": [],
+            "message": f"Folder '{folder}' does not exist"
+        }
+    
+    files = []
+    try:
+        for f in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, f)
+            if os.path.isfile(file_path):
+                files.append({
+                    "filename": f,
+                    "size": os.path.getsize(file_path),
+                    "url": f"/api/uploads/{folder}/{f}"
+                })
+    except Exception as e:
+        return {
+            "folder": folder,
+            "exists": True,
+            "error": str(e),
+            "files": []
+        }
+    
+    return {
+        "folder": folder,
+        "exists": True,
+        "file_count": len(files),
+        "files": files
+    }
+
+
 @api_router.get("/client/real-estate-investments")
 async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
     """Get real estate investments for the logged-in client"""
