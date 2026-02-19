@@ -2310,6 +2310,41 @@ export default function Holdings() {
                                 const schedule = property.payment_schedule || [];
                                 const today = new Date();
                                 
+                                // Get investor's currency preference from allocation or use client's residency
+                                const investorCurrency = property.investor_currency || property.currency || 
+                                  (clientDetails?.country_of_residency === 'India' ? 'INR' : 'AED');
+                                
+                                // Currency conversion rates (AED base)
+                                const currencyRates = {
+                                  AED: 1,
+                                  INR: 22.5,
+                                  USD: 0.27,
+                                  EUR: 0.25,
+                                  GBP: 0.21,
+                                  CNY: 1.97,
+                                  JPY: 40.5,
+                                  CHF: 0.24,
+                                  CAD: 0.37,
+                                  AUD: 0.41,
+                                  SGD: 0.36,
+                                  HKD: 2.13,
+                                  SAR: 1.02,
+                                  KWD: 0.083,
+                                  QAR: 0.99,
+                                  BHD: 0.10,
+                                  OMR: 0.10
+                                };
+                                
+                                const currencySymbols = {
+                                  AED: 'AED', INR: '₹', USD: '$', EUR: '€', GBP: '£', 
+                                  CNY: '¥', JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$',
+                                  SGD: 'S$', HKD: 'HK$', SAR: 'ريال', KWD: 'د.ك', 
+                                  QAR: 'ريال', BHD: 'د.ب.', OMR: 'ريال'
+                                };
+                                
+                                const currentRate = currencyRates[investorCurrency] || 1;
+                                const currencySymbol = currencySymbols[investorCurrency] || investorCurrency;
+                                
                                 // Calculate paid and payable amounts
                                 let paidTillDate = 0;
                                 let payableInFuture = 0;
