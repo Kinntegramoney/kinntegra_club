@@ -197,7 +197,11 @@ export default function Opportunities() {
   
   // Currency state for payment schedule display
   const [selectedCurrency, setSelectedCurrency] = useState("AED");
-  const [currencyRates, setCurrencyRates] = useState({ AED: 1, INR: 22.75, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36 });
+  const [currencyRates, setCurrencyRates] = useState({ 
+    AED: 1, INR: 24.72, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36,
+    CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
+    SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
+  });
   const [projectedRates, setProjectedRates] = useState(null);
   const [loadingRates, setLoadingRates] = useState(false);
   
