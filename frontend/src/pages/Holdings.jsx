@@ -2494,19 +2494,22 @@ export default function Holdings() {
                                         return (
                                           <div 
                                             key={i}
-                                            className={`flex-shrink-0 px-2 py-1.5 rounded-lg text-center min-w-[70px] ${
+                                            className={`flex-shrink-0 px-2 py-1.5 rounded-lg text-center min-w-[80px] ${
                                               isPaid 
                                                 ? 'bg-emerald-100 border border-emerald-200' 
                                                 : isOverdue
                                                   ? 'bg-red-100 border border-red-200'
                                                   : 'bg-amber-50 border border-amber-200'
                                             }`}
-                                            title={`${milestone.description}: ${formatCurrencyAmount(milestoneAmount)}`}
+                                            title={`${milestone.description}: AED ${Math.round(milestoneAmount).toLocaleString()}${reSelectedCurrency !== "AED" ? ` (${formatCurrencyAmount(milestoneAmount)})` : ''}`}
                                           >
                                             <p className={`text-[9px] font-medium ${isPaid ? 'text-emerald-700' : isOverdue ? 'text-red-700' : 'text-amber-700'}`}>
                                               {new Date(milestone.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
                                             </p>
-                                            <p className={`text-[10px] ${isPaid ? 'text-emerald-600' : isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                            <p className={`text-[10px] font-semibold ${isPaid ? 'text-emerald-600' : isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                              {reSelectedCurrency !== "AED" ? formatCurrencyAmount(milestoneAmount) : `AED ${Math.round(milestoneAmount / 1000)}K`}
+                                            </p>
+                                            <p className={`text-[8px] ${isPaid ? 'text-emerald-500' : isOverdue ? 'text-red-500' : 'text-amber-500'}`}>
                                               {milestone.percentage}%
                                             </p>
                                           </div>
