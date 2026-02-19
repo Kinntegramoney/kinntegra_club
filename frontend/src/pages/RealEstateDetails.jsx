@@ -43,6 +43,8 @@ const getDocumentUrl = (url) => {
 export default function RealEstateDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFromHoldings = searchParams.get('from') === 'holdings';
   const [user, setUser] = useState(null);
   const [opportunity, setOpportunity] = useState(null);
   const [clients, setClients] = useState([]);
