@@ -16,7 +16,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://holdings-refactor.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cashflow-enhance-1.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 BROKER_CREDS = {"pan": "ABCDE1234F", "password": "broker123", "pin": "1234"}
