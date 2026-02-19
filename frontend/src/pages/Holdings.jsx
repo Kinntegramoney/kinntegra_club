@@ -2268,7 +2268,7 @@ export default function Holdings() {
                         );
                       })()}
                       
-                      {/* Holding Report Table - Similar to Bonds */}
+                      {/* Holding Report Table - Real Estate */}
                       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                         {/* Table Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -2293,92 +2293,237 @@ export default function Holdings() {
                           <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Property</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Investment</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Paid</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Expected Sale</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Profit</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Expected XIRR</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actual XIRR</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                                <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Property Details</th>
+                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Investment Amount</th>
+                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Apartment Size</th>
+                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Expected Sale Amount</th>
+                                <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Total Profit</th>
+                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Expected XIRR</th>
+                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Actual XIRR</th>
+                                <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                               {clientRealEstate.map((property, idx) => {
                                 const investmentAmount = property.investment_amount || 0;
-                                const expectedSale = property.expected_sale_value || (investmentAmount * 1.4);
-                                const expectedProfit = expectedSale - investmentAmount;
-                                const expectedXirr = property.expected_xirr || ((expectedProfit / investmentAmount) * 100 / 3).toFixed(2); // Simple annualized return
-                                const actualXirr = property.actual_xirr || null;
-                                
-                                // Calculate paid amount
+                                const expectedSalePrice = property.expected_sale_value || (investmentAmount * 1.4);
                                 const schedule = property.payment_schedule || [];
-                                let paidAmount = 0;
+                                const today = new Date();
+                                
+                                // Calculate paid and payable amounts
+                                let paidTillDate = 0;
+                                let payableInFuture = 0;
+                                const actualPaymentDates = [];
+                                const expectedPaymentDates = [];
+                                
                                 schedule.forEach((milestone, i) => {
+                                  const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                                  const milestoneDate = new Date(milestone.date);
+                                  
                                   if (i < (property.payments_completed || 0)) {
-                                    paidAmount += (milestone.percentage / 100) * investmentAmount;
+                                    paidTillDate += milestoneAmount;
+                                    // Use actual payment date if available, else milestone date
+                                    actualPaymentDates.push({
+                                      date: property.actual_payment_dates?.[i] || milestone.date,
+                                      amount: -milestoneAmount // Outflow
+                                    });
+                                  } else {
+                                    payableInFuture += milestoneAmount;
+                                    // For future payments, use milestone date
+                                    actualPaymentDates.push({
+                                      date: milestone.date,
+                                      amount: -milestoneAmount
+                                    });
                                   }
+                                  
+                                  // Expected dates from developer schedule
+                                  expectedPaymentDates.push({
+                                    date: milestone.date,
+                                    amount: -milestoneAmount
+                                  });
                                 });
                                 
-                                // AED to INR
-                                const AED_TO_INR = 22.5;
+                                // Apartment size details
+                                const totalSqft = property.total_area || property.size || 0;
+                                const balconyArea = property.balcony_area || 0;
+                                const apartmentArea = totalSqft - balconyArea;
                                 
-                                const formatAmount = (amount) => {
-                                  const inr = amount * AED_TO_INR;
-                                  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(inr);
+                                // Currency depreciation calculation
+                                const AED_TO_INR_CURRENT = 22.5;
+                                const expectedSaleDate = property.expected_sale_date ? new Date(property.expected_sale_date) : new Date(today.getFullYear() + 3, today.getMonth(), today.getDate());
+                                const yearsToSale = Math.max(0, (expectedSaleDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                                
+                                // Assume INR depreciates ~3% per year against AED
+                                const depreciationRate = 0.03;
+                                const projectedAedToInr = AED_TO_INR_CURRENT * Math.pow(1 + depreciationRate, yearsToSale);
+                                
+                                // Profit calculations
+                                const profitFromSale = expectedSalePrice - investmentAmount; // In AED
+                                const currencyBenefit = expectedSalePrice * (projectedAedToInr - AED_TO_INR_CURRENT); // Currency gain in INR
+                                const totalProfitInr = (profitFromSale * projectedAedToInr) + currencyBenefit;
+                                
+                                // XIRR Calculation - Expected (using developer schedule)
+                                const calculateXIRR = (cashflows, guess = 0.1) => {
+                                  if (cashflows.length < 2) return null;
+                                  
+                                  const dates = cashflows.map(cf => new Date(cf.date));
+                                  const amounts = cashflows.map(cf => cf.amount);
+                                  
+                                  // Newton-Raphson method
+                                  let rate = guess;
+                                  for (let iter = 0; iter < 100; iter++) {
+                                    let npv = 0;
+                                    let dnpv = 0;
+                                    const firstDate = dates[0];
+                                    
+                                    for (let i = 0; i < amounts.length; i++) {
+                                      const years = (dates[i] - firstDate) / (365.25 * 24 * 60 * 60 * 1000);
+                                      const pv = amounts[i] / Math.pow(1 + rate, years);
+                                      npv += pv;
+                                      dnpv -= years * amounts[i] / Math.pow(1 + rate, years + 1);
+                                    }
+                                    
+                                    const newRate = rate - npv / dnpv;
+                                    if (Math.abs(newRate - rate) < 0.0001) {
+                                      return newRate * 100;
+                                    }
+                                    rate = newRate;
+                                  }
+                                  return rate * 100;
+                                };
+                                
+                                // Add sale inflow for XIRR
+                                const expectedCashflowsForXirr = [
+                                  ...expectedPaymentDates,
+                                  { date: expectedSaleDate.toISOString(), amount: expectedSalePrice * projectedAedToInr / AED_TO_INR_CURRENT }
+                                ];
+                                
+                                const actualCashflowsForXirr = [
+                                  ...actualPaymentDates,
+                                  { date: expectedSaleDate.toISOString(), amount: expectedSalePrice * projectedAedToInr / AED_TO_INR_CURRENT }
+                                ];
+                                
+                                const expectedXirr = calculateXIRR(expectedCashflowsForXirr);
+                                const actualXirr = calculateXIRR(actualCashflowsForXirr);
+                                
+                                // Format functions
+                                const formatINR = (amount) => {
+                                  if (amount >= 10000000) {
+                                    return `₹${(amount / 10000000).toFixed(2)} Cr`;
+                                  } else if (amount >= 100000) {
+                                    return `₹${(amount / 100000).toFixed(2)} L`;
+                                  }
+                                  return `₹${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
+                                };
+                                
+                                const formatAED = (amount) => {
+                                  return `AED ${new Intl.NumberFormat('en-AE').format(Math.round(amount))}`;
                                 };
                                 
                                 return (
                                   <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="px-4 py-4">
+                                    {/* Property Details */}
+                                    <td className="px-3 py-3">
                                       <div className="flex items-center gap-3">
                                         {property.images && property.images.length > 0 ? (
                                           <img 
                                             src={property.images[0]} 
                                             alt={property.building_name}
-                                            className="w-12 h-12 rounded-lg object-cover"
+                                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                                           />
                                         ) : (
-                                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                                            <Building2 className="h-6 w-6 text-gray-400" />
+                                          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                                            <Building2 className="h-5 w-5 text-amber-600" />
                                           </div>
                                         )}
                                         <div>
-                                          <p className="font-medium text-gray-800">{property.building_name || 'Property'}</p>
-                                          <p className="text-xs text-gray-500">{property.share_percentage || 0}% Share</p>
+                                          <p className="font-medium text-gray-800 text-sm">{property.building_name || 'Property'}</p>
+                                          <p className="text-xs text-gray-400">
+                                            {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}% Share
+                                          </p>
                                         </div>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-4 text-right">
-                                      <p className="font-medium text-gray-800">{formatAmount(investmentAmount)}</p>
+                                    
+                                    {/* Investment Amount */}
+                                    <td className="px-3 py-3 text-right">
+                                      <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(investmentAmount * AED_TO_INR_CURRENT)}</p>
+                                      <div className="mt-1 space-y-0.5">
+                                        <p className="text-[10px] text-emerald-600">
+                                          Paid: {formatINR(paidTillDate * AED_TO_INR_CURRENT)}
+                                        </p>
+                                        <p className="text-[10px] text-blue-600">
+                                          Payable: {formatINR(payableInFuture * AED_TO_INR_CURRENT)}
+                                        </p>
+                                      </div>
                                     </td>
-                                    <td className="px-4 py-4 text-right">
-                                      <p className="font-medium text-emerald-600">{formatAmount(paidAmount)}</p>
-                                      <p className="text-xs text-gray-400">
-                                        {property.payments_completed || 0}/{schedule.length} milestones
+                                    
+                                    {/* Apartment Size */}
+                                    <td className="px-3 py-3 text-center">
+                                      <p className="font-mono font-semibold text-gray-800 text-xs">{totalSqft.toLocaleString()} sqft</p>
+                                      <div className="mt-1 space-y-0.5">
+                                        <p className="text-[10px] text-gray-500">
+                                          Apt: {apartmentArea.toLocaleString()} sqft
+                                        </p>
+                                        <p className="text-[10px] text-gray-500">
+                                          Balcony: {balconyArea.toLocaleString()} sqft
+                                        </p>
+                                      </div>
+                                    </td>
+                                    
+                                    {/* Expected Sale Amount */}
+                                    <td className="px-3 py-3 text-right">
+                                      <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
+                                      <div className="mt-1">
+                                        <p className="text-[10px] text-gray-500">
+                                          {formatAED(expectedSalePrice)}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">
+                                          @₹{projectedAedToInr.toFixed(2)}/AED
+                                        </p>
+                                      </div>
+                                    </td>
+                                    
+                                    {/* Total Profit */}
+                                    <td className="px-3 py-3 text-right">
+                                      <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
+                                      <div className="mt-1 space-y-0.5">
+                                        <p className="text-[10px] text-gray-500">
+                                          Sale: {formatINR(profitFromSale * projectedAedToInr)}
+                                        </p>
+                                        <p className="text-[10px] text-amber-600">
+                                          Currency: {formatINR(currencyBenefit)}
+                                        </p>
+                                      </div>
+                                    </td>
+                                    
+                                    {/* Expected XIRR */}
+                                    <td className="px-3 py-3 text-center">
+                                      <span className={`font-mono font-semibold text-xs ${expectedXirr && expectedXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {expectedXirr ? `${expectedXirr.toFixed(2)}%` : '-'}
+                                      </span>
+                                      <p className="text-[10px] text-gray-400 mt-1">
+                                        {expectedSaleDate ? `Sale: ${expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : ''}
                                       </p>
                                     </td>
-                                    <td className="px-4 py-4 text-right">
-                                      <p className="font-medium text-blue-600">{formatAmount(expectedSale)}</p>
-                                    </td>
-                                    <td className="px-4 py-4 text-right">
-                                      <p className="font-medium text-green-600">{formatAmount(expectedProfit)}</p>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <span className="font-medium text-gray-800">{expectedXirr}%</span>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                      <span className={`font-medium ${actualXirr ? 'text-gray-800' : 'text-gray-400'}`}>
-                                        {actualXirr ? `${actualXirr}%` : '-'}
+                                    
+                                    {/* Actual XIRR */}
+                                    <td className="px-3 py-3 text-center">
+                                      <span className={`font-mono font-semibold text-xs ${actualXirr && actualXirr > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {actualXirr ? `${actualXirr.toFixed(2)}%` : '-'}
                                       </span>
+                                      <p className="text-[10px] text-gray-400 mt-1">
+                                        {property.payments_completed || 0}/{schedule.length} paid
+                                      </p>
                                     </td>
-                                    <td className="px-4 py-4 text-center">
+                                    
+                                    {/* Action */}
+                                    <td className="px-3 py-3 text-center">
                                       <Button 
                                         variant="outline" 
                                         size="sm"
-                                        className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                                        className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-xs"
                                         onClick={() => {
-                                          // Navigate to property details
                                           window.location.href = `/real-estate/${property.id}`;
                                         }}
                                       >
