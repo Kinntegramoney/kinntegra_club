@@ -2642,7 +2642,7 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Expected Sale Amount */}
-                                    <td className="px-2 py-2 text-right">
+                                    <td className="px-2 py-2 text-right overflow-visible">
                                       <div className="cursor-help group/sale relative">
                                         <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
                                         <p className="text-[10px] text-gray-500">
