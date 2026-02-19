@@ -2447,20 +2447,35 @@ export default function Holdings() {
                                   <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-gray-500">Total Investment</p>
                                     <p className="text-sm font-semibold text-gray-800">
-                                      {formatCurrencyAmount(investmentAmount)}
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(investmentAmount))}
                                     </p>
+                                    {reSelectedCurrency !== "AED" && (
+                                      <p className="text-[10px] text-gray-500 mt-0.5">
+                                        {formatCurrencyAmount(investmentAmount)}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="bg-emerald-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-emerald-600">Paid Till Date</p>
                                     <p className="text-sm font-semibold text-emerald-700">
-                                      {formatCurrencyAmount(paidAmount)}
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(paidAmount))}
                                     </p>
+                                    {reSelectedCurrency !== "AED" && (
+                                      <p className="text-[10px] text-emerald-600 mt-0.5">
+                                        {formatCurrencyAmount(paidAmount)}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="bg-amber-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-amber-600">Outstanding</p>
                                     <p className="text-sm font-semibold text-amber-700">
-                                      {formatCurrencyAmount(outstandingAmount)}
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(outstandingAmount))}
                                     </p>
+                                    {reSelectedCurrency !== "AED" && (
+                                      <p className="text-[10px] text-amber-600 mt-0.5">
+                                        {formatCurrencyAmount(outstandingAmount)}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                                 
