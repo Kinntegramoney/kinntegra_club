@@ -860,7 +860,7 @@ export default function RealEstateDetails() {
               </div>
             </div>
             <div className="flex gap-2">
-              {/* View Payment Schedule Button */}
+              {/* View Payment Schedule Button - Always show */}
               {opp.payment_schedule && opp.payment_schedule.length > 0 && (
                 <Button 
                   variant="outline"
@@ -872,34 +872,39 @@ export default function RealEstateDetails() {
                   View Payment Schedule
                 </Button>
               )}
-              {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && user?.role === 'broker' && (
-                <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Investor
-                </Button>
-              )}
-              {/* Sell Unit - Only for broker, not client */}
-              {opp.status === 'fully_invested' && user?.role === 'broker' && (
-                <Button 
-                  onClick={() => setShowSellModal(true)} 
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                  data-testid="sell-unit-btn"
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Sell Unit
-                </Button>
-              )}
-              {/* Delete - Only for broker, not client */}
-              {user?.role === 'broker' && (
-                <Button 
-                  variant="outline" 
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  data-testid="delete-property-btn"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
+              {/* Hide these buttons when coming from Holdings page */}
+              {!isFromHoldings && (
+                <>
+                  {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && user?.role === 'broker' && (
+                    <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Investor
+                    </Button>
+                  )}
+                  {/* Sell Unit - Only for broker, not client */}
+                  {opp.status === 'fully_invested' && user?.role === 'broker' && (
+                    <Button 
+                      onClick={() => setShowSellModal(true)} 
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      data-testid="sell-unit-btn"
+                    >
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Sell Unit
+                    </Button>
+                  )}
+                  {/* Delete - Only for broker, not client */}
+                  {user?.role === 'broker' && (
+                    <Button 
+                      variant="outline" 
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      data-testid="delete-property-btn"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
