@@ -2612,19 +2612,39 @@ export default function Holdings() {
                                     <td className="px-3 py-3 text-right">
                                       <div 
                                         className="cursor-help group relative"
-                                        title={`Base: ${formatAED(profitFromSale)} (Property gain)`}
+                                        title={`Base (AED): Property Gain ${formatAED(profitFromSaleAed)}`}
                                       >
                                         <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                        <p className="text-[10px] text-gray-500 mt-0.5">
-                                          Sale: {formatINR(profitFromSale * projectedAedToInr)}
-                                        </p>
+                                        {payableAmountAed > 0 ? (
+                                          <>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                              Net Sale: {formatINR(netSaleProceedsInr)}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400">
+                                              - Paid: {formatINR(paidAmountInr)}
+                                            </p>
+                                          </>
+                                        ) : (
+                                          <p className="text-[10px] text-gray-500 mt-0.5">
+                                            Sale - Cost
+                                          </p>
+                                        )}
                                         <p className="text-[10px] text-amber-600">
-                                          Currency: {formatINR(currencyBenefit)}
+                                          Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
                                         </p>
                                         {/* Tooltip on hover */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg">
-                                          <p className="font-semibold mb-1">Base Currency (AED)</p>
-                                          <p>Property Gain: {formatAED(profitFromSale)}</p>
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg min-w-[200px]">
+                                          <p className="font-semibold mb-1 border-b border-gray-600 pb-1">Profit Breakdown</p>
+                                          <p className="text-gray-300">Base (AED):</p>
+                                          <p className="pl-2">Property Gain: {formatAED(profitFromSaleAed)}</p>
+                                          <p className="text-gray-300 mt-1">In INR:</p>
+                                          <p className="pl-2">Sale Proceeds: {formatINR(saleProceedsInr)}</p>
+                                          {payableAmountAed > 0 && (
+                                            <p className="pl-2 text-red-300">- Payable at Sale: {formatINR(payableAmountAed * projectedAedToInr)}</p>
+                                          )}
+                                          <p className="pl-2">- Already Paid: {formatINR(paidAmountInr)}</p>
+                                          <p className="pl-2 text-green-300 font-semibold border-t border-gray-600 mt-1 pt-1">Net Profit: {formatINR(totalProfitInr)}</p>
+                                          <p className="text-amber-300 mt-1">Forex Impact: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}</p>
                                         </div>
                                       </div>
                                     </td>
