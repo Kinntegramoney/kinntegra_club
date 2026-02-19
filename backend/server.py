@@ -27870,40 +27870,49 @@ async def get_projected_currency_rates(
             }
         else:
             # Fallback with default projections
-            default_rates = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36}
-            current = default_rates.get(target, 22.75)
+            default_rates = {
+                "INR": 24.72, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36,
+                "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42,
+                "HKD": 2.12, "SAR": 1.02, "KWD": 0.083, "QAR": 0.99, "BHD": 0.10, "OMR": 0.10
+            }
+            current = current_rate if current_rate else default_rates.get(target, 1.0)
             
+            # Still calculate projection based on typical depreciation (2% annual for most currencies against AED)
             return {
                 "base": "AED",
                 "target": target,
-                "current_rate": current,
+                "current_rate": round(current, 4),
                 "projected_rates": [
                     {"year": today.year + i, "rate": round(current * (1 + 0.02 * i), 4), "is_projected": i > 0}
                     for i in range(years_ahead + 1)
                 ],
-                "trend": {"direction": "stable", "avg_annual_change_percent": 2.0, "slope": 0},
-                "historical_summary": {"min_rate": current * 0.9, "max_rate": current * 1.1, "avg_rate": current, "data_points": 0},
+                "trend": {"direction": "increasing", "avg_annual_change_percent": 2.0, "slope": 0},
+                "historical_summary": {"min_rate": round(current * 0.9, 4), "max_rate": round(current * 1.1, 4), "avg_rate": round(current, 4), "data_points": 0},
                 "confidence": "low",
-                "source": "fallback"
+                "source": "fallback - insufficient historical data"
             }
             
     except Exception as e:
-        logger.error(f"Error calculating projected currency rates: {str(e)}")
+        logger.error(f"Error calculating projected currency rates for {target}: {str(e)}")
         # Return default projection
-        default_rates = {"INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36}
-        current = default_rates.get(target, 22.75)
+        default_rates = {
+            "INR": 24.72, "USD": 0.27, "EUR": 0.25, "GBP": 0.21, "SGD": 0.36,
+            "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42,
+            "HKD": 2.12, "SAR": 1.02, "KWD": 0.083, "QAR": 0.99, "BHD": 0.10, "OMR": 0.10
+        }
+        current = default_rates.get(target, 1.0)
         today = datetime.now()
         
         return {
             "base": "AED",
             "target": target,
-            "current_rate": current,
+            "current_rate": round(current, 4),
             "projected_rates": [
                 {"year": today.year + i, "rate": round(current * (1 + 0.02 * i), 4), "is_projected": i > 0}
                 for i in range(years_ahead + 1)
             ],
-            "trend": {"direction": "stable", "avg_annual_change_percent": 2.0, "slope": 0},
-            "historical_summary": {"min_rate": current, "max_rate": current, "avg_rate": current, "data_points": 0},
+            "trend": {"direction": "increasing", "avg_annual_change_percent": 2.0, "slope": 0},
+            "historical_summary": {"min_rate": round(current, 4), "max_rate": round(current, 4), "avg_rate": round(current, 4), "data_points": 0},
             "confidence": "low",
             "source": "error_fallback"
         }
