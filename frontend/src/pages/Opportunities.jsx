@@ -7,6 +7,7 @@ import ClientSidebar from "@/components/ClientSidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import EditBondModal from "@/components/EditBondModal";
 import HorizontalPaymentTimeline from "@/components/HorizontalPaymentTimeline";
+import PdfViewer from "@/components/PdfViewer";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
