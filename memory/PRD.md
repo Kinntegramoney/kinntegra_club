@@ -70,10 +70,22 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
 - Historical Currency API integration (`/api/currency/historical_rate`)
 
 ### In Progress
-- **"Multi" display bug (P0)** - May still show "Multi" for single allocations (needs user verification)
+- **"Multi" display bug (P1)** - May still show "Multi" for single allocations (needs user verification)
 - **Duplicate approval emails (P1)** - Previous fix needs user verification
 
-### Pending Issues
+### Completed: Feb 19, 2026
+#### **P0 Bug Fix: Bond Presentation PDF Viewer**
+- **Root Cause**: Static file mount (`app.mount("/api/uploads", ...)`) was conflicting with API router routes, causing inconsistent routing
+- **Solution**: 
+  1. Removed the static file mount - all file serving now goes through the API route `/api/uploads/{folder}/{filename}`
+  2. Improved `serve_upload` endpoint with proper content-type detection and detailed logging
+  3. Added debug endpoint `/api/uploads/debug/{folder}` (broker-only) to diagnose file issues
+- **Testing**: PDF viewer confirmed working in preview environment - shows filename, download button, and embedded PDF
+
+### Pending Issues (User to Verify on Live Environment)
+- **Bond Presentation on Live Environment** - If still failing, use the debug endpoint:
+  - `GET /api/uploads/debug/bond_presentations` to verify files exist on server
+  - Check backend logs for file path issues
 - **Expected Sale Date Bug (P1)** - Dates change unexpectedly (recurring, not investigated)
 - **Logo Circle Size (P2)** - Pending user feedback
 
