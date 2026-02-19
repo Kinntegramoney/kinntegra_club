@@ -2510,11 +2510,35 @@ export default function Holdings() {
                                   return rate * 100;
                                 };
                                 
+                                // Get handover date - use property field or last milestone date as fallback
+                                const handoverDate = property.handover_date 
+                                  ? new Date(property.handover_date) 
+                                  : (schedule.length > 0 ? new Date(schedule[schedule.length - 1].date) : expectedSaleDate);
+                                
+                                // Check if selling before completion (sale date < handover date)
+                                const isSellingBeforeCompletion = expectedSaleDate < handoverDate;
+                                
+                                // Calculate payments due after sale date (to be deducted from sale proceeds if selling before completion)
+                                let paymentsAfterSaleAed = 0;
+                                if (isSellingBeforeCompletion) {
+                                  schedule.forEach((milestone) => {
+                                    const milestoneDate = new Date(milestone.date);
+                                    if (milestoneDate > expectedSaleDate) {
+                                      paymentsAfterSaleAed += (milestone.percentage / 100) * investmentAmount;
+                                    }
+                                  });
+                                }
+                                
                                 // Expected XIRR: Calculate in INR with projected forex rates
-                                // Outflows: Each payment in INR at projected rate for that date
-                                // Inflow: Sale proceeds in INR at projected rate for sale date
+                                // Outflows: Each payment in INR at projected rate for that date (only payments before sale date if selling early)
+                                // Inflow: Sale proceeds in INR at projected rate for sale date (minus remaining payments if selling early)
                                 const expectedCashflowsInr = [];
                                 schedule.forEach((milestone, i) => {
+                                  const milestoneDate = new Date(milestone.date);
+                                  // Skip payments that fall after the expected sale date (buyer takes over these obligations)
+                                  if (isSellingBeforeCompletion && milestoneDate > expectedSaleDate) {
+                                    return;
+                                  }
                                   const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
                                   const rateAtMilestone = getProjectedRateForDate(milestone.date);
                                   expectedCashflowsInr.push({
@@ -2523,16 +2547,28 @@ export default function Holdings() {
                                   });
                                 });
                                 // Add sale inflow in INR at projected sale date rate
+                                // If selling before completion, the net proceeds = sale price - remaining payments (buyer deducts what they'll pay)
+                                const netSaleValueForXirr = isSellingBeforeCompletion 
+                                  ? (expectedSalePrice - paymentsAfterSaleAed)
+                                  : expectedSalePrice;
                                 expectedCashflowsInr.push({
                                   date: expectedSaleDate.toISOString(),
-                                  amount: expectedSalePrice * projectedAedToInrAtSale // Inflow in INR
+                                  amount: netSaleValueForXirr * projectedAedToInrAtSale // Inflow in INR
                                 });
                                 
                                 // Actual XIRR: Based on actual payments made (if any) + future projections
                                 const actualCashflowsInr = [];
                                 schedule.forEach((milestone, i) => {
+                                  const milestoneDate = new Date(milestone.date);
                                   const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
                                   const isPaid = i < (property.payments_completed || 0);
+                                  
+                                  // Skip payments that fall after the expected sale date (buyer takes over these obligations)
+                                  // But include already paid payments regardless
+                                  if (isSellingBeforeCompletion && !isPaid && milestoneDate > expectedSaleDate) {
+                                    return;
+                                  }
+                                  
                                   if (isPaid) {
                                     const actualDate = property.actual_payment_dates?.[i] || milestone.date;
                                     const rateAtPayment = getProjectedRateForDate(actualDate);
@@ -2550,7 +2586,7 @@ export default function Holdings() {
                                 });
                                 actualCashflowsInr.push({
                                   date: expectedSaleDate.toISOString(),
-                                  amount: expectedSalePrice * projectedAedToInrAtSale
+                                  amount: netSaleValueForXirr * projectedAedToInrAtSale
                                 });
                                 
                                 const expectedXirr = calculateXIRR(expectedCashflowsInr);
