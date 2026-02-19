@@ -27644,22 +27644,48 @@ async def get_projected_currency_rates(
     from datetime import datetime, timedelta
     import statistics
     
-    # USD is pegged to AED - constant rate
-    if target == "USD":
+    # List of currencies pegged to USD (and therefore indirectly stable against AED)
+    PEGGED_CURRENCIES = {
+        "USD": 1 / AED_USD_RATE,  # ~0.2723
+        "SAR": 1.02,   # Saudi Riyal - pegged to USD
+        "QAR": 0.99,   # Qatari Riyal - pegged to USD
+        "BHD": 0.10,   # Bahraini Dinar - pegged to USD
+        "OMR": 0.10,   # Omani Rial - pegged to USD
+        "KWD": 0.083,  # Kuwaiti Dinar - managed float, relatively stable
+    }
+    
+    # Handle pegged currencies - constant rate with minimal variation
+    if target in PEGGED_CURRENCIES:
         today = datetime.now()
-        usd_rate = 1 / AED_USD_RATE  # ~0.2723
-        projected_rates = [{"year": today.year, "rate": round(usd_rate, 4), "is_projected": False}]
+        pegged_rate = PEGGED_CURRENCIES[target]
+        
+        # Try to get actual current rate from API
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(
+                    "https://api.exchangerate-api.com/v4/latest/AED",
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    actual_rate = data.get('rates', {}).get(target)
+                    if actual_rate:
+                        pegged_rate = actual_rate
+        except Exception:
+            pass
+        
+        projected_rates = [{"year": today.year, "rate": round(pegged_rate, 4), "is_projected": False}]
         for i in range(1, years_ahead + 1):
-            projected_rates.append({"year": today.year + i, "rate": round(usd_rate, 4), "is_projected": True})
+            projected_rates.append({"year": today.year + i, "rate": round(pegged_rate, 4), "is_projected": True})
         
         return {
             "base": "AED",
-            "target": "USD",
-            "current_rate": round(usd_rate, 4),
+            "target": target,
+            "current_rate": round(pegged_rate, 4),
             "projected_rates": projected_rates,
             "historical_summary": {
-                "min_rate": round(usd_rate, 4),
-                "max_rate": round(usd_rate, 4),
+                "min_rate": round(pegged_rate, 4),
+                "max_rate": round(pegged_rate, 4),
                 "data_points": 1
             },
             "trend": {
@@ -27667,8 +27693,8 @@ async def get_projected_currency_rates(
                 "avg_annual_change_percent": 0
             },
             "confidence": "high",
-            "source": "AED-USD peg (fixed rate)",
-            "note": "USD and AED are pegged at a fixed rate of 1 USD = 3.6725 AED"
+            "source": f"{target}-USD peg (stable rate)",
+            "note": f"{target} is pegged to USD and therefore stable against AED"
         }
     
     try:
