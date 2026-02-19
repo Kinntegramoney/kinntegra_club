@@ -2273,44 +2273,6 @@ export default function Holdings() {
                               </div>
                             )}
                             
-                            {/* Upcoming Payments List */}
-                            {upcomingPayments.length > 0 && (
-                              <div className="pt-4 border-t">
-                                <h4 className="text-sm font-medium text-gray-700 mb-3">Upcoming Payments ({upcomingPayments.length})</h4>
-                                <div className="space-y-2">
-                                  {upcomingPayments.map((payment, idx) => {
-                                    const isOverdue = new Date(payment.date) < new Date();
-                                    return (
-                                      <div 
-                                        key={idx} 
-                                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                                          isOverdue 
-                                            ? 'bg-red-50 border-red-200' 
-                                            : 'bg-amber-50 border-amber-100'
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div className={`w-2 h-2 rounded-full ${isOverdue ? 'bg-red-500' : 'bg-amber-500'}`}></div>
-                                          <div>
-                                            <p className="text-sm font-medium text-gray-800">{payment.description}</p>
-                                            <p className="text-xs text-gray-500">{payment.propertyName}</p>
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <p className={`text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
-                                            AED {new Intl.NumberFormat('en-AE').format(Math.round(payment.amount))}
-                                          </p>
-                                          <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-gray-500'}`}>
-                                            {new Date(payment.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            {isOverdue && ' (Overdue)'}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         );
                       })()}
