@@ -18521,10 +18521,14 @@ async def get_client_real_estate_investments(
             
             client_investments.append({
                 "id": opp.get('id'),
+                "opportunity_id": opp.get('id'),
                 "building_name": opp.get('building_name'),
                 "project_name": opp.get('project_name'),
                 "developer_name": opp.get('developer_name'),
                 "unit_no": opp.get('unit_no'),
+                "unit_number": opp.get('unit_no'),
+                "floor": opp.get('floor'),
+                "unit_type": opp.get('unit_type'),
                 "unit_price": opp.get('unit_price'),
                 "status": opp.get('status'),
                 "share_percentage": investor.get('share_percentage', 0),
@@ -18532,7 +18536,21 @@ async def get_client_real_estate_investments(
                 "invested_at": investor.get('invested_at'),
                 "payment_schedule": opp.get('payment_schedule', []),
                 "payments_completed": len(client_payments),
-                "payments_completed_percent": round((len(client_payments) / total_milestones * 100) if total_milestones > 0 else 0, 1)
+                "payments_completed_percent": round((len(client_payments) / total_milestones * 100) if total_milestones > 0 else 0, 1),
+                # Area details
+                "total_area": opp.get('total_area', 0),
+                "carpet_area": opp.get('carpet_area', 0),
+                "balcony_area": opp.get('balcony_area', 0),
+                # Sale details
+                "handover_date": opp.get('handover_date'),
+                "expected_sale_rate": opp.get('expected_sale_rate', 0),
+                "estimated_sell_date": opp.get('estimated_sell_date'),
+                "expected_sale_date": opp.get('estimated_sell_date'),
+                "expected_sale_value": opp.get('expected_sale_value') or (opp.get('total_area', 0) * opp.get('expected_sale_rate', 0)),
+                # Location
+                "location": opp.get('location'),
+                # Images
+                "images": opp.get('images', [])
             })
     
     return client_investments
