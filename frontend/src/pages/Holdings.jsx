@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, Eye, Calendar, User, MapPin, Building2, CreditCard, UserCheck, ClipboardList, FileImage, Upload, AlertCircle, CheckCircle, Clock, XCircle, Send, ArrowRight, IndianRupee, RefreshCw, Calculator, ExternalLink, ChevronDown } from "lucide-react";
@@ -25,6 +25,174 @@ const roundToHundred = (amount) => {
 
 // Format currency for Indian Rupees
 const formatCurrency = (amount) => amount?.toLocaleString('en-IN') || '0';
+
+// XIRR Calculation - moved outside component for performance
+const calculateXIRR = (cashflows, guess = 0.1) => {
+  if (!cashflows || cashflows.length < 2) return null;
+  
+  const dates = cashflows.map(cf => new Date(cf.date));
+  const amounts = cashflows.map(cf => cf.amount);
+  
+  // Newton-Raphson method
+  let rate = guess;
+  for (let iter = 0; iter < 100; iter++) {
+    let npv = 0;
+    let dnpv = 0;
+    const firstDate = dates[0];
+    
+    for (let i = 0; i < amounts.length; i++) {
+      const years = (dates[i] - firstDate) / (365.25 * 24 * 60 * 60 * 1000);
+      const pv = amounts[i] / Math.pow(1 + rate, years);
+      npv += pv;
+      dnpv -= years * amounts[i] / Math.pow(1 + rate, years + 1);
+    }
+    
+    const newRate = rate - npv / dnpv;
+    if (Math.abs(newRate - rate) < 0.0001) {
+      return newRate * 100;
+    }
+    rate = newRate;
+  }
+  return rate * 100;
+};
+
+// Static currency data - moved outside component
+const CURRENCY_RATES = {
+  AED: 1, INR: 22.5, USD: 0.27, EUR: 0.25, GBP: 0.21, CNY: 1.97,
+  JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.41, SGD: 0.36, HKD: 2.13,
+  SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
+};
+
+const CURRENCY_SYMBOLS = {
+  AED: 'AED', INR: '₹', USD: '$', EUR: '€', GBP: '£', CNY: '¥',
+  JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$', SGD: 'S$', HKD: 'HK$',
+  SAR: 'ريال', KWD: 'د.ك', QAR: 'ريال', BHD: 'د.ب.', OMR: 'ريال'
+};
+
+const AED_TO_INR_CURRENT = 22.5;
+const DEPRECIATION_RATE = 0.03;
+
+// Helper function for projected rate - moved outside
+const getProjectedRateForDate = (date, baseRate = AED_TO_INR_CURRENT, today = new Date()) => {
+  const targetDate = new Date(date);
+  const yearsFromNow = (targetDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (yearsFromNow <= 0) return baseRate;
+  return baseRate * Math.pow(1 + DEPRECIATION_RATE, yearsFromNow);
+};
+
+// Pre-compute property financials - memoizable helper
+const computePropertyFinancials = (property, clientResidency) => {
+  const today = new Date();
+  const investmentAmount = property.investment_amount || 0;
+  const expectedSalePrice = property.expected_sale_value || (investmentAmount * 1.4);
+  const schedule = property.payment_schedule || [];
+  
+  const investorCurrency = property.investor_currency || property.currency || 
+    (clientResidency === 'India' ? 'INR' : 'AED');
+  
+  const expectedSaleDate = property.expected_sale_date || property.estimated_sell_date 
+    ? new Date(property.expected_sale_date || property.estimated_sell_date) 
+    : new Date(today.getFullYear() + 3, today.getMonth(), today.getDate());
+  
+  const yearsToSale = Math.max(0, (expectedSaleDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  const projectedAedToInrAtSale = AED_TO_INR_CURRENT * Math.pow(1 + DEPRECIATION_RATE, yearsToSale);
+  
+  // Handover date
+  const handoverDate = property.handover_date 
+    ? new Date(property.handover_date) 
+    : (schedule.length > 0 ? new Date(schedule[schedule.length - 1].date) : expectedSaleDate);
+  
+  const isSellingBeforeCompletion = expectedSaleDate < handoverDate;
+  
+  // Calculate payments
+  let paidAmountInr = 0, payableAmountInr = 0, paidAmountAed = 0, payableAmountAed = 0;
+  let paymentsAfterSaleAed = 0;
+  
+  schedule.forEach((milestone, i) => {
+    const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+    const isPaid = i < (property.payments_completed || 0);
+    const milestoneDate = new Date(milestone.date);
+    const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+    
+    if (isPaid) {
+      const actualDate = property.actual_payment_dates?.[i] || milestone.date;
+      const actualRate = getProjectedRateForDate(actualDate, AED_TO_INR_CURRENT, today);
+      paidAmountInr += milestoneAmountAed * actualRate;
+      paidAmountAed += milestoneAmountAed;
+    } else {
+      payableAmountInr += milestoneAmountAed * rateAtMilestone;
+      payableAmountAed += milestoneAmountAed;
+      if (isSellingBeforeCompletion && milestoneDate > expectedSaleDate) {
+        paymentsAfterSaleAed += milestoneAmountAed;
+      }
+    }
+  });
+  
+  const totalInvestmentInr = paidAmountInr + payableAmountInr;
+  const netSaleProceedsAed = expectedSalePrice - payableAmountAed;
+  const netSaleProceedsInr = netSaleProceedsAed * projectedAedToInrAtSale;
+  const profitFromSaleAed = expectedSalePrice - investmentAmount;
+  const totalProfitInr = netSaleProceedsInr - paidAmountInr;
+  const saleProceedsInr = expectedSalePrice * projectedAedToInrAtSale;
+  
+  const currencyBenefitOnSale = expectedSalePrice * (projectedAedToInrAtSale - AED_TO_INR_CURRENT);
+  const currencyLossOnPayments = totalInvestmentInr - (investmentAmount * AED_TO_INR_CURRENT);
+  const netCurrencyImpact = currencyBenefitOnSale - currencyLossOnPayments;
+  
+  // XIRR Cashflows
+  const netSaleValueForXirr = isSellingBeforeCompletion 
+    ? (expectedSalePrice - paymentsAfterSaleAed)
+    : expectedSalePrice;
+  
+  const expectedCashflowsInr = [];
+  const actualCashflowsInr = [];
+  
+  schedule.forEach((milestone, i) => {
+    const milestoneDate = new Date(milestone.date);
+    const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+    const isPaid = i < (property.payments_completed || 0);
+    
+    // Expected cashflows
+    if (!(isSellingBeforeCompletion && milestoneDate > expectedSaleDate)) {
+      const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+      expectedCashflowsInr.push({ date: milestone.date, amount: -(milestoneAmountAed * rateAtMilestone) });
+    }
+    
+    // Actual cashflows
+    if (!(isSellingBeforeCompletion && !isPaid && milestoneDate > expectedSaleDate)) {
+      if (isPaid) {
+        const actualDate = property.actual_payment_dates?.[i] || milestone.date;
+        const rateAtPayment = getProjectedRateForDate(actualDate, AED_TO_INR_CURRENT, today);
+        actualCashflowsInr.push({ date: actualDate, amount: -(milestoneAmountAed * rateAtPayment) });
+      } else {
+        const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+        actualCashflowsInr.push({ date: milestone.date, amount: -(milestoneAmountAed * rateAtMilestone) });
+      }
+    }
+  });
+  
+  expectedCashflowsInr.push({ date: expectedSaleDate.toISOString(), amount: netSaleValueForXirr * projectedAedToInrAtSale });
+  actualCashflowsInr.push({ date: expectedSaleDate.toISOString(), amount: netSaleValueForXirr * projectedAedToInrAtSale });
+  
+  const expectedXirr = calculateXIRR(expectedCashflowsInr);
+  const actualXirr = calculateXIRR(actualCashflowsInr);
+  
+  // Area details
+  const totalSqft = property.total_area || property.size || 0;
+  const balconyArea = property.balcony_area || 0;
+  const apartmentArea = totalSqft - balconyArea;
+  
+  return {
+    investmentAmount, expectedSalePrice, schedule, investorCurrency,
+    expectedSaleDate, projectedAedToInrAtSale, handoverDate, isSellingBeforeCompletion,
+    paidAmountInr, payableAmountInr, paidAmountAed, payableAmountAed,
+    paymentsAfterSaleAed, totalInvestmentInr, netSaleProceedsAed, netSaleProceedsInr,
+    profitFromSaleAed, totalProfitInr, saleProceedsInr, netCurrencyImpact,
+    netSaleValueForXirr, expectedXirr, actualXirr, totalSqft, balconyArea, apartmentArea,
+    currentRate: CURRENCY_RATES[investorCurrency] || 1,
+    currencySymbol: CURRENCY_SYMBOLS[investorCurrency] || investorCurrency
+  };
+};
 
 // Bifurcated Trades Table Component - Groups trades by cashflow for split allocations
 const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyReinvestment = false }) => {
