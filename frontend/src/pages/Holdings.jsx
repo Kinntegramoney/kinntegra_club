@@ -2665,7 +2665,7 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Total Profit - show Sale | Forex */}
-                                    <td className="px-2 py-2 text-right">
+                                    <td className="px-2 py-2 text-right overflow-visible">
                                       <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
                                         <p className="text-[10px]">
