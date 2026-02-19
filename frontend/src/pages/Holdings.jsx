@@ -2482,82 +2482,36 @@ export default function Holdings() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 overflow-visible">
-                              {clientRealEstate.map((property, idx) => {
-                                const investmentAmount = property.investment_amount || 0;
-                                const expectedSalePrice = property.expected_sale_value || (investmentAmount * 1.4);
-                                const schedule = property.payment_schedule || [];
+                              {computedRealEstateData.map(({ property, financials }, idx) => {
+                                const {
+                                  investmentAmount, expectedSalePrice, schedule, investorCurrency,
+                                  expectedSaleDate, projectedAedToInrAtSale, handoverDate, isSellingBeforeCompletion,
+                                  paidAmountInr, payableAmountInr, paidAmountAed, payableAmountAed,
+                                  paymentsAfterSaleAed, totalInvestmentInr, netSaleProceedsAed, netSaleProceedsInr,
+                                  profitFromSaleAed, totalProfitInr, saleProceedsInr, netCurrencyImpact,
+                                  netSaleValueForXirr, expectedXirr, actualXirr, totalSqft, balconyArea, apartmentArea,
+                                  currentRate, currencySymbol
+                                } = financials;
+                                
                                 const today = new Date();
+                                const projectedAedToInr = projectedAedToInrAtSale;
+                                const totalInvestmentProjected = totalInvestmentInr;
+                                const paidAmountProjected = paidAmountInr;
+                                const payableAmountProjected = payableAmountInr;
                                 
-                                // Get investor's currency preference from allocation or use client's residency
-                                const investorCurrency = property.investor_currency || property.currency || 
-                                  (clientDetails?.country_of_residency === 'India' ? 'INR' : 'AED');
-                                
-                                // Currency conversion rates (AED base)
-                                const currencyRates = {
-                                  AED: 1,
-                                  INR: 22.5,
-                                  USD: 0.27,
-                                  EUR: 0.25,
-                                  GBP: 0.21,
-                                  CNY: 1.97,
-                                  JPY: 40.5,
-                                  CHF: 0.24,
-                                  CAD: 0.37,
-                                  AUD: 0.41,
-                                  SGD: 0.36,
-                                  HKD: 2.13,
-                                  SAR: 1.02,
-                                  KWD: 0.083,
-                                  QAR: 0.99,
-                                  BHD: 0.10,
-                                  OMR: 0.10
-                                };
-                                
-                                const currencySymbols = {
-                                  AED: 'AED', INR: '₹', USD: '$', EUR: '€', GBP: '£', 
-                                  CNY: '¥', JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$',
-                                  SGD: 'S$', HKD: 'HK$', SAR: 'ريال', KWD: 'د.ك', 
-                                  QAR: 'ريال', BHD: 'د.ب.', OMR: 'ريال'
-                                };
-                                
-                                const currentRate = currencyRates[investorCurrency] || 1;
-                                const currencySymbol = currencySymbols[investorCurrency] || investorCurrency;
-                                
-                                // Calculate paid and payable amounts
-                                let paidTillDate = 0;
-                                let payableInFuture = 0;
-                                const actualPaymentDates = [];
-                                const expectedPaymentDates = [];
-                                
-                                schedule.forEach((milestone, i) => {
-                                  const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
-                                  const milestoneDate = new Date(milestone.date);
-                                  
-                                  if (i < (property.payments_completed || 0)) {
-                                    paidTillDate += milestoneAmount;
-                                    // Use actual payment date if available, else milestone date
-                                    actualPaymentDates.push({
-                                      date: property.actual_payment_dates?.[i] || milestone.date,
-                                      amount: -milestoneAmount // Outflow
-                                    });
-                                  } else {
-                                    payableInFuture += milestoneAmount;
-                                    // For future payments, use milestone date
-                                    actualPaymentDates.push({
-                                      date: milestone.date,
-                                      amount: -milestoneAmount
-                                    });
+                                // Format functions
+                                const formatINR = (amount) => {
+                                  if (Math.abs(amount) >= 10000000) {
+                                    return `₹${(amount / 10000000).toFixed(2)} Cr`;
+                                  } else if (Math.abs(amount) >= 100000) {
+                                    return `₹${(amount / 100000).toFixed(2)} L`;
                                   }
-                                  
-                                  // Expected dates from developer schedule
-                                  expectedPaymentDates.push({
-                                    date: milestone.date,
-                                    amount: -milestoneAmount
-                                  });
-                                });
+                                  return `₹${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
+                                };
                                 
-                                // Apartment size details
-                                const totalSqft = property.total_area || property.size || 0;
+                                const formatAED = (amount) => {
+                                  return `AED ${new Intl.NumberFormat('en-AE').format(Math.round(amount))}`;
+                                };
                                 const balconyArea = property.balcony_area || 0;
                                 const apartmentArea = totalSqft - balconyArea;
                                 
