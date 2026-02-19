@@ -2580,24 +2580,26 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Investment Amount - compact display */}
+                                    {/* Investment Amount */}
                                     <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentProjected)}</p>
-                                        <p className="text-[10px] text-gray-500">
+                                        <p className="text-[10px]">
                                           <span className="text-emerald-600">Paid: {formatINR(paidAmountProjected)}</span>
-                                          <span className="mx-1">|</span>
-                                          <span className="text-blue-600">Payable: {formatINR(payableAmountProjected)}</span>
+                                          <span className="mx-1 text-gray-400">|</span>
+                                          <span className="text-blue-600">Due: {formatINR(payableAmountProjected)}</span>
                                         </p>
                                         {/* Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                                          <p className="font-semibold">AED: {formatAED(investmentAmount)}</p>
-                                          <p>Paid: {formatAED(paidTillDate)} | Payable: {formatAED(payableInFuture)}</p>
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '200px'}}>
+                                          <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Investment (AED)</p>
+                                          <p><span className="text-gray-400">Total:</span> <span className="float-right">{formatAED(investmentAmount)}</span></p>
+                                          <p><span className="text-emerald-400">Paid:</span> <span className="float-right">{formatAED(paidTillDate)}</span></p>
+                                          <p><span className="text-blue-400">Payable:</span> <span className="float-right">{formatAED(payableInFuture)}</span></p>
                                         </div>
                                       </div>
                                     </td>
                                     
-                                    {/* Apartment Size - compact */}
+                                    {/* Apartment Size */}
                                     <td className="px-2 py-2 text-center">
                                       <p className="font-mono font-semibold text-gray-800 text-xs">{totalSqft.toLocaleString()} sqft</p>
                                       <p className="text-[10px] text-gray-500">
@@ -2605,7 +2607,7 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Expected Sale Amount - compact */}
+                                    {/* Expected Sale Amount */}
                                     <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
@@ -2613,8 +2615,12 @@ export default function Holdings() {
                                           @₹{projectedAedToInr.toFixed(2)}/AED • {expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
                                         </p>
                                         {/* Tooltip */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                                          <p>AED: {formatAED(expectedSalePrice)}</p>
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '200px'}}>
+                                          <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Sale Projection</p>
+                                          <p><span className="text-gray-400">Sale (AED):</span> <span className="float-right">{formatAED(expectedSalePrice)}</span></p>
+                                          <p><span className="text-gray-400">Sale Date:</span> <span className="float-right">{expectedSaleDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></p>
+                                          <p><span className="text-gray-400">Rate @Sale:</span> <span className="float-right">₹{projectedAedToInr.toFixed(2)}/AED</span></p>
+                                          <p><span className="text-gray-400">Current Rate:</span> <span className="float-right">₹{AED_TO_INR_CURRENT}/AED</span></p>
                                         </div>
                                       </div>
                                     </td>
