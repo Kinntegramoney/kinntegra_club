@@ -860,21 +860,21 @@ export default function RealEstateDetails() {
               </div>
             </div>
             <div className="flex gap-2">
-              {/* View Payment Schedule Button - Always show */}
-              {opp.payment_schedule && opp.payment_schedule.length > 0 && (
-                <Button 
-                  variant="outline"
-                  onClick={() => setShowPaymentScheduleModal(true)}
-                  className="border-teal-200 text-teal-700 hover:bg-teal-50"
-                  data-testid="view-payment-schedule-btn"
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  View Payment Schedule
-                </Button>
-              )}
-              {/* Hide these buttons when coming from Holdings page */}
+              {/* Hide all action buttons when coming from Holdings page */}
               {!isFromHoldings && (
                 <>
+                  {/* View Payment Schedule Button */}
+                  {opp.payment_schedule && opp.payment_schedule.length > 0 && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowPaymentScheduleModal(true)}
+                      className="border-teal-200 text-teal-700 hover:bg-teal-50"
+                      data-testid="view-payment-schedule-btn"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      View Payment Schedule
+                    </Button>
+                  )}
                   {(opp.status === 'available' || opp.status === 'partially_invested') && remainingPercentage > 0 && user?.role === 'broker' && (
                     <Button onClick={() => setShowAllocateModal(true)} className="bg-teal-600 hover:bg-teal-700">
                       <Plus className="h-4 w-4 mr-2" />
