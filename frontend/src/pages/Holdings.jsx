@@ -2447,19 +2447,19 @@ export default function Holdings() {
                                   <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-gray-500">Total Investment</p>
                                     <p className="text-sm font-semibold text-gray-800">
-                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(investmentAmount))}
+                                      {formatCurrencyAmount(investmentAmount)}
                                     </p>
                                   </div>
                                   <div className="bg-emerald-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-emerald-600">Paid Till Date</p>
                                     <p className="text-sm font-semibold text-emerald-700">
-                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(paidAmount))}
+                                      {formatCurrencyAmount(paidAmount)}
                                     </p>
                                   </div>
                                   <div className="bg-amber-50 rounded-lg p-2.5 text-center">
                                     <p className="text-[10px] text-amber-600">Outstanding</p>
                                     <p className="text-sm font-semibold text-amber-700">
-                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(outstandingAmount))}
+                                      {formatCurrencyAmount(outstandingAmount)}
                                     </p>
                                   </div>
                                 </div>
