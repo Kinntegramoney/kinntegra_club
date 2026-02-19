@@ -2540,14 +2540,12 @@ export default function Holdings() {
                                 
                                 return (
                                   <tr key={idx} className="hover:bg-gray-50">
-                                    {/* Property Details - No image */}
-                                    <td className="px-3 py-3">
-                                      <div>
-                                        <p className="font-semibold text-gray-800 text-sm">{property.building_name || 'Property'}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">
-                                          {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}% Share
-                                        </p>
-                                      </div>
+                                    {/* Property Details - compact */}
+                                    <td className="px-2 py-2">
+                                      <p className="font-semibold text-gray-800 text-xs">{property.building_name || 'Property'}</p>
+                                      <p className="text-[10px] text-gray-400">
+                                        {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}%
+                                      </p>
                                     </td>
                                     
                                     {/* Investment Amount - compact display */}
