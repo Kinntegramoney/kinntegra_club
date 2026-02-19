@@ -27678,7 +27678,8 @@ async def get_projected_currency_rates(
                     pass
             
             # Get historical rates for trend analysis
-            for year_offset in range(5, -1, -1):
+            # Quarterly samples for years 5 to 1
+            for year_offset in range(5, 0, -1):
                 for month in [1, 4, 7, 10]:  # Quarterly samples
                     try:
                         sample_date = today - timedelta(days=year_offset * 365 + (12 - month) * 30)
@@ -27702,6 +27703,31 @@ async def get_projected_currency_rates(
                                 })
                     except Exception:
                         continue
+            
+            # Monthly samples for the most recent year to capture recent peaks
+            for months_ago in range(12, 0, -1):
+                try:
+                    sample_date = today - timedelta(days=months_ago * 30)
+                    date_str = sample_date.strftime("%Y-%m-%d")
+                    
+                    response = await client.get(
+                        f"https://api.frankfurter.app/{date_str}",
+                        params={"base": "USD", "symbols": target}
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        rate = data.get("rates", {}).get(target, 0)
+                        if rate > 0:
+                            # Convert to AED base
+                            aed_rate = rate / AED_USD_RATE
+                            historical_rates.append({
+                                "date": data.get("date", date_str),
+                                "rate": aed_rate,
+                                "year_offset": 0
+                            })
+                except Exception:
+                    continue
         
         # Calculate trend using simple linear regression
         if len(historical_rates) >= 4:
