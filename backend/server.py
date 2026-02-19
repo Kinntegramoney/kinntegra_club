@@ -27775,6 +27775,9 @@ async def get_projected_currency_rates(
         
         # Calculate trend using simple linear regression
         if len(historical_rates) >= 4:
+            # Sort historical rates by date to ensure correct order
+            historical_rates.sort(key=lambda x: x["date"])
+            
             x_values = [r["year_offset"] for r in historical_rates]
             y_values = [r["rate"] for r in historical_rates]
             
@@ -27793,26 +27796,29 @@ async def get_projected_currency_rates(
                 slope = 0
                 intercept = y_mean
             
-            # Current rate - prefer the live API rate if available, otherwise use historical data
-            historical_current = y_values[-1] if y_values else 22.75
+            # Current rate - prefer the live API rate if available
             if current_rate is None:
-                current_rate = historical_current
+                current_rate = y_values[-1] if y_values else 22.75
             
-            oldest_rate = y_values[0] if y_values else current_rate  # Rate from 5 years ago
+            # Get oldest rate (from ~5 years ago) for calculating average annual change
+            oldest_rate = y_values[0] if y_values else current_rate
             
-            # Calculate average annual change over last 5 years
-            # Simple calculation: (current - oldest) / 5 years
-            if len(y_values) >= 2:
-                total_absolute_change = historical_current - oldest_rate
-                avg_annual_change_absolute = total_absolute_change / 5  # 5 years of data
-                total_change_percent = (total_absolute_change / oldest_rate * 100) if oldest_rate != 0 else 0
-                avg_annual_change = total_change_percent / 5
-            else:
-                avg_annual_change_absolute = 0
-                avg_annual_change = 0
+            # Calculate average annual depreciation/appreciation
+            # INR depreciating means 1 AED buys MORE INR over time (rate increases)
+            # Formula: Average annual change = (current_rate - oldest_rate) / 5 years
+            years_of_data = 5
+            total_absolute_change = current_rate - oldest_rate
+            avg_annual_change_absolute = total_absolute_change / years_of_data
             
-            # Project future rates using simple linear extrapolation
-            # This uses the average annual change (not regression slope) for more intuitive projections
+            # Calculate percentage change
+            total_change_percent = ((current_rate - oldest_rate) / oldest_rate * 100) if oldest_rate != 0 else 0
+            avg_annual_change_percent = total_change_percent / years_of_data
+            
+            logger.info(f"Currency projection for {target}: current={current_rate}, oldest={oldest_rate}, "
+                       f"total_change={total_absolute_change:.2f}, avg_annual={avg_annual_change_absolute:.2f}")
+            
+            # Project future rates
+            # If INR has been depreciating (rate increasing), future rates should continue increasing
             projected_rates = []
             
             # Year 0 is current year with actual current rate (from live API)
@@ -27824,19 +27830,16 @@ async def get_projected_currency_rates(
             
             # Project future years using average annual change
             for year in range(1, years_ahead + 1):
-                # Project directly from current rate using avg annual change * year
-                projected_rate = current_rate + avg_annual_change_absolute * year
-                
-                # Apply dampening factor - max 5% annual change from current rate for each year
-                max_total_change = current_rate * 0.05 * year
-                if abs(projected_rate - current_rate) > max_total_change:
-                    projected_rate = current_rate + (max_total_change if avg_annual_change_absolute > 0 else -max_total_change)
+                # Project from current rate: future = current + (avg_annual_change * years)
+                projected_rate = current_rate + (avg_annual_change_absolute * year)
                 
                 projected_rates.append({
                     "year": today.year + year,
-                    "rate": round(projected_rate, 4),
+                    "rate": round(projected_rate, 2),
                     "is_projected": True
                 })
+            
+            logger.info(f"Projected rates: {[(p['year'], p['rate']) for p in projected_rates]}")
             
             # Calculate confidence level based on data consistency
             rate_std = statistics.stdev(y_values) if len(y_values) > 1 else 0
