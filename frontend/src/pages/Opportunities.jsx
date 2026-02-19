@@ -1280,13 +1280,26 @@ export default function Opportunities() {
                   <ChevronDown className="absolute right-0.5 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
                 </div>
                 {loadingRates && (
-                  <span className="text-[9px] text-gray-400 animate-pulse">...</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-[9px] text-gray-400">Loading rates</span>
+                  </div>
                 )}
               </div>
             </div>
             
+            {/* Loading overlay for currency change */}
+            {loadingRates && selectedCurrency !== "AED" && (
+              <div className="mb-2 px-2 py-3 bg-gray-50 rounded border border-gray-100 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] text-gray-500">Fetching {selectedCurrency} exchange rates...</span>
+                </div>
+              </div>
+            )}
+            
             {/* Projected Rate Info - with 5-year history */}
-            {selectedCurrency !== "AED" && projectedRates && (
+            {selectedCurrency !== "AED" && projectedRates && !loadingRates && (
               <div className="mb-2 px-2 py-1.5 bg-gray-50 rounded border border-gray-100">
                 <div className="flex items-center justify-between text-[9px]">
                   <div className="flex items-center gap-1.5 flex-wrap">
