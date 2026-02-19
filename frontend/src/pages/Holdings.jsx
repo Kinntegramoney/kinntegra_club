@@ -2385,57 +2385,100 @@ export default function Holdings() {
                                 
                                 // Currency depreciation calculation
                                 const AED_TO_INR_CURRENT = 22.5;
-                                const expectedSaleDate = property.expected_sale_date ? new Date(property.expected_sale_date) : new Date(today.getFullYear() + 3, today.getMonth(), today.getDate());
+                                const expectedSaleDate = property.expected_sale_date || property.estimated_sell_date 
+                                  ? new Date(property.expected_sale_date || property.estimated_sell_date) 
+                                  : new Date(today.getFullYear() + 3, today.getMonth(), today.getDate());
                                 const yearsToSale = Math.max(0, (expectedSaleDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
                                 
-                                // Assume INR depreciates ~3% per year against AED
+                                // INR depreciation rate ~3% per year against AED
                                 const depreciationRate = 0.03;
-                                const projectedAedToInr = AED_TO_INR_CURRENT * Math.pow(1 + depreciationRate, yearsToSale);
+                                
+                                // Projected AED to INR rate at sale date
+                                const projectedAedToInrAtSale = AED_TO_INR_CURRENT * Math.pow(1 + depreciationRate, yearsToSale);
                                 
                                 // Helper function to get projected rate for a specific date
                                 const getProjectedRateForDate = (date, baseRate = AED_TO_INR_CURRENT) => {
-                                  const paymentDate = new Date(date);
-                                  const yearsFromNow = Math.max(0, (paymentDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                                  // If date is in the past, use current rate
+                                  const targetDate = new Date(date);
+                                  const yearsFromNow = (targetDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+                                  // If date is in the past, use current rate (or could fetch historical)
                                   if (yearsFromNow <= 0) return baseRate;
                                   // Apply depreciation rate for future dates
                                   return baseRate * Math.pow(1 + depreciationRate, yearsFromNow);
                                 };
                                 
                                 // Calculate amounts with projected rates for each payment milestone
-                                let paidAmountProjected = 0;
-                                let payableAmountProjected = 0;
+                                let paidAmountInr = 0;  // Actual INR spent (at payment date rates)
+                                let payableAmountInr = 0;  // Future INR to be spent (at future rates)
+                                let paidAmountAed = 0;
+                                let payableAmountAed = 0;
+                                
                                 const paymentDetails = schedule.map((milestone, i) => {
-                                  const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                                  const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
                                   const isPaid = i < (property.payments_completed || 0);
-                                  const projectedRate = getProjectedRateForDate(milestone.date);
-                                  const amountInProjectedCurrency = milestoneAmount * projectedRate;
+                                  const milestoneDate = new Date(milestone.date);
+                                  const rateAtMilestone = getProjectedRateForDate(milestone.date);
                                   
                                   if (isPaid) {
-                                    // For paid amounts, use the actual payment date rate if available
+                                    // For paid amounts, use the actual payment date rate
                                     const actualDate = property.actual_payment_dates?.[i] || milestone.date;
                                     const actualRate = getProjectedRateForDate(actualDate);
-                                    paidAmountProjected += milestoneAmount * actualRate;
+                                    paidAmountInr += milestoneAmountAed * actualRate;
+                                    paidAmountAed += milestoneAmountAed;
                                   } else {
-                                    payableAmountProjected += amountInProjectedCurrency;
+                                    // For future payments, use projected rate at that date
+                                    payableAmountInr += milestoneAmountAed * rateAtMilestone;
+                                    payableAmountAed += milestoneAmountAed;
                                   }
                                   
                                   return {
                                     ...milestone,
-                                    amount: milestoneAmount,
-                                    projectedRate,
-                                    amountProjected: amountInProjectedCurrency,
+                                    amount: milestoneAmountAed,
+                                    projectedRate: rateAtMilestone,
+                                    amountInr: milestoneAmountAed * rateAtMilestone,
                                     isPaid
                                   };
                                 });
                                 
-                                // Total investment in projected currency (weighted by payment dates)
-                                const totalInvestmentProjected = paidAmountProjected + payableAmountProjected;
+                                // Total investment cost in INR (what client actually pays/will pay)
+                                const totalInvestmentInr = paidAmountInr + payableAmountInr;
                                 
-                                // Profit calculations
-                                const profitFromSale = expectedSalePrice - investmentAmount; // In AED
-                                const currencyBenefit = expectedSalePrice * (projectedAedToInr - AED_TO_INR_CURRENT); // Currency gain in INR
-                                const totalProfitInr = (profitFromSale * projectedAedToInr) + currencyBenefit;
+                                // SCENARIO: Client sells BEFORE completion (remaining payable deducted from sale)
+                                // Net Sale Proceeds in AED = Sale Price - Remaining Payable
+                                const netSaleProceedsAed = expectedSalePrice - payableAmountAed;
+                                
+                                // Sale proceeds converted to INR at sale date rate
+                                const saleProceedsInr = expectedSalePrice * projectedAedToInrAtSale;
+                                
+                                // If selling before completion:
+                                // - Client has paid: paidAmountAed (cost in INR: paidAmountInr)
+                                // - Remaining payable: payableAmountAed (will be deducted from sale)
+                                // - Net they receive: (expectedSalePrice - payableAmountAed) in AED, converted at sale date
+                                const netSaleProceedsInr = netSaleProceedsAed * projectedAedToInrAtSale;
+                                
+                                // Profit Calculation:
+                                // If client completes all payments: Profit = Sale INR - Total Investment INR
+                                // If client sells before completion: Profit = Net Sale INR - Already Paid INR
+                                
+                                // Property gain in AED (base currency)
+                                const profitFromSaleAed = expectedSalePrice - investmentAmount;
+                                
+                                // Total Profit in INR considering timing of payments:
+                                // = What client receives (at sale date rate) - What client paid (at payment date rates)
+                                const totalProfitInr = netSaleProceedsInr - paidAmountInr;
+                                
+                                // Currency benefit = Difference due to rate changes
+                                // If all payments were made today: investmentAmount * AED_TO_INR_CURRENT
+                                // Actual cost spread over time: totalInvestmentInr (higher due to depreciation)
+                                // But sale also benefits: saleProceedsInr vs expectedSalePrice * AED_TO_INR_CURRENT
+                                const currencyBenefitOnSale = expectedSalePrice * (projectedAedToInrAtSale - AED_TO_INR_CURRENT);
+                                const currencyLossOnPayments = totalInvestmentInr - (investmentAmount * AED_TO_INR_CURRENT);
+                                const netCurrencyImpact = currencyBenefitOnSale - currencyLossOnPayments;
+                                
+                                // For display purposes
+                                const paidAmountProjected = paidAmountInr;
+                                const payableAmountProjected = payableAmountInr;
+                                const totalInvestmentProjected = totalInvestmentInr;
+                                const projectedAedToInr = projectedAedToInrAtSale;
                                 
                                 // XIRR Calculation - Expected (using developer schedule)
                                 const calculateXIRR = (cashflows, guess = 0.1) => {
