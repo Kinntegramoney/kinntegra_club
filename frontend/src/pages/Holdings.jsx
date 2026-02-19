@@ -519,6 +519,54 @@ export default function Holdings() {
   const [prepaymentNotes, setPrepaymentNotes] = useState("");
   const [recordingPrepayment, setRecordingPrepayment] = useState(false);
 
+  // Currency state for Real Estate payment timeline
+  const [reSelectedCurrency, setReSelectedCurrency] = useState("AED");
+  const [reCurrencyRates, setReCurrencyRates] = useState({ 
+    AED: 1, INR: 24.72, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36,
+    CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
+    SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
+  });
+  const [reLoadingRates, setReLoadingRates] = useState(false);
+
+  // Fetch currency rates for Real Estate
+  const fetchRECurrencyRates = async (currency) => {
+    if (currency === "AED") {
+      setReCurrencyRates(prev => ({ ...prev, AED: 1 }));
+      return;
+    }
+    
+    setReLoadingRates(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/currency/projected-rates`, {
+        params: { target: currency, years_ahead: 5 },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.data && res.data.current_rate) {
+        setReCurrencyRates(prev => ({ ...prev, [currency]: res.data.current_rate }));
+      }
+    } catch (error) {
+      console.error("Error fetching currency rates:", error);
+      // Use default rates
+      const defaults = { 
+        INR: 24.72, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36,
+        CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
+        SAR: 1.02, KWD: 0.083, QAR: 0.99, BHD: 0.10, OMR: 0.10
+      };
+      setReCurrencyRates(prev => ({ ...prev, [currency]: defaults[currency] || 1 }));
+    } finally {
+      setReLoadingRates(false);
+    }
+  };
+
+  const handleRECurrencyChange = (currency) => {
+    setReSelectedCurrency(currency);
+    if (currency !== "AED") {
+      fetchRECurrencyRates(currency);
+    }
+  };
+
   // Set page title
   useEffect(() => {
     document.title = "Kinntegraa | Holdings";
