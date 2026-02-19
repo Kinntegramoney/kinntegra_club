@@ -25,29 +25,70 @@ export default function BondPdfViewer({ url, filename, className = "" }) {
       return;
     }
 
-    // Pre-check if URL is accessible
+    // Pre-check if URL is accessible with timeout
     const checkUrl = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       try {
-        const response = await fetch(cleanUrl, { method: 'HEAD' });
+        // Try GET request directly (HEAD might not work on some servers)
+        const response = await fetch(cleanUrl, { 
+          method: 'GET',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
-          // Try GET if HEAD fails
-          const getResponse = await fetch(cleanUrl);
-          if (!getResponse.ok) {
-            const text = await getResponse.text();
-            if (text.includes('File not found') || text.includes('Not Found')) {
+          // Check response body for error message
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorData = await response.json();
+              if (errorData.detail) {
+                setError(errorData.detail);
+              } else {
+                setError(`Server error: ${response.status}`);
+              }
+            } catch {
+              setError(`Server error: ${response.status}`);
+            }
+          } else {
+            const text = await response.text();
+            if (text.includes('File not found') || text.includes('Not Found') || text.includes('not found')) {
               setError('File not found on server');
             } else {
-              setError(`Server error: ${getResponse.status}`);
+              setError(`Server error: ${response.status}`);
             }
-            setIsLoading(false);
-            return;
           }
+          setIsLoading(false);
+          return;
         }
+        
+        // Check if response is actually a PDF
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('pdf') && contentType.includes('json')) {
+          // Server returned JSON error instead of PDF
+          try {
+            const errorData = await response.json();
+            setError(errorData.detail || 'Invalid file response');
+          } catch {
+            setError('Invalid file response');
+          }
+          setIsLoading(false);
+          return;
+        }
+        
         // URL is accessible, let iframe load it
         setIsLoading(false);
       } catch (e) {
+        clearTimeout(timeoutId);
         console.error('URL check failed:', e);
-        // Still try to load - might work in iframe
+        if (e.name === 'AbortError') {
+          setError('Request timed out');
+        } else {
+          setError('Failed to load presentation');
+        }
         setIsLoading(false);
       }
     };
