@@ -2999,7 +2999,7 @@ export default function Holdings() {
                   </div>
                 </div>
                 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
@@ -3197,7 +3197,6 @@ export default function Holdings() {
                                 </div>
                               )}
                             </div>
-                          </td>
                           </td>
                           <td className="py-2 px-2 text-center">
                             <button 
