@@ -2101,10 +2101,21 @@ export default function Holdings() {
                           <p className="text-2xl font-bold">{clientRealEstate.length}</p>
                         </div>
                         <div className="bg-gradient-to-br from-etihad-gold-500 to-etihad-gold-600 rounded-lg p-5 text-white">
-                          <p className="text-etihad-gold-100 text-sm">Total Investment</p>
+                          <p className="text-etihad-gold-100 text-sm">Invested Till Date</p>
                           <p className="text-2xl font-bold">
                             AED {new Intl.NumberFormat('en-AE').format(
-                              clientRealEstate.reduce((sum, re) => sum + (re.investment_amount || 0), 0)
+                              clientRealEstate.reduce((sum, re) => {
+                                // Calculate only paid amounts
+                                const investmentAmount = re.investment_amount || 0;
+                                const schedule = re.payment_schedule || [];
+                                let paidAmount = 0;
+                                schedule.forEach((milestone, idx) => {
+                                  if (idx < (re.payments_completed || 0)) {
+                                    paidAmount += (milestone.percentage / 100) * investmentAmount;
+                                  }
+                                });
+                                return sum + paidAmount;
+                              }, 0)
                             )}
                           </p>
                         </div>
