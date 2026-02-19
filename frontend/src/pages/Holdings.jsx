@@ -2480,7 +2480,7 @@ export default function Holdings() {
                                 const totalInvestmentProjected = totalInvestmentInr;
                                 const projectedAedToInr = projectedAedToInrAtSale;
                                 
-                                // XIRR Calculation - Expected (using developer schedule)
+                                // XIRR Calculation with Forex impact - all amounts in INR with projected rates
                                 const calculateXIRR = (cashflows, guess = 0.1) => {
                                   if (cashflows.length < 2) return null;
                                   
@@ -2510,25 +2510,57 @@ export default function Holdings() {
                                   return rate * 100;
                                 };
                                 
-                                // Add sale inflow for XIRR
-                                const expectedCashflowsForXirr = [
-                                  ...expectedPaymentDates,
-                                  { date: expectedSaleDate.toISOString(), amount: expectedSalePrice * projectedAedToInr / AED_TO_INR_CURRENT }
-                                ];
+                                // Expected XIRR: Calculate in INR with projected forex rates
+                                // Outflows: Each payment in INR at projected rate for that date
+                                // Inflow: Sale proceeds in INR at projected rate for sale date
+                                const expectedCashflowsInr = [];
+                                schedule.forEach((milestone, i) => {
+                                  const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+                                  const rateAtMilestone = getProjectedRateForDate(milestone.date);
+                                  expectedCashflowsInr.push({
+                                    date: milestone.date,
+                                    amount: -(milestoneAmountAed * rateAtMilestone) // Outflow in INR
+                                  });
+                                });
+                                // Add sale inflow in INR at projected sale date rate
+                                expectedCashflowsInr.push({
+                                  date: expectedSaleDate.toISOString(),
+                                  amount: expectedSalePrice * projectedAedToInrAtSale // Inflow in INR
+                                });
                                 
-                                const actualCashflowsForXirr = [
-                                  ...actualPaymentDates,
-                                  { date: expectedSaleDate.toISOString(), amount: expectedSalePrice * projectedAedToInr / AED_TO_INR_CURRENT }
-                                ];
+                                // Actual XIRR: Based on actual payments made (if any) + future projections
+                                const actualCashflowsInr = [];
+                                schedule.forEach((milestone, i) => {
+                                  const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+                                  const isPaid = i < (property.payments_completed || 0);
+                                  if (isPaid) {
+                                    const actualDate = property.actual_payment_dates?.[i] || milestone.date;
+                                    const rateAtPayment = getProjectedRateForDate(actualDate);
+                                    actualCashflowsInr.push({
+                                      date: actualDate,
+                                      amount: -(milestoneAmountAed * rateAtPayment)
+                                    });
+                                  } else {
+                                    const rateAtMilestone = getProjectedRateForDate(milestone.date);
+                                    actualCashflowsInr.push({
+                                      date: milestone.date,
+                                      amount: -(milestoneAmountAed * rateAtMilestone)
+                                    });
+                                  }
+                                });
+                                actualCashflowsInr.push({
+                                  date: expectedSaleDate.toISOString(),
+                                  amount: expectedSalePrice * projectedAedToInrAtSale
+                                });
                                 
-                                const expectedXirr = calculateXIRR(expectedCashflowsForXirr);
-                                const actualXirr = calculateXIRR(actualCashflowsForXirr);
+                                const expectedXirr = calculateXIRR(expectedCashflowsInr);
+                                const actualXirr = calculateXIRR(actualCashflowsInr);
                                 
                                 // Format functions
                                 const formatINR = (amount) => {
-                                  if (amount >= 10000000) {
+                                  if (Math.abs(amount) >= 10000000) {
                                     return `₹${(amount / 10000000).toFixed(2)} Cr`;
-                                  } else if (amount >= 100000) {
+                                  } else if (Math.abs(amount) >= 100000) {
                                     return `₹${(amount / 100000).toFixed(2)} L`;
                                   }
                                   return `₹${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
