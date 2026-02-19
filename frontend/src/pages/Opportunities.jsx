@@ -532,34 +532,13 @@ export default function Opportunities() {
           <div className="relative h-64 overflow-hidden rounded-t-lg bg-gray-100">
             {bond.presentations && bond.presentations.length > 0 ? (
               <>
-                {/* Embedded PDF Viewer */}
-                <object
-                  data={`${BACKEND_URL}${bond.presentations[0].url}#toolbar=0&navpanes=0&scrollbar=1`}
-                  type="application/pdf"
-                  className="w-full h-full"
-                >
-                  {/* Fallback if browser can't display PDF */}
-                  <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-                    <div className="bg-white/80 rounded-lg shadow-sm p-4 text-center max-w-[90%]">
-                      <FileText className="h-12 w-12 text-amber-500 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-gray-800 truncate">
-                        {bond.presentations[0].original_filename || bond.presentations[0].original_name || 'Presentation'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {bond.presentations.length} document{bond.presentations.length > 1 ? 's' : ''} available
-                      </p>
-                      <a 
-                        href={`${BACKEND_URL}${bond.presentations[0].url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 mt-3 px-4 py-2 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors"
-                      >
-                        <Download className="h-3 w-3" />
-                        View / Download
-                      </a>
-                    </div>
-                  </div>
-                </object>
+                {/* Embedded PDF Viewer using iframe */}
+                <iframe
+                  src={`${BACKEND_URL}${bond.presentations[0].url}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                  title={bond.presentations[0].original_filename || 'Presentation'}
+                  className="w-full h-full border-0"
+                  loading="lazy"
+                />
                 
                 {/* Document count badge */}
                 <div className="absolute top-2 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
