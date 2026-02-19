@@ -2422,79 +2422,58 @@ export default function Holdings() {
                                 
                                 return (
                                   <tr key={idx} className="hover:bg-gray-50">
-                                    {/* Property Details */}
+                                    {/* Property Details - No image */}
                                     <td className="px-3 py-3">
-                                      <div className="flex items-center gap-3">
-                                        {property.images && property.images.length > 0 ? (
-                                          <img 
-                                            src={property.images[0]} 
-                                            alt={property.building_name}
-                                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                                          />
-                                        ) : (
-                                          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                                            <Building2 className="h-5 w-5 text-amber-600" />
-                                          </div>
-                                        )}
-                                        <div>
-                                          <p className="font-medium text-gray-800 text-sm">{property.building_name || 'Property'}</p>
-                                          <p className="text-xs text-gray-400">
-                                            {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}% Share
-                                          </p>
-                                        </div>
+                                      <div>
+                                        <p className="font-semibold text-gray-800 text-sm">{property.building_name || 'Property'}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                          {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}% Share
+                                        </p>
                                       </div>
                                     </td>
                                     
                                     {/* Investment Amount */}
                                     <td className="px-3 py-3 text-right">
                                       <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(investmentAmount * AED_TO_INR_CURRENT)}</p>
-                                      <div className="mt-1 space-y-0.5">
-                                        <p className="text-[10px] text-emerald-600">
-                                          Paid: {formatINR(paidTillDate * AED_TO_INR_CURRENT)}
-                                        </p>
-                                        <p className="text-[10px] text-blue-600">
-                                          Payable: {formatINR(payableInFuture * AED_TO_INR_CURRENT)}
-                                        </p>
-                                      </div>
+                                      <p className="text-[10px] text-emerald-600 mt-1">
+                                        Paid: {formatINR(paidTillDate * AED_TO_INR_CURRENT)}
+                                      </p>
+                                      <p className="text-[10px] text-blue-600">
+                                        Payable: {formatINR(payableInFuture * AED_TO_INR_CURRENT)}
+                                      </p>
                                     </td>
                                     
                                     {/* Apartment Size */}
                                     <td className="px-3 py-3 text-center">
                                       <p className="font-mono font-semibold text-gray-800 text-xs">{totalSqft.toLocaleString()} sqft</p>
-                                      <div className="mt-1 space-y-0.5">
-                                        <p className="text-[10px] text-gray-500">
-                                          Apt: {apartmentArea.toLocaleString()} sqft
-                                        </p>
-                                        <p className="text-[10px] text-gray-500">
-                                          Balcony: {balconyArea.toLocaleString()} sqft
-                                        </p>
-                                      </div>
+                                      <p className="text-[10px] text-gray-500 mt-1">
+                                        Apt: {apartmentArea.toLocaleString()} sqft
+                                      </p>
+                                      <p className="text-[10px] text-gray-500">
+                                        Balcony: {balconyArea.toLocaleString()} sqft
+                                      </p>
                                     </td>
                                     
                                     {/* Expected Sale Amount */}
                                     <td className="px-3 py-3 text-right">
                                       <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
-                                      <div className="mt-1">
-                                        <p className="text-[10px] text-gray-500">
-                                          {formatAED(expectedSalePrice)}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400">
-                                          @₹{projectedAedToInr.toFixed(2)}/AED
-                                        </p>
-                                      </div>
+                                      <p className="text-[10px] text-gray-500 mt-1">
+                                        {formatAED(expectedSalePrice)}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400">
+                                        @₹{projectedAedToInr.toFixed(2)}/AED
+                                      </p>
                                     </td>
                                     
                                     {/* Total Profit */}
                                     <td className="px-3 py-3 text-right">
                                       <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                      <div className="mt-1 space-y-0.5">
-                                        <p className="text-[10px] text-gray-500">
-                                          Sale: {formatINR(profitFromSale * projectedAedToInr)}
-                                        </p>
-                                        <p className="text-[10px] text-amber-600">
-                                          Currency: {formatINR(currencyBenefit)}
-                                        </p>
-                                      </div>
+                                      <p className="text-[10px] text-gray-500 mt-1">
+                                        Sale: {formatINR(profitFromSale * projectedAedToInr)}
+                                      </p>
+                                      <p className="text-[10px] text-amber-600">
+                                        Currency: {formatINR(currencyBenefit)}
+                                      </p>
                                     </td>
                                     
                                     {/* Expected XIRR */}
