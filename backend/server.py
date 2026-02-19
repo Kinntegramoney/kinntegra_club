@@ -27649,65 +27649,99 @@ async def get_projected_currency_rates(
         historical_rates = []
         today = datetime.now()
         
-        # First get current rate from the same API as dashboard
+        # First get current rate from multiple APIs for accuracy
         current_rate = None
         async with httpx.AsyncClient(timeout=30) as client:
-            # Try primary API (same as dashboard)
+            # Try ExchangeRate-API first (most reliable for AED)
             try:
                 response = await client.get(
-                    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json",
+                    "https://api.exchangerate-api.com/v4/latest/AED",
                     timeout=5
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    current_rate = data.get('aed', {}).get(target.lower())
-            except Exception:
-                pass
+                    current_rate = data.get('rates', {}).get(target)
+                    logger.info(f"Got current rate from exchangerate-api: AED to {target} = {current_rate}")
+            except Exception as e:
+                logger.warning(f"ExchangeRate-API failed: {e}")
             
-            # Fallback to exchangerate-api
+            # Fallback to fawazahmed0 currency-api
             if not current_rate:
                 try:
                     response = await client.get(
-                        "https://api.exchangerate-api.com/v4/latest/AED",
+                        "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/aed.json",
                         timeout=5
                     )
                     if response.status_code == 200:
                         data = response.json()
-                        current_rate = data.get('rates', {}).get(target)
-                except Exception:
-                    pass
+                        current_rate = data.get('aed', {}).get(target.lower())
+                        logger.info(f"Got current rate from fawazahmed0: AED to {target} = {current_rate}")
+                except Exception as e:
+                    logger.warning(f"fawazahmed0 API failed: {e}")
             
-            # Get historical rates for trend analysis
-            # Quarterly samples for years 5 to 1
-            for year_offset in range(5, 0, -1):
-                for month in [1, 4, 7, 10]:  # Quarterly samples
-                    try:
-                        sample_date = today - timedelta(days=year_offset * 365 + (12 - month) * 30)
-                        date_str = sample_date.strftime("%Y-%m-%d")
-                        
-                        response = await client.get(
-                            f"https://api.frankfurter.app/{date_str}",
-                            params={"base": "USD", "symbols": target}
-                        )
-                        
-                        if response.status_code == 200:
-                            data = response.json()
-                            rate = data.get("rates", {}).get(target, 0)
-                            if rate > 0:
-                                # Convert to AED base
-                                aed_rate = rate / AED_USD_RATE
-                                historical_rates.append({
-                                    "date": data.get("date", date_str),
-                                    "rate": aed_rate,
-                                    "year_offset": -year_offset
-                                })
-                    except Exception:
-                        continue
+            # Get historical rates using fawazahmed0 dated API (more accurate for AED-based rates)
+            # This API provides direct AED rates without USD conversion
             
-            # Monthly samples for the most recent year to capture recent peaks
-            for months_ago in range(12, 0, -1):
+            # Sample dates for 5-year history (weekly samples for recent year, monthly for older)
+            sample_dates = []
+            
+            # Weekly samples for the last 3 months (to capture recent peaks)
+            for weeks_ago in range(12, 0, -1):
+                sample_dates.append(today - timedelta(weeks=weeks_ago))
+            
+            # Monthly samples for months 4-12
+            for months_ago in range(12, 3, -1):
+                sample_dates.append(today - timedelta(days=months_ago * 30))
+            
+            # Quarterly samples for years 2-5
+            for year_offset in range(5, 1, -1):
+                for month in [1, 4, 7, 10]:
+                    sample_dates.append(today - timedelta(days=year_offset * 365 + (12 - month) * 30))
+            
+            # Fetch historical rates
+            for sample_date in sample_dates:
                 try:
-                    sample_date = today - timedelta(days=months_ago * 30)
+                    date_str = sample_date.strftime("%Y-%m-%d")
+                    
+                    # Try fawazahmed0 dated API first (direct AED rates)
+                    response = await client.get(
+                        f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{date_str}/v1/currencies/aed.json",
+                        timeout=5
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        rate = data.get('aed', {}).get(target.lower())
+                        if rate and rate > 0:
+                            year_offset = (today - sample_date).days // 365
+                            historical_rates.append({
+                                "date": date_str,
+                                "rate": rate,
+                                "year_offset": -year_offset
+                            })
+                            continue
+                    
+                    # Fallback to Frankfurter (needs USD conversion)
+                    response = await client.get(
+                        f"https://api.frankfurter.app/{date_str}",
+                        params={"base": "USD", "symbols": f"AED,{target}"}
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        usd_to_target = data.get("rates", {}).get(target, 0)
+                        usd_to_aed = data.get("rates", {}).get("AED", AED_USD_RATE)
+                        if usd_to_target > 0 and usd_to_aed > 0:
+                            # Calculate AED to target rate
+                            aed_rate = usd_to_target / usd_to_aed
+                            year_offset = (today - sample_date).days // 365
+                            historical_rates.append({
+                                "date": data.get("date", date_str),
+                                "rate": aed_rate,
+                                "year_offset": -year_offset
+                            })
+                except Exception as e:
+                    continue
                     date_str = sample_date.strftime("%Y-%m-%d")
                     
                     response = await client.get(
