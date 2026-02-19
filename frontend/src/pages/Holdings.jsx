@@ -2486,7 +2486,7 @@ export default function Holdings() {
                                                   ? 'bg-red-100 border border-red-200'
                                                   : 'bg-amber-50 border border-amber-200'
                                             }`}
-                                            title={`${milestone.description}: AED ${Math.round(milestoneAmount).toLocaleString()}`}
+                                            title={`${milestone.description}: ${formatCurrencyAmount(milestoneAmount)}`}
                                           >
                                             <p className={`text-[9px] font-medium ${isPaid ? 'text-emerald-700' : isOverdue ? 'text-red-700' : 'text-amber-700'}`}>
                                               {new Date(milestone.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
