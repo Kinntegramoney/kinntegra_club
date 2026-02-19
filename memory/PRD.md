@@ -27,6 +27,19 @@ Enhance a financial cash flow projection tool with Excel export overhaul, UI imp
    - Sale profit and currency benefit shown separately in INR
    - Projected exchange rate shown with expected sale date
 
+**Real Estate Holdings - Property Details Fix:**
+4. **Backend API Enhancement** - Updated `/api/real-estate-opportunities/client/{client_id}` endpoint to include:
+   - `total_area`, `carpet_area`, `balcony_area` (Area details)
+   - `handover_date`, `expected_sale_rate`, `estimated_sell_date` (Sale details)
+   - `unit_number`, `floor`, `unit_type`, `location`, `images`
+5. **Apartment Size Column Now Shows**:
+   - Total sqft (from `total_area`)
+   - Apartment area (from `carpet_area`)
+   - Balcony area (from `balcony_area`)
+6. **Expected Sale Amount Shows**:
+   - Sale date from property's `estimated_sell_date`
+   - Projected exchange rate at sale date
+
 #### Session: Feb 18, 2026 (Previous Update)
 **Bug Fixes:**
 1. **Email Shows Sub-broker Name** - Reinvestment approval emails now show sub-broker's name instead of broker's name when client is linked to a sub-broker
