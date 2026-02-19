@@ -27549,32 +27549,58 @@ async def get_live_currency_rates(
     """
     Fetch live/latest currency exchange rates.
     Returns rates for multiple target currencies with AED as base.
-    AED is calculated via USD (AED is pegged to USD at ~3.6725).
+    Uses ExchangeRate-API which supports direct AED rates.
     """
     import httpx
     
-    targets = ["INR", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD"]
+    targets = ["INR", "EUR", "GBP", "CNY", "JPY", "CHF", "CAD", "AUD", "SGD", "USD"]
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            # Get USD-based rates for all targets
+            # Try ExchangeRate-API first (direct AED support)
+            try:
+                response = await client.get(
+                    "https://api.exchangerate-api.com/v4/latest/AED",
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    
+                    result_rates = {"AED": 1}
+                    for target in targets:
+                        if target in rates:
+                            result_rates[target] = round(rates[target], 4)
+                    
+                    logger.info(f"Live rates from exchangerate-api: INR={result_rates.get('INR')}")
+                    return {
+                        "date": datetime.now().strftime("%Y-%m-%d"),
+                        "base": base,
+                        "rates": result_rates,
+                        "source": "exchangerate-api.com"
+                    }
+            except Exception as e:
+                logger.warning(f"ExchangeRate-API failed: {e}")
+            
+            # Fallback to Frankfurter via USD conversion
             response = await client.get(
                 "https://api.frankfurter.app/latest",
-                params={"base": "USD", "symbols": ",".join(targets)}
+                params={"base": "USD", "symbols": ",".join(targets) + ",AED"}
             )
             
             if response.status_code == 200:
                 data = response.json()
                 rates = data.get("rates", {})
+                usd_to_aed = rates.get("AED", AED_USD_RATE)
                 
                 # Convert all rates from USD base to AED base
-                # 1 AED = 1/3.6725 USD ≈ 0.2723 USD
-                result_rates = {"AED": 1, "USD": round(1/AED_USD_RATE, 4)}  # AED base
+                result_rates = {"AED": 1, "USD": round(1/usd_to_aed, 4)}
                 
                 for target in targets:
-                    if target in rates:
-                        # rate_per_aed = rate_per_usd / AED_USD_RATE
-                        result_rates[target] = round(rates[target] / AED_USD_RATE, 4)
+                    if target in rates and target != "AED" and target != "USD":
+                        # rate_per_aed = rate_per_usd / usd_to_aed
+                        result_rates[target] = round(rates[target] / usd_to_aed, 4)
                 
                 return {
                     "date": data.get("date"),
@@ -27592,7 +27618,7 @@ async def get_live_currency_rates(
             "date": datetime.now().strftime("%Y-%m-%d"),
             "base": base,
             "rates": {
-                "AED": 1, "INR": 22.75, "USD": 0.27, "EUR": 0.25, "GBP": 0.21,
+                "AED": 1, "INR": 24.72, "USD": 0.27, "EUR": 0.25, "GBP": 0.21,
                 "CNY": 1.97, "JPY": 40.5, "CHF": 0.24, "CAD": 0.37, "AUD": 0.42, "SGD": 0.36
             },
             "source": "fallback"
