@@ -2154,30 +2154,49 @@ export default function Holdings() {
                     </div>
                   ) : (
                     <>
-                      {/* Summary Row - Similar to Bonds layout */}
+                      {/* Summary Row - Real Estate specific layout */}
                       {(() => {
                         // Calculate totals across all properties
-                        let totalInvestment = 0;
-                        let totalPaid = 0;
+                        let totalInvestmentAmount = 0;
+                        let totalPaidTillDate = 0;
                         let totalExpectedSale = 0;
+                        let paymentsDelayed = 0;
+                        let futurePayments = 0;
+                        const today = new Date();
                         
                         clientRealEstate.forEach(property => {
                           const investmentAmount = property.investment_amount || 0;
-                          totalInvestment += investmentAmount;
-                          totalExpectedSale += property.expected_sale_value || (investmentAmount * 1.4); // Default 40% appreciation if not set
+                          totalInvestmentAmount += investmentAmount;
+                          totalExpectedSale += property.expected_sale_value || (investmentAmount * 1.4);
                           
                           const schedule = property.payment_schedule || [];
                           schedule.forEach((milestone, idx) => {
-                            if (idx < (property.payments_completed || 0)) {
-                              totalPaid += (milestone.percentage / 100) * investmentAmount;
+                            const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                            const milestoneDate = new Date(milestone.date);
+                            const isPaid = idx < (property.payments_completed || 0);
+                            
+                            if (isPaid) {
+                              totalPaidTillDate += milestoneAmount;
+                            } else if (milestoneDate < today) {
+                              // Payment is overdue (past due date but not paid)
+                              paymentsDelayed += milestoneAmount;
+                            } else {
+                              // Future payment (not yet due)
+                              futurePayments += milestoneAmount;
                             }
                           });
                         });
                         
-                        const totalOutstanding = totalInvestment - totalPaid;
-                        const totalExpectedProfit = totalExpectedSale - totalInvestment;
-                        const paidPercent = totalInvestment > 0 ? (totalPaid / totalInvestment) * 100 : 0;
-                        const outstandingPercent = 100 - paidPercent;
+                        const pendingToInvest = totalInvestmentAmount - totalPaidTillDate;
+                        const expectedProfitOnSale = totalExpectedSale - totalInvestmentAmount;
+                        
+                        // Calculate percentages for the bar
+                        const paidPercent = totalInvestmentAmount > 0 ? (totalPaidTillDate / totalInvestmentAmount) * 100 : 0;
+                        const delayedPercent = totalInvestmentAmount > 0 ? (paymentsDelayed / totalInvestmentAmount) * 100 : 0;
+                        const futurePercent = totalInvestmentAmount > 0 ? (futurePayments / totalInvestmentAmount) * 100 : 0;
+                        
+                        // Currency profit/loss calculation (placeholder - would need actual currency rates)
+                        const currencyProfitLoss = 0; // To be calculated based on currency conversion rates
                         
                         const formatAmount = (amount) => {
                           if (amount >= 10000000) {
@@ -2188,7 +2207,7 @@ export default function Holdings() {
                           return `₹ ${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
                         };
                         
-                        // AED to INR conversion (approximate)
+                        // AED to INR conversion
                         const AED_TO_INR = 22.5;
                         
                         return (
@@ -2196,62 +2215,85 @@ export default function Holdings() {
                             {/* Top Summary Row */}
                             <div className="flex flex-wrap gap-6 mb-4 pb-4 border-b border-gray-100">
                               <div>
-                                <span className="text-sm text-gray-500">Total Investment: </span>
+                                <span className="text-sm text-gray-500">Total Investment Amount: </span>
                                 <span className="text-sm font-semibold text-gray-800">
-                                  {formatAmount(totalInvestment * AED_TO_INR)}
+                                  {formatAmount(totalInvestmentAmount * AED_TO_INR)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-sm text-gray-500">Total Gross Expected: </span>
+                                <span className="text-sm text-gray-500">Expected Sale Amount: </span>
                                 <span className="text-sm font-semibold text-blue-600">
                                   {formatAmount(totalExpectedSale * AED_TO_INR)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-sm text-gray-500">Total Gross Profit: </span>
+                                <span className="text-sm text-gray-500">Expected Profit on Sale: </span>
                                 <span className="text-sm font-semibold text-green-600">
-                                  {formatAmount(totalExpectedProfit * AED_TO_INR)}
+                                  {formatAmount(expectedProfitOnSale * AED_TO_INR)}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-sm text-gray-500">Total O/S Principal: </span>
+                                <span className="text-sm text-gray-500">Expected Profit/Loss from Currency: </span>
+                                <span className={`text-sm font-semibold ${currencyProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {currencyProfitLoss >= 0 ? '+' : ''}{formatAmount(currencyProfitLoss * AED_TO_INR)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-500">Pending to Invest: </span>
                                 <span className="text-sm font-semibold text-red-600">
-                                  {formatAmount(totalOutstanding * AED_TO_INR)}
+                                  {formatAmount(pendingToInvest * AED_TO_INR)}
                                 </span>
                               </div>
                             </div>
                             
-                            {/* Repayment Status Bar */}
+                            {/* Total Investment Status Bar */}
                             <div className="flex items-center gap-4">
-                              <span className="text-sm text-gray-600 whitespace-nowrap">Repayment Status:</span>
+                              <span className="text-sm text-gray-600 whitespace-nowrap">Total Investment:</span>
                               <div className="flex-1 h-6 rounded-full overflow-hidden flex bg-gray-100">
                                 {paidPercent > 0 && (
                                   <div 
                                     className="bg-emerald-500 h-full transition-all duration-300"
                                     style={{ width: `${paidPercent}%` }}
+                                    title={`Investment Amount: ${formatAmount(totalPaidTillDate * AED_TO_INR)}`}
                                   />
                                 )}
-                                {outstandingPercent > 0 && (
+                                {delayedPercent > 0 && (
+                                  <div 
+                                    className="bg-red-500 h-full transition-all duration-300"
+                                    style={{ width: `${delayedPercent}%` }}
+                                    title={`Payments Delayed: ${formatAmount(paymentsDelayed * AED_TO_INR)}`}
+                                  />
+                                )}
+                                {futurePercent > 0 && (
                                   <div 
                                     className="bg-blue-500 h-full transition-all duration-300"
-                                    style={{ width: `${outstandingPercent}%` }}
+                                    style={{ width: `${futurePercent}%` }}
+                                    title={`Future Payments: ${formatAmount(futurePayments * AED_TO_INR)}`}
                                   />
                                 )}
                               </div>
                               <div className="flex items-center gap-4 text-sm whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                                  <span className="text-gray-600">Received:</span>
-                                  <span className="font-semibold text-emerald-600">{formatAmount(totalPaid * AED_TO_INR)}</span>
+                                  <span className="text-gray-600">Investment Amount:</span>
+                                  <span className="font-semibold text-emerald-600">{formatAmount(totalPaidTillDate * AED_TO_INR)}</span>
                                   <span className="text-gray-400">({paidPercent.toFixed(0)}%)</span>
                                 </div>
+                                {paymentsDelayed > 0 && (
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                                    <span className="text-gray-600">Payments Delayed:</span>
+                                    <span className="font-semibold text-red-600">{formatAmount(paymentsDelayed * AED_TO_INR)}</span>
+                                    <span className="text-gray-400">({delayedPercent.toFixed(0)}%)</span>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                                  <span className="text-gray-600">Outstanding:</span>
-                                  <span className="font-semibold text-blue-600">{formatAmount(totalOutstanding * AED_TO_INR)}</span>
-                                  <span className="text-gray-400">({outstandingPercent.toFixed(0)}%)</span>
+                                  <span className="text-gray-600">Future Payments:</span>
+                                  <span className="font-semibold text-blue-600">{formatAmount(futurePayments * AED_TO_INR)}</span>
+                                  <span className="text-gray-400">({futurePercent.toFixed(0)}%)</span>
                                 </div>
-                                <span className="text-gray-500">Total: <span className="font-semibold">{formatAmount(totalInvestment * AED_TO_INR)}</span></span>
+                                <span className="text-gray-500">Total: <span className="font-semibold">{formatAmount(totalInvestmentAmount * AED_TO_INR)}</span></span>
                               </div>
                             </div>
                           </div>
