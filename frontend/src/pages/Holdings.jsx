@@ -3082,19 +3082,122 @@ export default function Holdings() {
                             <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
                             {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={profitDiffTooltip}>{formatDiff(profitDifference)}</p>}
                           </td>
-                          <td className="py-2 px-2 text-center">
-                            {holding.xirr !== null && holding.xirr !== undefined ? (
-                              <span className="font-mono text-xs">{holding.xirr.toFixed(2)}%</span>
-                            ) : (
-                              <span className="text-gray-400 text-[10px]">-</span>
-                            )}
+                          <td className="py-2 px-2 text-center overflow-visible">
+                            <div className="cursor-help group/expxirr relative inline-block">
+                              {holding.xirr !== null && holding.xirr !== undefined ? (
+                                <span className="font-mono text-xs text-green-600">{holding.xirr.toFixed(2)}%</span>
+                              ) : (
+                                <span className="text-gray-400 text-[10px]">-</span>
+                              )}
+                              {/* Expected XIRR Schedule Tooltip */}
+                              {allExpectedCashflows.length > 0 && (
+                                <div className="absolute hidden group-hover/expxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '320px'}}>
+                                  <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
+                                    <p className="font-bold text-amber-400">Expected Cashflow Schedule</p>
+                                  </div>
+                                  <div className="p-3 max-h-64 overflow-y-auto">
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr className="text-gray-400 border-b border-gray-700">
+                                          <th className="text-left py-1 font-medium">Date</th>
+                                          <th className="text-right py-1 font-medium">Principal</th>
+                                          <th className="text-right py-1 font-medium">Interest</th>
+                                          <th className="text-right py-1 font-medium">Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {allExpectedCashflows.slice(0, 12).map((cf, i) => {
+                                          const isInvestment = cf.type === 'investment';
+                                          const principal = cf.principal_component || 0;
+                                          const interest = cf.interest_component || 0;
+                                          const total = cf.gross_amount || (principal + interest);
+                                          return (
+                                            <tr key={i} className={`border-b border-gray-800 ${isInvestment ? 'bg-red-900/30' : ''}`}>
+                                              <td className="py-1">{new Date(cf.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}</td>
+                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-blue-400'}`}>{isInvestment ? '-' : ''}{Math.round(principal).toLocaleString('en-IN')}</td>
+                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-green-400'}`}>{isInvestment ? '-' : ''}{Math.round(interest).toLocaleString('en-IN')}</td>
+                                              <td className={`text-right py-1 font-semibold ${isInvestment ? 'text-red-400' : 'text-white'}`}>{isInvestment ? '-' : ''}{Math.round(Math.abs(total)).toLocaleString('en-IN')}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                        {allExpectedCashflows.length > 12 && (
+                                          <tr className="border-b border-gray-700">
+                                            <td colSpan="4" className="py-1 text-center text-gray-400">... +{allExpectedCashflows.length - 12} more entries</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr className="font-bold bg-gray-800">
+                                          <td className="py-1.5 text-amber-400">XIRR</td>
+                                          <td colSpan="3" className="text-right py-1.5 text-green-400">{holding.xirr?.toFixed(2) || '-'}%</td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-2 px-2 text-center">
-                            {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
-                              <span className="font-mono text-xs">{holding.actual_xirr.toFixed(2)}%</span>
-                            ) : (
-                              <span className="text-gray-400 text-[10px]">-</span>
-                            )}
+                          <td className="py-2 px-2 text-center overflow-visible">
+                            <div className="cursor-help group/actxirr relative inline-block">
+                              {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
+                                <span className="font-mono text-xs text-green-600">{holding.actual_xirr.toFixed(2)}%</span>
+                              ) : (
+                                <span className="text-gray-400 text-[10px]">-</span>
+                              )}
+                              {/* Actual XIRR Schedule Tooltip */}
+                              {allActualCashflows.length > 0 && (
+                                <div className="absolute hidden group-hover/actxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '340px'}}>
+                                  <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
+                                    <p className="font-bold text-amber-400">Actual Cashflow Schedule</p>
+                                    <p className="text-gray-400 text-[9px]">Repaid: ₹{totalRepaid.toLocaleString('en-IN', {maximumFractionDigits: 0})}</p>
+                                  </div>
+                                  <div className="p-3 max-h-64 overflow-y-auto">
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr className="text-gray-400 border-b border-gray-700">
+                                          <th className="text-left py-1 font-medium">Date</th>
+                                          <th className="text-right py-1 font-medium">Principal</th>
+                                          <th className="text-right py-1 font-medium">Interest</th>
+                                          <th className="text-right py-1 font-medium">Total</th>
+                                          <th className="text-center py-1 font-medium">Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {allActualCashflows.slice(0, 12).map((cf, i) => {
+                                          const isInvestment = cf.type === 'investment';
+                                          const isPaid = cf.status === 'paid' || cf.is_paid;
+                                          const principal = cf.principal_component || 0;
+                                          const interest = cf.interest_component || 0;
+                                          const total = cf.gross_amount || (principal + interest);
+                                          return (
+                                            <tr key={i} className={`border-b border-gray-800 ${isInvestment ? 'bg-red-900/30' : isPaid ? 'bg-green-900/20' : ''}`}>
+                                              <td className="py-1">{new Date(cf.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}</td>
+                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-blue-400'}`}>{isInvestment ? '-' : ''}{Math.round(principal).toLocaleString('en-IN')}</td>
+                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-green-400'}`}>{isInvestment ? '-' : ''}{Math.round(interest).toLocaleString('en-IN')}</td>
+                                              <td className={`text-right py-1 font-semibold ${isInvestment ? 'text-red-400' : 'text-white'}`}>{isInvestment ? '-' : ''}{Math.round(Math.abs(total)).toLocaleString('en-IN')}</td>
+                                              <td className="text-center py-1">{isInvestment ? <span className="text-red-400">Out</span> : isPaid ? <span className="text-green-400">✓</span> : <span className="text-gray-500">-</span>}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                        {allActualCashflows.length > 12 && (
+                                          <tr className="border-b border-gray-700">
+                                            <td colSpan="5" className="py-1 text-center text-gray-400">... +{allActualCashflows.length - 12} more entries</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr className="font-bold bg-gray-800">
+                                          <td className="py-1.5 text-amber-400">XIRR</td>
+                                          <td colSpan="4" className="text-right py-1.5 text-green-400">{holding.actual_xirr?.toFixed(2) || '-'}%</td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
                           </td>
                           <td className="py-2 px-2 text-center">
                             <button 
