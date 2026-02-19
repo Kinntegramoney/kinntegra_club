@@ -2505,12 +2505,17 @@ export default function Holdings() {
                                   <div className="mb-4">
                                     <h5 className="text-xs font-medium text-gray-600 mb-2">
                                       Payment Milestones ({property.payments_completed || 0}/{schedule.length} completed)
+                                      {reSelectedCurrency !== "AED" && reProjectedRates && (
+                                        <span className="text-[9px] text-gray-400 ml-1">(using projected rates)</span>
+                                      )}
                                     </h5>
                                     <div className="flex items-center gap-1 overflow-x-auto pb-2">
                                       {schedule.map((milestone, i) => {
                                         const isPaid = i < (property.payments_completed || 0);
                                         const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
                                         const isOverdue = !isPaid && new Date(milestone.date) < new Date();
+                                        const milestoneYear = new Date(milestone.date).getFullYear();
+                                        const milestoneRate = getRateForYear(milestoneYear);
                                         
                                         return (
                                           <div 
@@ -2522,13 +2527,13 @@ export default function Holdings() {
                                                   ? 'bg-red-100 border border-red-200'
                                                   : 'bg-amber-50 border border-amber-200'
                                             }`}
-                                            title={`${milestone.description}: AED ${Math.round(milestoneAmount).toLocaleString()}${reSelectedCurrency !== "AED" ? ` (${formatCurrencyAmount(milestoneAmount)})` : ''}`}
+                                            title={`${milestone.description}: AED ${Math.round(milestoneAmount).toLocaleString()}${reSelectedCurrency !== "AED" ? ` (${formatCurrencyAmount(milestoneAmount, milestoneRate)} @ ${milestoneYear} rate: ${milestoneRate.toFixed(2)})` : ''}`}
                                           >
                                             <p className={`text-[9px] font-medium ${isPaid ? 'text-emerald-700' : isOverdue ? 'text-red-700' : 'text-amber-700'}`}>
                                               {new Date(milestone.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
                                             </p>
                                             <p className={`text-[10px] font-semibold ${isPaid ? 'text-emerald-600' : isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
-                                              {reSelectedCurrency !== "AED" ? formatCurrencyAmount(milestoneAmount) : `AED ${Math.round(milestoneAmount / 1000)}K`}
+                                              {reSelectedCurrency !== "AED" ? formatCurrencyAmount(milestoneAmount, milestoneRate) : `AED ${Math.round(milestoneAmount / 1000)}K`}
                                             </p>
                                             <p className={`text-[8px] ${isPaid ? 'text-emerald-500' : isOverdue ? 'text-red-500' : 'text-amber-500'}`}>
                                               {milestone.percentage}%
