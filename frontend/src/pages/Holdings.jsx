@@ -2565,25 +2565,23 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Total Profit - showing both AED (base) and projected INR */}
+                                    {/* Total Profit - based on residency, AED as tooltip */}
                                     <td className="px-3 py-3 text-right">
-                                      <div className="space-y-1">
-                                        {/* AED (Base Currency) - Pure property profit */}
-                                        <div className="pb-1 border-b border-gray-100">
-                                          <p className="font-mono font-semibold text-gray-800 text-xs">{formatAED(profitFromSale)}</p>
-                                          <p className="text-[10px] text-gray-500">
-                                            Property gain
-                                          </p>
-                                        </div>
-                                        {/* Projected INR - Total including currency benefit */}
-                                        <div className="pt-0.5">
-                                          <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                          <p className="text-[10px] text-gray-500">
-                                            Sale: {formatINR(profitFromSale * projectedAedToInr)}
-                                          </p>
-                                          <p className="text-[10px] text-amber-600">
-                                            Currency: {formatINR(currencyBenefit)}
-                                          </p>
+                                      <div 
+                                        className="cursor-help group relative"
+                                        title={`Base: ${formatAED(profitFromSale)} (Property gain)`}
+                                      >
+                                        <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">
+                                          Sale: {formatINR(profitFromSale * projectedAedToInr)}
+                                        </p>
+                                        <p className="text-[10px] text-amber-600">
+                                          Currency: {formatINR(currencyBenefit)}
+                                        </p>
+                                        {/* Tooltip on hover */}
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-800 text-white text-[10px] rounded px-2 py-1.5 whitespace-nowrap shadow-lg">
+                                          <p className="font-semibold mb-1">Base Currency (AED)</p>
+                                          <p>Property Gain: {formatAED(profitFromSale)}</p>
                                         </div>
                                       </div>
                                     </td>
