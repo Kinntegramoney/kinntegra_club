@@ -2315,29 +2315,131 @@ export default function Holdings() {
                         );
                       })()}
 
-                      {/* Properties List */}
+                      {/* Properties as Funded Cards - similar to Opportunities > Funded */}
                       <div className="space-y-4">
-                        {clientRealEstate.map((property, idx) => (
-                          <div key={idx} className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <Building2 className="h-5 w-5 text-teal-600" />
-                                  <h4 className="font-semibold text-gray-800">{property.building_name || 'Property'}</h4>
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    property.status === 'fully_invested' 
-                                      ? 'bg-green-100 text-green-700' 
-                                      : 'bg-blue-100 text-blue-700'
-                                  }`}>
-                                    {property.status === 'fully_invested' ? 'Fully Allocated' : 'Active'}
+                        <h4 className="text-sm font-medium text-gray-700">Your Real Estate Investments</h4>
+                        {clientRealEstate.map((property, idx) => {
+                          // Calculate paid and outstanding amounts
+                          const investmentAmount = property.investment_amount || 0;
+                          const schedule = property.payment_schedule || [];
+                          let paidAmount = 0;
+                          schedule.forEach((milestone, i) => {
+                            if (i < (property.payments_completed || 0)) {
+                              paidAmount += (milestone.percentage / 100) * investmentAmount;
+                            }
+                          });
+                          const outstandingAmount = investmentAmount - paidAmount;
+                          
+                          return (
+                            <div key={idx} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                              {/* Property Images */}
+                              {property.images && property.images.length > 0 && (
+                                <div className="h-40 overflow-hidden bg-gray-100">
+                                  <img 
+                                    src={property.images[0]} 
+                                    alt={property.building_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              
+                              <div className="p-5">
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Building2 className="h-5 w-5 text-teal-600" />
+                                      <h4 className="font-semibold text-gray-800">{property.building_name || 'Property'}</h4>
+                                    </div>
+                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                      <MapPin className="h-3.5 w-3.5" />
+                                      {property.location || `${property.project_name} • Unit ${property.unit_no}`}
+                                    </p>
+                                  </div>
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                    {property.share_percentage || 0}% Share
                                   </span>
                                 </div>
-                                <p className="text-sm text-gray-500 mb-3">
-                                  {property.project_name} • Unit {property.unit_no} • {property.developer_name}
-                                </p>
                                 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  <div>
+                                {/* Investment Stats */}
+                                <div className="grid grid-cols-3 gap-3 mb-4">
+                                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                                    <p className="text-[10px] text-gray-500">Total Investment</p>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(investmentAmount))}
+                                    </p>
+                                  </div>
+                                  <div className="bg-emerald-50 rounded-lg p-2.5 text-center">
+                                    <p className="text-[10px] text-emerald-600">Paid Till Date</p>
+                                    <p className="text-sm font-semibold text-emerald-700">
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(paidAmount))}
+                                    </p>
+                                  </div>
+                                  <div className="bg-amber-50 rounded-lg p-2.5 text-center">
+                                    <p className="text-[10px] text-amber-600">Outstanding</p>
+                                    <p className="text-sm font-semibold text-amber-700">
+                                      AED {new Intl.NumberFormat('en-AE').format(Math.round(outstandingAmount))}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {/* Payment Timeline - Only Outstanding/Upcoming */}
+                                {schedule.length > 0 && (
+                                  <div className="mb-4">
+                                    <h5 className="text-xs font-medium text-gray-600 mb-2">
+                                      Payment Milestones ({property.payments_completed || 0}/{schedule.length} completed)
+                                    </h5>
+                                    <div className="flex items-center gap-1 overflow-x-auto pb-2">
+                                      {schedule.map((milestone, i) => {
+                                        const isPaid = i < (property.payments_completed || 0);
+                                        const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                                        const isOverdue = !isPaid && new Date(milestone.date) < new Date();
+                                        
+                                        return (
+                                          <div 
+                                            key={i}
+                                            className={`flex-shrink-0 px-2 py-1.5 rounded-lg text-center min-w-[70px] ${
+                                              isPaid 
+                                                ? 'bg-emerald-100 border border-emerald-200' 
+                                                : isOverdue
+                                                  ? 'bg-red-100 border border-red-200'
+                                                  : 'bg-amber-50 border border-amber-200'
+                                            }`}
+                                            title={`${milestone.description}: AED ${Math.round(milestoneAmount).toLocaleString()}`}
+                                          >
+                                            <p className={`text-[9px] font-medium ${isPaid ? 'text-emerald-700' : isOverdue ? 'text-red-700' : 'text-amber-700'}`}>
+                                              {new Date(milestone.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
+                                            </p>
+                                            <p className={`text-[10px] ${isPaid ? 'text-emerald-600' : isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                              {milestone.percentage}%
+                                            </p>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Expected Returns */}
+                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                  <div className="text-sm">
+                                    <span className="text-gray-500">Expected XIRR: </span>
+                                    <span className="font-semibold text-green-600">{property.expected_xirr || 'N/A'}%</span>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => navigate(`/broker/real-estate/${property.opportunity_id || property.id}`)}
+                                  >
+                                    <Eye className="h-3.5 w-3.5 mr-1" />
+                                    View Details
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                                     <p className="text-xs text-gray-500">Share</p>
                                     <p className="font-semibold text-gray-800">{property.share_percentage?.toFixed(1)}%</p>
                                   </div>
