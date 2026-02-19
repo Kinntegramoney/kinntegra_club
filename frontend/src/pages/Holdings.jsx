@@ -2402,8 +2402,8 @@ export default function Holdings() {
                           });
                           const outstandingAmount = investmentAmount - paidAmount;
                           
-                          // Currency conversion
-                          const conversionRate = reCurrencyRates[reSelectedCurrency] || 1;
+                          // Currency conversion - current rate for paid amounts
+                          const currentRate = reCurrencyRates[reSelectedCurrency] || 1;
                           const currencySymbols = {
                             AED: 'AED', INR: '₹', USD: '$', EUR: '€', GBP: '£', SGD: 'S$',
                             CNY: '¥', JPY: '¥', CHF: 'Fr', CAD: 'C$', AUD: 'A$', HKD: 'HK$',
@@ -2411,8 +2411,17 @@ export default function Holdings() {
                           };
                           const symbol = currencySymbols[reSelectedCurrency] || reSelectedCurrency;
                           
-                          const formatCurrencyAmount = (amount) => {
-                            const converted = amount * conversionRate;
+                          // Get rate for specific year (uses projected rate if available)
+                          const getRateForYear = (year) => {
+                            if (reSelectedCurrency === "AED") return 1;
+                            if (reProjectedRates && reProjectedRates[year]) {
+                              return reProjectedRates[year];
+                            }
+                            return currentRate;
+                          };
+                          
+                          const formatCurrencyAmount = (amount, rate = currentRate) => {
+                            const converted = amount * rate;
                             if (converted >= 10000000) {
                               return `${symbol}${(converted / 10000000).toFixed(2)}Cr`;
                             } else if (converted >= 100000) {
