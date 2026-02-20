@@ -197,7 +197,8 @@ const INCOME_CATEGORIES = [
     color: "sky",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
-      { key: "sip_amount", label: "SIP Amount", type: "number" },
+      { key: "sip_amount", label: "SIP Amount (Monthly)", type: "number" },
+      { key: "annual_sip_amount", label: "Annual SIP Amount", type: "number", readOnly: true, calculated: true },
       { key: "upto_year", label: "Up to Year", type: "year" }
     ]
   },
