@@ -789,22 +789,9 @@ export default function RealEstateDetails() {
     return totalInvestors > 0 && verifiedCount >= totalInvestors;
   }, [canViewPaymentManagement, opportunity]);
 
-  if (!user) return null;
-
-  // Determine correct sidebar and navigation paths based on user role
-  const SidebarComponent = user.role === 'broker' ? Sidebar : 
-                          user.role === 'sub_broker' ? SubBrokerSidebar : 
-                          ClientSidebar;
-  
-  const getBackPath = () => {
-    if (user.role === 'sub_broker') return '/sub-broker/opportunities';
-    if (user.role === 'client') return '/client/opportunities';
-    return '/broker/opportunities';
-  };
-
   // When coming from holdings with a specific client, filter to show only that client's data
   // For clients, always filter to their own data
-  const getTargetClientId = () => {
+  const getTargetClientId = useCallback(() => {
     if (user?.role === 'client') {
       return user.id || user.client_id;
     }
@@ -812,7 +799,7 @@ export default function RealEstateDetails() {
       return holdingsClientId;
     }
     return null; // No filtering - show all investors
-  };
+  }, [user?.role, user?.id, user?.client_id, isFromHoldings, holdingsClientId]);
   
   const targetClientId = getTargetClientId();
   
@@ -832,6 +819,19 @@ export default function RealEstateDetails() {
     }
     return null;
   }, [opportunity?.investors, targetClientId]);
+
+  if (!user) return null;
+
+  // Determine correct sidebar and navigation paths based on user role
+  const SidebarComponent = user.role === 'broker' ? Sidebar : 
+                          user.role === 'sub_broker' ? SubBrokerSidebar : 
+                          ClientSidebar;
+  
+  const getBackPath = () => {
+    if (user.role === 'sub_broker') return '/sub-broker/opportunities';
+    if (user.role === 'client') return '/client/opportunities';
+    return '/broker/opportunities';
+  };
 
   if (loading) {
     return (
