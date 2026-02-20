@@ -242,6 +242,7 @@ const INCOME_CATEGORIES = [
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "annual_contribution", label: "Annual Contribution", type: "number" },
+      { key: "monthly_contribution", label: "Monthly Contribution", type: "number", readOnly: true, calculated: true },
       { key: "upto_year", label: "Up to Year", type: "year" }
     ]
   },
