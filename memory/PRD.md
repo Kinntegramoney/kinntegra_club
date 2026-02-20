@@ -47,6 +47,13 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 - ✅ **Excel Export**: Added maturity breakdown section showing year-wise maturity amounts
 - ✅ **Insurance Deduplication**: Reduced duplicate entries from 16 to 6 unique records
 
+### Excel Export Overhaul (Feb 20, 2026)
+- ✅ **Sheet Reordering**: 9 sheets in correct sequence matching UI tabs (Members → Income → Expenses → Goals → Investments → Insurance → Liabilities → Assets → Surplus)
+- ✅ **Expenses Sheet Enhanced**: Now includes Insurance Premiums and Loan EMIs with section headers (per user template)
+- ✅ **Goals Sheet Timeline**: Year-wise inflation-adjusted view with target years as columns
+- ✅ **Currency Formatting**: All amounts use ₹ symbol with Indian comma style (₹ 50,00,000)
+- ✅ **Sheet Protection**: All sheets are non-editable
+
 ### Data Migration (Feb 20, 2026)
 - ✅ Migrated "Pradeep Dattatray Prabhu & Family" from old environment
 - Family ID: `869d412b-0cb8-4839-9459-d2a02b2860f1`
