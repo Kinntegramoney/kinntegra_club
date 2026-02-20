@@ -66,6 +66,31 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const existingInsurance = family?.insurance_details || [];
   const currentYear = new Date().getFullYear();
 
+  // Calculate youngest member's retirement year (assuming retirement at 60)
+  const RETIREMENT_AGE = 60;
+  const getYoungestMemberRetirementYear = () => {
+    if (members.length === 0) return currentYear + 30; // Default fallback
+    
+    let youngestDOB = null;
+    members.forEach(member => {
+      if (member.date_of_birth) {
+        const dob = new Date(member.date_of_birth);
+        if (!youngestDOB || dob > youngestDOB) {
+          youngestDOB = dob;
+        }
+      }
+    });
+    
+    if (youngestDOB) {
+      const birthYear = youngestDOB.getFullYear();
+      return birthYear + RETIREMENT_AGE;
+    }
+    
+    return currentYear + 30; // Default fallback if no DOB found
+  };
+  
+  const defaultRetirementYear = getYoungestMemberRetirementYear();
+
   // Loan calculation helpers
   const calculateOutstanding = (emi, installments) => (parseFloat(emi) || 0) * (parseFloat(installments) || 0);
   const calculateCompletionYear = (installments) => currentYear + Math.ceil((parseFloat(installments) || 0) / 12);
