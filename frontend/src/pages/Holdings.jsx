@@ -731,6 +731,9 @@ const OtherTradesTable = ({ trades, selectedClient, formatINR }) => {
 
 export default function Holdings() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'holdings'; // Get tab from URL (real-estate, bonds, holdings)
+  
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -748,7 +751,8 @@ export default function Holdings() {
   const [tradeDetailsModal, setTradeDetailsModal] = useState(null); // For trade details modal
   const [modalData, setModalData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary"); // "summary" or trade index
-  const [mainTab, setMainTab] = useState("holdings"); // "holdings", "trades", or "profile"
+  // Initialize mainTab from URL parameter - map 'real-estate' and 'bonds' to 'holdings' but preserve for subtab
+  const [mainTab, setMainTab] = useState(initialTab === 'real-estate' || initialTab === 'bonds' ? initialTab : "holdings");
   const menuRef = useRef(null);
   const tradeMenuRef = useRef(null);
   
