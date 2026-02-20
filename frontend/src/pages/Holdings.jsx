@@ -2665,7 +2665,7 @@ export default function Holdings() {
                                                 <tr className="font-bold bg-gray-800">
                                                   <td className="py-1.5 text-amber-400">Total</td>
                                                   <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(investmentAmount))}</td>
-                                                  <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(totalInvestmentProjected))}</td>
+                                                  <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(totalInvestmentInr))}</td>
                                                   <td className="text-center py-1.5 text-gray-400">{property.payments_completed || 0}/{schedule.length}</td>
                                                 </tr>
                                               </tfoot>
