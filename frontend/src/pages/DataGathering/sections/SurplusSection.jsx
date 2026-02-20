@@ -2534,12 +2534,6 @@ function AllocationSimulator({
     cashFlowData.push([`  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => formatCurrency(d.savingsDebt))]);
     cashFlowData.push([]);
     cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
-      
-      cashFlowData.push([]);
-      cashFlowData.push(['  TOTAL ANNUAL INVESTMENTS', ...yearlyData.map(d => formatCurrency(d.totalInvestments))]);
-      cashFlowData.push([]);
-      cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
-    }
 
     // ═══════════════ PORTFOLIO SECTION ═══════════════
     cashFlowData.push([]);
