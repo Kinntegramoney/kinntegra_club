@@ -260,11 +260,11 @@ export default function InsuranceSection({ family }) {
               });
               
               return (
-                <tr key={category.value} className={`hover:bg-gray-50 ${hasValues ? '' : 'text-gray-400'}`}>
+                <tr key={category.value} className="hover:bg-gray-50">
                   <td className="px-4 py-2.5 border-r border-gray-100">
                     <div className="flex items-center gap-2">
-                      <Icon className={`h-4 w-4 ${hasValues ? 'text-teal-600' : 'text-gray-300'}`} />
-                      <span className={`text-sm ${hasValues ? 'font-medium text-gray-800' : 'text-gray-500'}`}>
+                      <Icon className={`h-4 w-4 ${hasValues ? 'text-teal-600' : 'text-gray-400'}`} />
+                      <span className={`text-sm ${hasValues ? 'font-medium text-gray-800' : 'text-gray-600'}`}>
                         {category.label}
                       </span>
                     </div>
