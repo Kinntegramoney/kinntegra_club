@@ -66,34 +66,39 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const existingInsurance = family?.insurance_details || [];
   const currentYear = new Date().getFullYear();
 
-  // Calculate primary member's retirement year (assuming retirement at 60)
+  // Calculate the latest retirement year among all family members
+  // Priority: Use explicitly set retirement_year from members, fallback to calculating from DOB + 60
   const RETIREMENT_AGE = 60;
-  const getPrimaryMemberRetirementYear = () => {
+  const getLatestMemberRetirementYear = () => {
     if (members.length === 0) return currentYear + 30; // Default fallback
     
-    // Find primary member
-    const primaryMember = members.find(m => m.isPrimary || m.is_primary) || members[0];
+    let latestRetirementYear = currentYear;
     
-    if (primaryMember?.date_of_birth) {
-      const dob = new Date(primaryMember.date_of_birth);
-      const birthYear = dob.getFullYear();
-      return birthYear + RETIREMENT_AGE;
-    }
-    
-    // If primary member has life expectancy, use that instead
-    if (primaryMember?.life_expectancy) {
-      const lifeExp = parseInt(primaryMember.life_expectancy);
-      if (primaryMember?.date_of_birth) {
-        const dob = new Date(primaryMember.date_of_birth);
+    for (const member of members) {
+      let memberRetirementYear = null;
+      
+      // First priority: Use explicitly set retirement_year
+      if (member.retirement_year) {
+        memberRetirementYear = parseInt(member.retirement_year);
+      }
+      // Second priority: Calculate from DOB + retirement age
+      else if (member.date_of_birth) {
+        const dob = new Date(member.date_of_birth);
         const birthYear = dob.getFullYear();
-        return birthYear + lifeExp;
+        memberRetirementYear = birthYear + RETIREMENT_AGE;
+      }
+      
+      // Track the latest (maximum) retirement year
+      if (memberRetirementYear && memberRetirementYear > latestRetirementYear) {
+        latestRetirementYear = memberRetirementYear;
       }
     }
     
-    return currentYear + 30; // Default fallback if no DOB found
+    // Ensure we return a reasonable value even if no valid dates found
+    return latestRetirementYear > currentYear ? latestRetirementYear : currentYear + 30;
   };
   
-  const defaultRetirementYear = getPrimaryMemberRetirementYear();
+  const defaultRetirementYear = getLatestMemberRetirementYear();
 
   // Loan calculation helpers
   const calculateOutstanding = (emi, installments) => (parseFloat(emi) || 0) * (parseFloat(installments) || 0);
