@@ -94,12 +94,23 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   
   // Apply share_percentage to get client's portion of the property
   const sharePercentage = (property.share_percentage || 100) / 100;
-  const fullInvestmentAmount = property.investment_amount || 0;
-  const fullExpectedSalePrice = property.expected_sale_value || (fullInvestmentAmount * 1.4);
+  
+  // Full property values (100% ownership)
+  const fullUnitPrice = property.investment_amount || property.unit_price || 0;
+  const fullDldFee = property.dld_fee || 0;
+  const fullAdminFee = property.admin_fee || 0;
+  const fullTotalCost = fullUnitPrice + fullDldFee + fullAdminFee;
+  const fullExpectedSalePrice = property.expected_sale_value || (fullUnitPrice * 1.4);
   
   // Client's actual amounts based on their share
-  const investmentAmount = fullInvestmentAmount * sharePercentage;
+  const unitPriceAed = fullUnitPrice * sharePercentage;
+  const dldFeeAed = fullDldFee * sharePercentage;
+  const adminFeeAed = fullAdminFee * sharePercentage;
+  const totalCostAed = fullTotalCost * sharePercentage; // This is the total investment amount
   const expectedSalePrice = fullExpectedSalePrice * sharePercentage;
+  
+  // For backward compatibility, keep investmentAmount as unit price (used in payment schedule calculations)
+  const investmentAmount = unitPriceAed;
   
   const schedule = property.payment_schedule || [];
   
@@ -126,7 +137,7 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   
   const isSellingBeforeCompletion = expectedSaleDate < handoverDate;
   
-  // Calculate payments (apply share percentage to each payment)
+  // Calculate payments from schedule (apply share percentage to each payment)
   let paidAmountInr = 0, payableAmountInr = 0, paidAmountAed = 0, payableAmountAed = 0;
   let paymentsAfterSaleAed = 0;
   
@@ -150,12 +161,32 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
     }
   });
   
-  const totalInvestmentInr = paidAmountInr + payableAmountInr;
+  // Total investment including DLD and Admin fees (converted to INR at current rate for display)
+  const totalInvestmentAed = totalCostAed;
+  const totalInvestmentInr = totalCostAed * currentRate; // Use current rate for investment display
+  
+  // Payment schedule totals (for paid/due breakdown)
+  const paidFromScheduleInr = paidAmountInr;
+  const payableFromScheduleInr = payableAmountInr;
+  
   const netSaleProceedsAed = expectedSalePrice - payableAmountAed;
   const netSaleProceedsInr = netSaleProceedsAed * projectedAedToInrAtSale;
-  const profitFromSaleAed = expectedSalePrice - investmentAmount;
-  const totalProfitInr = netSaleProceedsInr - paidAmountInr;
+  
+  // Property profit in AED (pure property gain without forex)
+  const profitFromSaleAed = expectedSalePrice - totalCostAed;
+  // Property profit in INR at current rate (without forex impact)
+  const profitFromSaleInrNoForex = profitFromSaleAed * currentRate;
+  
+  // Sale proceeds in INR at projected rate
   const saleProceedsInr = expectedSalePrice * projectedAedToInrAtSale;
+  
+  // Forex impact calculation
+  // Forex benefit on sale = Sale value × (future rate - current rate)
+  const forexImpactOnSale = expectedSalePrice * (projectedAedToInrAtSale - currentRate);
+  
+  // Total profit in INR = Sale proceeds - Total investment at projected rates
+  // But for cleaner display: Total Profit = Property Profit (no forex) + Forex Impact
+  const totalProfitInr = profitFromSaleInrNoForex + forexImpactOnSale;
   
   const currencyBenefitOnSale = expectedSalePrice * (projectedAedToInrAtSale - currentRate);
   const currencyLossOnPayments = totalInvestmentInr - (investmentAmount * currentRate);
