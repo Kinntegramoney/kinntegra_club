@@ -737,7 +737,14 @@ export default function DataGathering() {
                   case "introduction": count = selectedFamily.members?.length || 0; break;
                   case "income": count = selectedFamily.income_details?.length || 0; break;
                   case "goals": count = selectedFamily.goal_details?.length || 0; break;
-                  case "expenses": count = selectedFamily.expense_details?.length || 0; break;
+                  case "expenses": {
+                    // Count regular expenses + insurance premiums + liabilities
+                    const expenseCount = selectedFamily.expense_details?.length || 0;
+                    const insuranceCount = selectedFamily.insurance_premiums?.length || 0;
+                    const liabilityCount = selectedFamily.liabilities?.length || 0;
+                    count = expenseCount + insuranceCount + liabilityCount;
+                    break;
+                  }
                   case "insurance": count = selectedFamily.insurance_premiums?.length || 0; break;
                   case "liability": count = selectedFamily.liabilities?.length || 0; break;
                   case "investments": {
