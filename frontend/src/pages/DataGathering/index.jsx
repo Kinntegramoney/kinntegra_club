@@ -724,6 +724,20 @@ export default function DataGathering() {
                   case "expenses": count = selectedFamily.expense_details?.length || 0; break;
                   case "insurance": count = selectedFamily.insurance_premiums?.length || 0; break;
                   case "liability": count = selectedFamily.liabilities?.length || 0; break;
+                  case "investments": {
+                    // Count direct investments
+                    let investmentCount = selectedFamily.investment_details?.length || 0;
+                    // Count income-derived investments (EPF, PPF, MF SIP, Shares/PMS with annual_contribution or sip_amount)
+                    const incomeDetails = selectedFamily.income_details || [];
+                    incomeDetails.forEach(inc => {
+                      if (inc.category === 'epf' && inc.details?.annual_contribution > 0) investmentCount++;
+                      if (inc.category === 'ppf' && inc.details?.annual_contribution > 0) investmentCount++;
+                      if (inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0)) investmentCount++;
+                      if (inc.category === 'shares_pms' && inc.details?.annual_contribution > 0) investmentCount++;
+                    });
+                    count = investmentCount;
+                    break;
+                  }
                   default: count = null;
                 }
               }
