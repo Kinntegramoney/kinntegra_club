@@ -819,7 +819,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     
     // ========== EXPENSES SECTION ==========
+    dgData.push([dgSeparator]);
     dgData.push(['EXPENSES']);
+    dgData.push([dgSeparator]);
     dgData.push(['Category', 'Member', 'Monthly Amount', 'Annual Amount', 'Inflation %', 'Up to Year', 'Post Retirement', 'Post Ret. %']);
     
     expenseDetails.forEach(exp => {
@@ -839,24 +841,26 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([]);
     
     // ========== GOALS SECTION ==========
+    dgData.push([dgSeparator]);
     dgData.push(['GOALS']);
-    dgData.push(['Goal Name', 'Category', 'Member', 'Current Amount', 'Target Year', 'Inflation %', 'Future Value']);
+    dgData.push([dgSeparator]);
+    dgData.push(['Goal Name', 'Category', 'Member', 'Current Amount', 'Target Year', 'Inflation %']);
     
     goalDetails.forEach(goal => {
       const baseAmount = parseFloat(goal.goal_amount) || 0;
       const inflationRate = parseFloat(goal.inflation_percent) || 0;
       const goalYear = goal.goal_years?.[0] || goal.goal_year || currentYear;
-      const yearsFromNow = parseInt(goalYear) - currentYear;
-      const futureValue = baseAmount * Math.pow(1 + inflationRate / 100, Math.max(0, yearsFromNow));
       dgData.push([
         goal.name || goal.goal_name || '', getCategoryLabel(goal.category), getMemberNames(goal.member_ids),
-        formatCurrencyINR(baseAmount), goalYear, `${inflationRate}%`, formatCurrencyINR(Math.round(futureValue))
+        formatCurrencyINR(baseAmount), goalYear, `${inflationRate}%`
       ]);
     });
     dgData.push([]);
     
     // ========== INVESTMENTS SECTION ==========
+    dgData.push([dgSeparator]);
     dgData.push(['INVESTMENTS']);
+    dgData.push([dgSeparator]);
     dgData.push(['Category', 'Member', 'Annual Amount', 'Up to Year']);
     combinedInvestments.forEach(inv => {
       const memberName = members.find(m => m.id === inv.member_id)?.name || '';
@@ -867,7 +871,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     // ========== INSURANCE PREMIUMS ==========
     const insuranceExpenses = expenseDetails.filter(e => ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type));
     if (insuranceExpenses.length > 0) {
+      dgData.push([dgSeparator]);
       dgData.push(['INSURANCE PREMIUMS']);
+      dgData.push([dgSeparator]);
       dgData.push(['Type', 'Member', 'Annual Premium', 'Coverage Amount', 'Up to Year']);
       insuranceExpenses.forEach(exp => {
         dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.yearly_premium || exp.annual_amount), formatCurrencyINR(exp.coverage_amount), exp.upto_year || '']);
@@ -878,7 +884,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     // ========== LIABILITIES ==========
     const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
     if (loanExpenses.length > 0) {
+      dgData.push([dgSeparator]);
       dgData.push(['LIABILITIES']);
+      dgData.push([dgSeparator]);
       dgData.push(['Loan Type', 'Member', 'Monthly EMI', 'Remaining Installments', 'Outstanding Amount']);
       loanExpenses.forEach(exp => {
         const outstanding = (parseFloat(exp.monthly_emi) || 0) * (parseFloat(exp.num_installments) || 0);
