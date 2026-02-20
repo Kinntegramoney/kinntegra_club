@@ -1025,11 +1025,12 @@ export default function SurplusSection({ family, isReadOnly }) {
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, y.toString()), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, y.toString()), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, y.toString()), 0);
-      return Math.round(totalIncome - totalExpenses - totalGoals);
+      return formatCurrencyINR(totalIncome - totalExpenses - totalGoals);
     })]);
     
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
     cashFlowSheet['!cols'] = [{ wch: 40 }, { wch: 5 }, ...allYears.map(() => ({ wch: 12 }))];
+    cashFlowSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "6. Cash Flow");
 
     // ========== SHEET 7: PORTFOLIO PROJECTION ==========
@@ -1062,12 +1063,13 @@ export default function SurplusSection({ family, isReadOnly }) {
       const totalReturns = equityReturns + debtReturns;
       const closingBalance = openingBalance + additions + totalReturns;
       
-      portfolioData.push([y, Math.round(openingBalance), Math.round(savings), Math.round(yearMaturities), Math.round(additions), Math.round(equityReturns), Math.round(debtReturns), Math.round(totalReturns), Math.round(closingBalance)]);
+      portfolioData.push([y, formatCurrencyINR(openingBalance), formatCurrencyINR(savings), formatCurrencyINR(yearMaturities), formatCurrencyINR(additions), formatCurrencyINR(equityReturns), formatCurrencyINR(debtReturns), formatCurrencyINR(totalReturns), formatCurrencyINR(closingBalance)]);
       previousClosingBalance = closingBalance;
     });
     
     const portfolioSheet = XLSX.utils.aoa_to_sheet(portfolioData);
     portfolioSheet['!cols'] = [{ wch: 10 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
+    portfolioSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, portfolioSheet, "7. Portfolio");
 
     // ========== SHEET 8: FINANCIAL SUMMARY ==========
