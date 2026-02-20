@@ -828,14 +828,67 @@ export default function SurplusSection({ family, isReadOnly }) {
     })]);
     cashFlowData.push([]);
     
-    // === EXPENSES SECTION ===
-    cashFlowData.push(['EXPENSES']);
+    // === EXPENSES SECTION - Detailed by Category ===
+    cashFlowData.push(['EXPENSES (Year-wise by Category)']);
+    
+    // Get unique expense categories
+    const uniqueExpenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
+    
+    // For each expense category, show year-wise values with inflation
+    uniqueExpenseCategories.forEach(expCat => {
+      const categoryExpenses = expenseDetails.filter(e => e.expense_type === expCat);
+      const categoryLabel = expCat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      cashFlowData.push([categoryLabel, '', ...allYears.map(y => {
+        const targetYear = parseInt(y);
+        const yearsFromNow = targetYear - currentYear;
+        
+        let totalForCategory = 0;
+        categoryExpenses.forEach(exp => {
+          const uptoYear = parseInt(exp.upto_year) || endYear;
+          if (targetYear > uptoYear) return; // Skip if past upto_year
+          
+          const baseAnnual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || 0;
+          const inflationRate = parseFloat(exp.inflation_percent) ?? 5;
+          
+          // Calculate inflated amount
+          let inflatedAmount = baseAnnual;
+          if (yearsFromNow > 0) {
+            inflatedAmount = baseAnnual * Math.pow(1 + inflationRate / 100, yearsFromNow);
+          }
+          
+          // Check post-retirement adjustment
+          const memberIds = exp.member_ids || [];
+          const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+          
+          if (!isFamilyExpense && exp.consider_post_retirement) {
+            // Check if any associated member is retired
+            const isAnyMemberRetired = memberIds.some(mid => {
+              const info = getMemberIncomeInfo(mid);
+              return targetYear >= info.retirementYear;
+            });
+            if (isAnyMemberRetired) {
+              inflatedAmount = inflatedAmount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
+            }
+          }
+          
+          totalForCategory += inflatedAmount;
+        });
+        
+        return Math.round(totalForCategory);
+      })]);
+    });
+    
+    // Also show by member
+    cashFlowData.push([]);
+    cashFlowData.push(['EXPENSES BY MEMBER']);
     members.forEach(m => {
-      cashFlowData.push([`${m.name} - Living Expenses`, '', ...allYears.map(y => {
+      cashFlowData.push([`${m.name} - Total Expenses`, '', ...allYears.map(y => {
         const yearStr = y.toString();
         return Math.round(getProjectedMemberExpenses(m.id, yearStr));
       })]);
     });
+    
     cashFlowData.push(['TOTAL EXPENSES', '', ...allYears.map(y => {
       const yearStr = y.toString();
       return Math.round(members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0));
