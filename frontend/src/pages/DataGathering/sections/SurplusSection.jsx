@@ -843,54 +843,45 @@ export default function SurplusSection({ family, isReadOnly }) {
     expensesSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, expensesSheet, "3. Expenses");
 
-    // ========== SHEET 4: GOALS (Year-wise Inflation Adjusted Timeline) ==========
+    // ========== SHEET 4: GOALS (Year-wise Cash Flow with Inflation) ==========
     const goalsData = [];
-    goalsData.push(['FINANCIAL GOALS - INFLATION ADJUSTED TIMELINE']);
+    goalsData.push(['GOALS - YEAR-WISE CASH FLOW']);
     goalsData.push([]);
     
-    // Find all unique goal years to determine the range
-    const allGoalYears = new Set();
-    goalDetails.forEach(goal => {
-      const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year] : []);
-      goalYears.forEach(y => allGoalYears.add(parseInt(y)));
-    });
-    const sortedGoalYears = [...allGoalYears].sort((a, b) => a - b);
-    const goalYearsRange = sortedGoalYears.length > 0 ? sortedGoalYears : [currentYear];
+    // Generate projection years (current year to endYear, but limit to reasonable range)
+    const projectionYears = [];
+    const maxProjectionYears = Math.min(endYear, currentYear + 30); // Limit to 30 years
+    for (let y = currentYear; y <= maxProjectionYears; y++) {
+      projectionYears.push(y);
+    }
     
-    // Create header row with years
-    goalsData.push(['Goal Name', 'Category', 'Member', 'Current Value', 'Inflation %', ...goalYearsRange.map(y => y.toString())]);
+    // Header row with years
+    goalsData.push(['Year', '', ...projectionYears]);
+    // Age row
+    goalsData.push(['Age', 'Inflation', ...projectionYears.map(y => primaryAge + (y - currentYear))]);
     
-    // Add each goal with its inflation-adjusted value in the target year(s)
+    // Each goal as a row with year-wise projected values
     goalDetails.forEach(goal => {
-      const memberName = getMemberNames(goal.member_ids);
-      const categoryLabel = (goal.category || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const goalName = goal.name || goal.goal_name || goal.category || 'Goal';
       const baseAmount = parseFloat(goal.goal_amount) || 0;
       const inflationRate = parseFloat(goal.inflation_percent) || 0;
       const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
       
-      const yearValues = goalYearsRange.map(year => {
+      const yearValues = projectionYears.map(year => {
+        // Check if this goal applies to this year
         if (goalYears.includes(year.toString()) || goalYears.includes(year)) {
           const yearsFromNow = year - currentYear;
           const inflatedAmount = baseAmount * Math.pow(1 + inflationRate / 100, yearsFromNow);
-          return formatCurrencyINR(Math.round(inflatedAmount));
+          return Math.round(inflatedAmount);
         }
-        return '';
+        return 0;
       });
       
-      goalsData.push([
-        goal.name || goal.goal_name || '',
-        categoryLabel,
-        memberName,
-        formatCurrencyINR(baseAmount),
-        inflationRate || 0,
-        ...yearValues
-      ]);
+      goalsData.push([goalName, `${inflationRate}%`, ...yearValues.map(v => v > 0 ? formatCurrencyINR(v) : 0)]);
     });
     
-    // Add total row
-    goalsData.push([]);
-    const totalRow = ['TOTAL (Inflation Adjusted)', '', '', '', ''];
-    goalYearsRange.forEach(year => {
+    // Total row
+    const goalTotalRow = ['Total', '', ...projectionYears.map(year => {
       let yearTotal = 0;
       goalDetails.forEach(goal => {
         const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
@@ -901,9 +892,9 @@ export default function SurplusSection({ family, isReadOnly }) {
           yearTotal += baseAmount * Math.pow(1 + inflationRate / 100, yearsFromNow);
         }
       });
-      totalRow.push(yearTotal > 0 ? formatCurrencyINR(Math.round(yearTotal)) : '');
-    });
-    goalsData.push(totalRow);
+      return yearTotal > 0 ? formatCurrencyINR(Math.round(yearTotal)) : 0;
+    })];
+    goalsData.push(goalTotalRow);
     
     const goalsSheet = XLSX.utils.aoa_to_sheet(goalsData);
     goalsSheet['!cols'] = autoFitColumns(goalsData);
