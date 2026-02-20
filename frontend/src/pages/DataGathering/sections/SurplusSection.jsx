@@ -1593,7 +1593,7 @@ function AllocationSimulator({
   }
 
   // Categories with maturity dates are debt instruments - exclude from allocation simulator
-  const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+  const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps', 'epf', 'gratuity'];
 
   // Get assets for a specific member or family
   const getAssetsForEntity = (entityId) => {
