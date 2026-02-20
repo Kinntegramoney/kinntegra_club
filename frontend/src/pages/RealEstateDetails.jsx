@@ -866,7 +866,7 @@ export default function RealEstateDetails() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Property not found</p>
-            <Button onClick={() => navigate(getBackPath())}>Back to Opportunities</Button>
+            <Button onClick={() => navigate(getBackPath())}>{getBackLabel()}</Button>
           </div>
         </div>
       </div>
@@ -887,7 +887,7 @@ export default function RealEstateDetails() {
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <Button variant="ghost" size="sm" onClick={() => navigate(getBackPath())} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Opportunities
+            {getBackLabel()}
           </Button>
           
           <div className="flex items-start justify-between">
