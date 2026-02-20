@@ -106,6 +106,9 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const formatCurrency = (value) => (!value || value === 0) ? "₹0" : `₹${parseFloat(value).toLocaleString('en-IN')}`;
 
   useEffect(() => {
+    // Only load on initial mount or when family changes
+    if (initialLoadDone && family?.id) return;
+    
     const itemsByCategory = {};
     const added = [];
     EXPENSE_CATEGORIES.forEach(cat => { itemsByCategory[cat.value] = []; });
