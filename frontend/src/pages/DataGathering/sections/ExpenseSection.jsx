@@ -558,7 +558,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                         }
                                       }} 
                                       className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.amount_source === 'annual' ? 'bg-gray-100' : 'bg-white'}`}
-                                      disabled={isReadOnly || item.details.amount_source === 'annual'} 
+                                      readOnly={item.details.amount_source === 'annual'}
+                                      disabled={isReadOnly} 
                                     />
                                   </div>
                                 </div>
@@ -580,7 +581,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                         }
                                       }} 
                                       className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.amount_source === 'monthly' ? 'bg-gray-100' : 'bg-white'}`}
-                                      disabled={isReadOnly || item.details.amount_source === 'monthly'} 
+                                      readOnly={item.details.amount_source === 'monthly'}
+                                      disabled={isReadOnly} 
                                     />
                                   </div>
                                 </div>
