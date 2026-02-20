@@ -1016,11 +1016,14 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(['TOTAL', '', '', '', formatCurrencyINR(Math.round(totalGoalsFV))]);
     data.push([]);
     
-    // SECTION 5: ASSETS SUMMARY
+    // SECTION 5: ASSETS SUMMARY (Excluding EPF & Gratuity as they are counted in maturities)
     data.push(['SECTION 5: EXISTING ASSETS']);
     data.push(['Asset Type', 'Current Value', 'Maturity Year', 'Maturity Value']);
     let totalAssets = 0;
+    // Exclude EPF and Gratuity from assets as they are counted via maturities
+    const excludedFromAssets = ['epf', 'gratuity'];
     incomeDetails.forEach(inc => {
+      if (excludedFromAssets.includes(inc.category)) return; // Skip EPF and Gratuity
       const d = inc.details || {};
       const currentVal = parseFloat(d.market_value) || parseFloat(d.current_value) || parseFloat(d.investment_value) || parseFloat(d.bank_balance) || 0;
       const maturityVal = parseFloat(d.maturity_value) || parseFloat(d.maturity_amount) || parseFloat(d.maturity_corpus) || 0;
@@ -1030,6 +1033,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       }
     });
     data.push(['TOTAL ASSETS', formatCurrencyINR(totalAssets), '', '']);
+    data.push(['Note: EPF & Gratuity excluded (counted via maturities)']);
     data.push([]);
     
     // SECTION 6: ASSUMPTIONS
