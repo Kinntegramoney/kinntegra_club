@@ -250,54 +250,71 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
             ) : (
               investments.map((inv) => {
                 const categoryInfo = getCategoryInfo(inv.category);
+                const isDisabled = isReadOnly || inv.isFromIncome;
                 return (
-                  <tr key={inv.id} className="hover:bg-gray-50">
+                  <tr key={inv.id} className={`hover:bg-gray-50 ${inv.isFromIncome ? 'bg-blue-50/50' : ''}`}>
                     <td className="px-3 py-2">
-                      <Select
-                        value={inv.category}
-                        onValueChange={(v) => updateInvestment(inv.id, 'category', v)}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-40">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {INVESTMENT_CATEGORIES.map(cat => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              <span className="flex items-center gap-2">
-                                <cat.icon className="h-3 w-3" />
-                                {cat.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {inv.isFromIncome ? (
+                        <div className="flex items-center gap-2">
+                          <categoryInfo.icon className="h-4 w-4 text-sky-600" />
+                          <span className="text-xs text-gray-700">{categoryInfo.label}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">From Income</span>
+                        </div>
+                      ) : (
+                        <Select
+                          value={inv.category}
+                          onValueChange={(v) => updateInvestment(inv.id, 'category', v)}
+                          disabled={isDisabled}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-40">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {INVESTMENT_CATEGORIES.map(cat => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                <span className="flex items-center gap-2">
+                                  <cat.icon className="h-3 w-3" />
+                                  {cat.label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </td>
                     <td className="px-3 py-2">
-                      <Select
-                        value={inv.member_id}
-                        onValueChange={(v) => updateInvestment(inv.id, 'member_id', v)}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-32">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {members.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {inv.isFromIncome ? (
+                        <span className="text-xs text-gray-600">{members.find(m => m.id === inv.member_id)?.name || '-'}</span>
+                      ) : (
+                        <Select
+                          value={inv.member_id}
+                          onValueChange={(v) => updateInvestment(inv.id, 'member_id', v)}
+                          disabled={isDisabled}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-32">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {members.map(m => (
+                              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </td>
                     <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        value={inv.amount}
-                        onChange={(e) => updateInvestment(inv.id, 'amount', e.target.value)}
-                        placeholder="Amount"
-                        className="h-8 text-xs w-24"
-                        disabled={isReadOnly}
-                      />
+                      {inv.isFromIncome ? (
+                        <span className="text-xs font-mono text-gray-700">{formatCurrency(inv.amount)}</span>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={inv.amount}
+                          onChange={(e) => updateInvestment(inv.id, 'amount', e.target.value)}
+                          placeholder="Amount"
+                          className="h-8 text-xs w-24"
+                          disabled={isDisabled}
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <Select
