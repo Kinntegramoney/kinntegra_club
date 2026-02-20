@@ -280,6 +280,9 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const existingIncomes = family?.income_details || [];
 
   // Helper function to recalculate XIRR for property items
+  // Uses REAL RETURN (inflation-adjusted) with 8% annual inflation assumption
+  const ANNUAL_INFLATION_RATE = 0.08; // 8% annual inflation
+  
   const recalculatePropertyXIRR = (details) => {
     const investmentAmount = parseFloat(details.investment_amount) || 0;
     const marketValue = parseFloat(details.market_value) || 0;
@@ -327,8 +330,15 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         const years = days / 365;
         
         if (years > 0) {
-          const xirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
-          return Math.round(xirr * 100) / 100;
+          // Calculate inflation-adjusted investment value (what the investment would need to be worth to maintain purchasing power)
+          const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+          
+          // Calculate REAL XIRR using inflation-adjusted value
+          // Real XIRR = ((Market Value / Inflation-Adjusted Investment) ^ (1/years) - 1) * 100
+          // This shows the REAL return after accounting for inflation
+          const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
+          
+          return Math.round(realXirr * 100) / 100;
         }
       } catch (e) {
         console.log('XIRR calculation error:', e);
