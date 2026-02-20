@@ -1013,7 +1013,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     
     const liabilitiesSheet = XLSX.utils.aoa_to_sheet(liabilitiesData);
-    liabilitiesSheet['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 15 }];
+    liabilitiesSheet['!cols'] = autoFitColumns(liabilitiesData);
     liabilitiesSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, liabilitiesSheet, "7. Liabilities");
 
