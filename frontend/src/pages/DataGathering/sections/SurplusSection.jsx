@@ -536,17 +536,71 @@ export default function SurplusSection({ family, isReadOnly }) {
     dataSheetData.push([]);
 
     // --- INCOME ---
-    dataSheetData.push(['Income', ...members.map(m => m.name)]);
-    dataSheetData.push(['Retirement Age', ...members.map(m => {
+    dataSheetData.push(['INCOME DETAILS']);
+    dataSheetData.push(['Member', 'Income Type', 'Monthly Amount', 'Annual Amount', 'Growth %', 'Up to Year']);
+    incomeDetails.forEach(inc => {
+      const details = inc.details || {};
+      const memberNames = (inc.member_ids || []).map(mid => members.find(m => m.id === mid)?.name || '').join(', ');
+      
+      let monthlyAmt = 0;
+      let annualAmt = 0;
+      let growthRate = '';
+      let uptoYear = details.upto_year || '';
+      
+      switch (inc.category) {
+        case 'salary':
+          monthlyAmt = parseFloat(details.net_income_monthly) || 0;
+          annualAmt = parseFloat(details.net_income_yearly) || monthlyAmt * 12;
+          growthRate = details.avg_growth_rate || '';
+          break;
+        case 'business':
+          annualAmt = parseFloat(details.net_income_yearly) || 0;
+          monthlyAmt = annualAmt / 12;
+          growthRate = details.avg_growth_rate || '';
+          break;
+        case 'rental':
+          monthlyAmt = parseFloat(details.rent_per_month) || 0;
+          annualAmt = parseFloat(details.annual_rent) || monthlyAmt * 12;
+          break;
+        case 'epf':
+        case 'ppf':
+        case 'shares_pms':
+          monthlyAmt = parseFloat(details.monthly_contribution) || 0;
+          annualAmt = parseFloat(details.annual_contribution) || monthlyAmt * 12;
+          break;
+        case 'mutual_fund':
+          monthlyAmt = parseFloat(details.sip_amount) || 0;
+          annualAmt = parseFloat(details.annual_amount) || monthlyAmt * 12;
+          break;
+        case 'pension':
+          annualAmt = parseFloat(details.amount_yearly) || parseFloat(details.amount) * 12 || 0;
+          monthlyAmt = annualAmt / 12;
+          break;
+        case 'cash':
+          annualAmt = parseFloat(details.bank_balance) || 0;
+          break;
+        default:
+          annualAmt = parseFloat(details.annual_amount) || parseFloat(details.amount) || 0;
+          monthlyAmt = annualAmt / 12;
+      }
+      
+      const categoryLabel = inc.category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Other';
+      dataSheetData.push([memberNames, categoryLabel, Math.round(monthlyAmt), Math.round(annualAmt), growthRate, uptoYear]);
+    });
+    dataSheetData.push([]);
+    
+    // --- INCOME SUMMARY BY MEMBER ---
+    dataSheetData.push(['INCOME SUMMARY', ...members.map(m => m.name)]);
+    dataSheetData.push(['Retirement Year', ...members.map(m => {
       const info = getMemberIncomeInfo(m.id);
-      return info.retirementYear - currentYear + primaryAge;
+      return info.retirementYear;
     })]);
     dataSheetData.push(['Life Expectancy', ...members.map(m => parseInt(m.life_expectancy) || 85)]);
     dataSheetData.push(['Salary/Business Income', ...members.map(m => {
       const info = getMemberIncomeInfo(m.id);
-      return info.baseSalary + info.baseBusiness;
+      return Math.round(info.baseSalary + info.baseBusiness);
     })]);
-    dataSheetData.push(['Salary Expected Growth', ...members.map(m => {
+    dataSheetData.push(['Salary Growth %', ...members.map(m => {
       const info = getMemberIncomeInfo(m.id);
       return `${info.salaryGrowth}%`;
     })]);
