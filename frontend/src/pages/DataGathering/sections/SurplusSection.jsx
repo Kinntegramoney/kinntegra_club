@@ -1131,33 +1131,112 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(totGoalRow);
     data.push([thinSeparator]);
     
-    // NET SAVINGS
-    data.push(['▶ NET ANNUAL SAVINGS = (A) - (B) - (C)']);
+    // INVESTMENTS PROJECTION
+    data.push(['▶ INVESTMENTS']);
+    
+    // Group investments by category
+    const investmentsByCategory = {};
+    combinedInvestments.forEach(inv => {
+      const cat = getCategoryLabel(inv.category) || inv.category || 'Other';
+      if (!investmentsByCategory[cat]) {
+        investmentsByCategory[cat] = { annualAmount: 0, uptoYear: endYear };
+      }
+      investmentsByCategory[cat].annualAmount += parseFloat(inv.annual_amount) || 0;
+      if (inv.upto_year && parseInt(inv.upto_year) < investmentsByCategory[cat].uptoYear) {
+        investmentsByCategory[cat].uptoYear = parseInt(inv.upto_year);
+      }
+    });
+    
+    Object.entries(investmentsByCategory).forEach(([category, catData]) => {
+      const row = [`  ${category}`];
+      projectionYears.forEach(year => {
+        if (year <= catData.uptoYear) {
+          row.push(formatCurrencyINR(Math.round(catData.annualAmount)));
+        } else {
+          row.push('-');
+        }
+      });
+      data.push(row);
+    });
+    
+    const totInvRow = ['TOTAL INVESTMENTS (D)'];
+    projectionYears.forEach(year => {
+      const yrInv = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, year.toString()), 0);
+      totInvRow.push(yrInv > 0 ? formatCurrencyINR(Math.round(yrInv)) : '-');
+    });
+    data.push(totInvRow);
+    data.push([thinSeparator]);
+    
+    // NET SAVINGS (updated formula: Income - Expenses - Goals - Investments)
+    data.push(['▶ NET ANNUAL SAVINGS = (A) - (B) - (C) - (D)']);
     const netSavRow = ['  Net Savings'];
+    const netSavingsArray = [];
     projectionYears.forEach(year => {
       const inc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
       const exp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
       const goal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
-      netSavRow.push(formatCurrencyINR(Math.round(inc - exp - goal)));
+      const inv = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, year.toString()), 0);
+      const netSav = inc - exp - goal - inv;
+      netSavingsArray.push(netSav);
+      netSavRow.push(formatCurrencyINR(Math.round(netSav)));
     });
     data.push(netSavRow);
     data.push([thinSeparator]);
     
-    // PORTFOLIO PROJECTION
-    data.push(['▶ PORTFOLIO VALUE (80% Equity @ 12%, 20% Debt @ 7%)']);
+    // PORTFOLIO PROJECTION (Fixed: Add savings first, then calculate returns on new balance)
+    data.push(['▶ PORTFOLIO VALUE']);
+    data.push(['  (Opening Balance + Net Savings) then apply returns']);
+    data.push(['  Equity: 80% @ 12% | Debt: 20% @ 7%']);
+    data.push([]);
+    
+    // Opening Balance Row
+    const openingRow = ['  Opening Balance'];
+    // Net Savings Added Row
+    const savingsAddedRow = ['  (+) Net Savings Added'];
+    // Balance After Savings
+    const balanceAfterSavRow = ['  Balance After Savings'];
+    // Equity Returns Row
+    const equityRetRow = ['  (+) Equity Returns (80% @ 12%)'];
+    // Debt Returns Row
+    const debtRetRow = ['  (+) Debt Returns (20% @ 7%)'];
+    // Closing Balance Row
+    const closingRow = ['  CLOSING BALANCE'];
+    
     let portfolio = totalAssets;
-    const portfolioRow = ['  Total Portfolio'];
-    projectionYears.forEach(year => {
-      const inc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
-      const exp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
-      const goal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
-      const netSav = inc - exp - goal;
+    projectionYears.forEach((year, idx) => {
+      const netSav = netSavingsArray[idx];
       
-      const returns = portfolio * 0.8 * 0.12 + portfolio * 0.2 * 0.07;
-      portfolio = portfolio + netSav + returns;
-      portfolioRow.push(formatCurrencyINR(Math.round(portfolio)));
+      // Opening balance for this year
+      const opening = portfolio;
+      openingRow.push(formatCurrencyINR(Math.round(opening)));
+      
+      // Add net savings to get balance before returns
+      savingsAddedRow.push(formatCurrencyINR(Math.round(netSav)));
+      
+      const balanceAfterSav = opening + netSav;
+      balanceAfterSavRow.push(formatCurrencyINR(Math.round(balanceAfterSav)));
+      
+      // Calculate returns on the balance AFTER adding savings
+      const equityReturn = balanceAfterSav * 0.8 * 0.12;
+      const debtReturn = balanceAfterSav * 0.2 * 0.07;
+      
+      equityRetRow.push(formatCurrencyINR(Math.round(equityReturn)));
+      debtRetRow.push(formatCurrencyINR(Math.round(debtReturn)));
+      
+      // Closing balance = balance after savings + returns
+      const closing = balanceAfterSav + equityReturn + debtReturn;
+      closingRow.push(formatCurrencyINR(Math.round(closing)));
+      
+      // Set portfolio for next year's opening
+      portfolio = closing;
     });
-    data.push(portfolioRow);
+    
+    data.push(openingRow);
+    data.push(savingsAddedRow);
+    data.push(balanceAfterSavRow);
+    data.push(equityRetRow);
+    data.push(debtRetRow);
+    data.push(closingRow);
     data.push([separator]);
     
     // Create Financial Plan Sheet
