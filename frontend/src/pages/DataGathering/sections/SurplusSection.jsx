@@ -554,6 +554,26 @@ export default function SurplusSection({ family, isReadOnly }) {
       return '₹ ' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
     };
     
+    // Helper function to auto-fit column widths based on content
+    const autoFitColumns = (data) => {
+      if (!data || data.length === 0) return [];
+      const colWidths = [];
+      // Find max width for each column
+      data.forEach(row => {
+        if (!Array.isArray(row)) return;
+        row.forEach((cell, colIdx) => {
+          const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
+          const cellLength = cellValue.length;
+          // Add some padding (1.2x) and set minimum width of 8, max of 50
+          const width = Math.min(50, Math.max(8, Math.ceil(cellLength * 1.2)));
+          if (!colWidths[colIdx] || width > colWidths[colIdx]) {
+            colWidths[colIdx] = width;
+          }
+        });
+      });
+      return colWidths.map(wch => ({ wch }));
+    };
+    
     // Helper function to get member names from IDs
     const getMemberNames = (memberIds) => {
       if (!memberIds || memberIds.length === 0) return 'N/A';
