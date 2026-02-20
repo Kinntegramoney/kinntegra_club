@@ -733,56 +733,56 @@ export default function SurplusSection({ family, isReadOnly }) {
           
           switch (catKey) {
             case 'salary':
-              row.push(d.net_income_monthly || '', d.net_income_yearly || '', d.increment_month || '', d.avg_growth_rate || '');
+              row.push(formatCurrencyINR(d.net_income_monthly), formatCurrencyINR(d.net_income_yearly), d.increment_month || '', d.avg_growth_rate || '');
               break;
             case 'business':
-              row.push(d.net_income_yearly || '', d.avg_growth_rate || '');
+              row.push(formatCurrencyINR(d.net_income_yearly), d.avg_growth_rate || '');
               break;
             case 'rental':
-              row.push(d.property_type || '', d.property_details || '', d.investment_amount || '', d.investment_date || '', d.market_value || '', d.market_value_date || '', d.xirr_return || '', d.is_on_rent || '', d.rent_per_month || '', d.annual_rent || '', d.start_date || '', d.end_date || '', d.maintenance || '', d.property_tax || '');
+              row.push(d.property_type || '', d.property_details || '', formatCurrencyINR(d.investment_amount), d.investment_date || '', formatCurrencyINR(d.market_value), d.market_value_date || '', d.xirr_return || '', d.is_on_rent || '', formatCurrencyINR(d.rent_per_month), formatCurrencyINR(d.annual_rent), d.start_date || '', d.end_date || '', formatCurrencyINR(d.maintenance), formatCurrencyINR(d.property_tax));
               break;
             case 'ppf':
             case 'epf':
-              row.push(d.market_value || '', d.annual_contribution || '', d.monthly_contribution || '', d.upto_year || '', d.as_on_date || '', d.maturity_date || '', d.year_to_mature || '');
+              row.push(formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), formatCurrencyINR(d.monthly_contribution), d.upto_year || '', d.as_on_date || '', d.maturity_date || '', d.year_to_mature || '');
               break;
             case 'gratuity':
-              row.push(d.market_value || '', d.as_on_date || '', d.maturity_date || '', d.year_to_mature || '');
+              row.push(formatCurrencyINR(d.market_value), d.as_on_date || '', d.maturity_date || '', d.year_to_mature || '');
               break;
             case 'fd':
-              row.push(d.description || '', d.investment_value || '', d.investment_date || '', d.interest_rate || '', d.payable_cycle || '', d.maturity_amount || '', d.maturity_date || '', d.gross_xirr || '');
+              row.push(d.description || '', formatCurrencyINR(d.investment_value), d.investment_date || '', d.interest_rate || '', d.payable_cycle || '', formatCurrencyINR(d.maturity_amount), d.maturity_date || '', d.gross_xirr || '');
               break;
             case 'rd_pis':
-              row.push(d.investment_value_monthly || '', d.interest_rate || '', d.start_date || '', d.end_date || '', d.num_installments || '', d.investment_value || '', d.maturity_value || '', d.gross_xirr || '');
+              row.push(formatCurrencyINR(d.investment_value_monthly), d.interest_rate || '', d.start_date || '', d.end_date || '', d.num_installments || '', formatCurrencyINR(d.investment_value), formatCurrencyINR(d.maturity_value), d.gross_xirr || '');
               break;
             case 'pension':
-              row.push(d.description || '', d.payable_type || '', d.amount || '', d.amount_yearly || '', d.start_date || '', d.upto_life || '', d.end_date || '', d.payable_to_relation || '');
+              row.push(d.description || '', d.payable_type || '', formatCurrencyINR(d.amount), formatCurrencyINR(d.amount_yearly), d.start_date || '', d.upto_life || '', d.end_date || '', d.payable_to_relation || '');
               break;
             case 'bond':
-              row.push(d.description || '', d.investment_date || '', d.investment_value || '', d.payout_frequency || '', d.payout_amount || '', d.maturity_amount || '', d.maturity_date || '', d.gross_xirr || '');
+              row.push(d.description || '', d.investment_date || '', formatCurrencyINR(d.investment_value), d.payout_frequency || '', formatCurrencyINR(d.payout_amount), formatCurrencyINR(d.maturity_amount), d.maturity_date || '', d.gross_xirr || '');
               break;
             case 'insurance_income':
-              row.push(d.description || '', d.premium_frequency || '', d.premium_amount || '', d.premium_start_date || '', d.premium_end_date || '', d.total_paid || '', d.total_pending || '', d.maturity_date || '', d.maturity_amount || '', d.gross_xirr || '');
+              row.push(d.description || '', d.premium_frequency || '', formatCurrencyINR(d.premium_amount), d.premium_start_date || '', d.premium_end_date || '', formatCurrencyINR(d.total_paid), formatCurrencyINR(d.total_pending), d.maturity_date || '', formatCurrencyINR(d.maturity_amount), d.gross_xirr || '');
               break;
             case 'mutual_fund':
-              row.push(d.market_value || '', d.sip_amount || '', d.annual_sip_amount || '', d.upto_year || '');
+              row.push(formatCurrencyINR(d.market_value), formatCurrencyINR(d.sip_amount), formatCurrencyINR(d.annual_sip_amount), d.upto_year || '');
               break;
             case 'cash':
-              row.push(d.description || '', d.bank_balance || '');
+              row.push(d.description || '', formatCurrencyINR(d.bank_balance));
               break;
             case 'vehicle':
-              row.push(d.description || '', d.market_value || '');
+              row.push(d.description || '', formatCurrencyINR(d.market_value));
               break;
             case 'commodities':
-              row.push(d.commodity_type || '', d.weight_kg || '', d.price_per_kg || '', d.market_value || '');
+              row.push(d.commodity_type || '', d.weight_kg || '', formatCurrencyINR(d.price_per_kg), formatCurrencyINR(d.market_value));
               break;
             case 'shares_pms':
-              row.push(d.market_value || '', d.annual_contribution || '', d.monthly_contribution || '', d.upto_year || '');
+              row.push(formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), formatCurrencyINR(d.monthly_contribution), d.upto_year || '');
               break;
             case 'nps':
-              row.push(d.current_value || '', d.monthly_contribution || '', d.annual_contribution || '', d.upto_year || '');
+              row.push(formatCurrencyINR(d.current_value), formatCurrencyINR(d.monthly_contribution), formatCurrencyINR(d.annual_contribution), d.upto_year || '');
               break;
             default:
-              row.push(d.description || '', d.market_value || d.value || '');
+              row.push(d.description || '', formatCurrencyINR(d.market_value || d.value));
           }
           incomeData.push(row);
         });
@@ -792,6 +792,8 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     const incomeSheet = XLSX.utils.aoa_to_sheet(incomeData);
     incomeSheet['!cols'] = Array(20).fill({ wch: 18 });
+    // Protect the sheet
+    incomeSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, incomeSheet, "2. Income");
 
     // ========== SHEET 3: GOALS ==========
