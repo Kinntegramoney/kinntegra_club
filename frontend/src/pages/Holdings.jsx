@@ -2531,6 +2531,12 @@ export default function Holdings() {
                                 const paidAmountProjected = paidAmountInr;
                                 const payableAmountProjected = payableAmountInr;
                                 
+                                // Current INR rate for display
+                                const currentInrRate = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
+                                
+                                // Helper to get rate for tooltip display - uses projected rates
+                                const getRateForDate = (date) => getProjectedRateForDate(date, reProjectedRates, currentInrRate, today);
+                                
                                 // Format functions
                                 const formatINR = (amount) => {
                                   if (Math.abs(amount) >= 10000000) {
