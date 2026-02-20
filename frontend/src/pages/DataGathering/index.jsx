@@ -508,7 +508,7 @@ export default function DataGathering() {
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Ret. Year</Label>
                   <Input
                     type="number"
-                    value={member.retirement_year}
+                    value={member.retirement_year || ""}
                     onChange={(e) => updateMember(member.id, 'retirement_year', e.target.value)}
                     placeholder="Year"
                     className="h-9"
