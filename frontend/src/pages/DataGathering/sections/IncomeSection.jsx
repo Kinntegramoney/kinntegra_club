@@ -195,7 +195,8 @@ const INCOME_CATEGORIES = [
     color: "sky",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
-      { key: "sip_amount", label: "SIP Amount", type: "number" }
+      { key: "sip_amount", label: "SIP Amount", type: "number" },
+      { key: "upto_year", label: "Up to Year", type: "year" }
     ]
   },
   { 
