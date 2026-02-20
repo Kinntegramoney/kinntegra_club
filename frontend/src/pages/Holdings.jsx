@@ -773,11 +773,13 @@ export default function Holdings() {
   const computedRealEstateData = useMemo(() => {
     if (!clientRealEstate || clientRealEstate.length === 0) return [];
     const clientResidency = clientDetails?.country_of_residency;
+    // Use projected rates from API if available, otherwise fall back to default
+    const currentRate = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
     return clientRealEstate.map(property => ({
       property,
-      financials: computePropertyFinancials(property, clientResidency)
+      financials: computePropertyFinancials(property, clientResidency, reProjectedRates, currentRate)
     }));
-  }, [clientRealEstate, clientDetails?.country_of_residency]);
+  }, [clientRealEstate, clientDetails?.country_of_residency, reProjectedRates, reCurrencyRates?.INR]);
 
   // Set page title
   useEffect(() => {
