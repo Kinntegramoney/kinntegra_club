@@ -1193,90 +1193,40 @@ export default function SurplusSection({ family, isReadOnly }) {
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, y.toString()), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, y.toString()), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, y.toString()), 0);
-      return formatCurrencyINR(totalIncome - totalExpenses - totalGoals);
     })]);
+    cashFlowData.push([]);
     
-    const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 40 }, { wch: 5 }, ...allYears.map(() => ({ wch: 12 }))];
-    cashFlowSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
-    XLSX.utils.book_append_sheet(wb, cashFlowSheet, "6. Cash Flow");
-
-    // ========== SHEET 7: PORTFOLIO PROJECTION ==========
-    const portfolioData = [];
-    portfolioData.push(['PORTFOLIO PROJECTION']);
-    portfolioData.push([]);
+    // MATURITIES Section
+    cashFlowData.push(['=== MATURITIES / CASH INFLOWS ===']);
+    const maturityTypes = {};
+    Object.values(maturitiesByYear).forEach(yearData => {
+      yearData.details.forEach(d => {
+        if (!maturityTypes[d.type]) maturityTypes[d.type] = {};
+      });
+    });
+    Object.keys(maturityTypes).forEach(type => {
+      cashFlowData.push([type, '', ...allYears.map(y => {
+        const yearMaturities = maturitiesByYear[y]?.details || [];
+        return Math.round(yearMaturities.filter(d => d.type === type).reduce((sum, d) => sum + d.value, 0));
+      })]);
+    });
+    cashFlowData.push(['TOTAL MATURITIES', '', ...allYears.map(y => Math.round(maturitiesByYear[y]?.total || 0))]);
+    cashFlowData.push([]);
     
-    const equityPct = 90, debtPct = 10, equityReturn = 12, debtReturn = 7;
-    
-    portfolioData.push(['Allocation: Equity', `${equityPct}%`]);
-    portfolioData.push(['Allocation: Debt', `${debtPct}%`]);
-    portfolioData.push(['Expected Return: Equity', `${equityReturn}%`]);
-    portfolioData.push(['Expected Return: Debt', `${debtReturn}%`]);
-    portfolioData.push([]);
-    
-    portfolioData.push(['Year', 'Opening Balance', 'Savings', 'Maturities', 'Additions', 'Equity Returns', 'Debt Returns', 'Total Returns', 'Closing Balance']);
-    
-    let previousClosingBalance = 0;
-    allYears.forEach(y => {
+    // SURPLUS Section
+    cashFlowData.push(['=== SURPLUS (Income - Expenses - Goals - Investments) ===']);
+    cashFlowData.push(['SURPLUS', '', ...allYears.map(y => {
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, y.toString()), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, y.toString()), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, y.toString()), 0);
-      const savings = totalIncome - totalExpenses - totalGoals;
-      const yearMaturities = maturitiesByYear[y]?.total || 0;
-      
-      const openingBalance = previousClosingBalance;
-      const additions = savings + yearMaturities;
-      const equityReturns = openingBalance * (equityPct / 100) * (equityReturn / 100);
-      const debtReturns = openingBalance * (debtPct / 100) * (debtReturn / 100);
-      const totalReturns = equityReturns + debtReturns;
-      const closingBalance = openingBalance + additions + totalReturns;
-      
-      portfolioData.push([y, formatCurrencyINR(openingBalance), formatCurrencyINR(savings), formatCurrencyINR(yearMaturities), formatCurrencyINR(additions), formatCurrencyINR(equityReturns), formatCurrencyINR(debtReturns), formatCurrencyINR(totalReturns), formatCurrencyINR(closingBalance)]);
-      previousClosingBalance = closingBalance;
-    });
+      const totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, y.toString()), 0);
+      return formatCurrencyINR(totalIncome - totalExpenses - totalGoals - totalInvestments);
+    })]);
     
-    const portfolioSheet = XLSX.utils.aoa_to_sheet(portfolioData);
-    portfolioSheet['!cols'] = [{ wch: 10 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 }];
-    portfolioSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
-    XLSX.utils.book_append_sheet(wb, portfolioSheet, "7. Portfolio");
-
-    // ========== SHEET 8: FINANCIAL SUMMARY ==========
-    const summaryData = [];
-    summaryData.push(['FINANCIAL SUMMARY']);
-    summaryData.push([]);
-    
-    const totalAnnualIncome = members.reduce((sum, m) => {
-      const info = getMemberIncomeInfo(m.id);
-      return sum + info.baseSalary + info.baseBusiness + info.baseRental + info.basePension;
-    }, 0);
-    const totalAnnualExpenses = expenseDetails.reduce((sum, e) => {
-      return sum + (parseFloat(e.annual_amount) || (parseFloat(e.monthly_amount) * 12) || 0);
-    }, 0);
-    const totalAnnualInvestments = combinedInvestments.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
-    const netSavings = totalAnnualIncome - totalAnnualExpenses - totalAnnualInvestments;
-    const savingsRate = totalAnnualIncome > 0 ? (netSavings / totalAnnualIncome) * 100 : 0;
-    
-    summaryData.push(['Total Annual Income', Math.round(totalAnnualIncome)]);
-    summaryData.push(['Total Annual Expenses', Math.round(totalAnnualExpenses)]);
-    summaryData.push(['Total Annual Investments', Math.round(totalAnnualInvestments)]);
-    summaryData.push(['Net Savings', Math.round(netSavings)]);
-    summaryData.push(['Savings Rate', savingsRate > 0 ? `${savingsRate.toFixed(1)}%` : 'N/A (Deficit)']);
-    summaryData.push([]);
-    
-    summaryData.push(['MEMBER-WISE SUMMARY']);
-    summaryData.push(['Member', 'Annual Income', 'Annual Expenses', 'Annual Investments', 'Retirement Year']);
-    members.forEach(m => {
-      const info = getMemberIncomeInfo(m.id);
-      const memberIncome = info.baseSalary + info.baseBusiness + info.baseRental + info.basePension;
-      const memberExpenses = getProjectedMemberExpenses(m.id, currentYear.toString());
-      const memberInvestments = getProjectedMemberInvestments(m.id, currentYear.toString());
-      summaryData.push([m.name, formatCurrencyINR(memberIncome), formatCurrencyINR(memberExpenses), formatCurrencyINR(memberInvestments), info.retirementYear]);
-    });
-    
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    summarySheet['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
-    summarySheet['!protect'] = { sheet: true, objects: true, scenarios: true };
-    XLSX.utils.book_append_sheet(wb, summarySheet, "8. Summary");
+    const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
+    cashFlowSheet['!cols'] = [{ wch: 45 }, { wch: 5 }, ...allYears.map(() => ({ wch: 14 }))];
+    cashFlowSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
+    XLSX.utils.book_append_sheet(wb, cashFlowSheet, "9. Surplus");
 
     // Generate and download file
     const familyName = family?.family_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Financial_Plan';
