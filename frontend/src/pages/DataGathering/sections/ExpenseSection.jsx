@@ -59,6 +59,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const [addedCategories, setAddedCategories] = useState([]);
   const [items, setItems] = useState({});
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [lastFamilyId, setLastFamilyId] = useState(null);
 
   const members = family?.members || [];
   const existingExpenses = family?.expense_details || [];
