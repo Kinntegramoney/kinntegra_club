@@ -936,14 +936,19 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   };
 
   const formatValue = (value, key) => {
-    // For XIRR/return fields, 0 is a valid value - show it
+    // For XIRR/return fields, 0 is a valid value - show it, negative values should also be displayed
     if (key.includes('xirr') || key.includes('return')) {
       if (value === null || value === undefined || value === '') return "-";
-      return `${parseFloat(value).toFixed(2)}%`;
+      const numValue = parseFloat(value);
+      // Handle NaN and Infinity cases
+      if (isNaN(numValue) || !isFinite(numValue)) return "-";
+      return `${numValue.toFixed(2)}%`;
     }
     if (value === null || value === undefined || value === '') return "-";
     if (key.includes("amount") || key.includes("income") || key.includes("payment") || key.includes("value") || key.includes("balance") || key.includes("principal")) {
-      return `₹${parseFloat(value).toLocaleString('en-IN')}`;
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) return "-";
+      return `₹${numValue.toLocaleString('en-IN')}`;
     }
     return value;
   };
