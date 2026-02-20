@@ -325,12 +325,13 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       if (itemsByCategory[category]) {
         if (!added.includes(category)) added.push(category);
         
-        // Recalculate XIRR for property items on load to ensure correct negative values
+        // Recalculate XIRR for property/rental items on load to ensure correct negative values
         let details = inc.details || {};
-        if (category === 'property' && details.investment_amount && details.market_value) {
+        if (category === 'rental' && details.investment_amount && details.market_value) {
           const recalculatedXIRR = recalculatePropertyXIRR(details);
           if (recalculatedXIRR !== undefined && recalculatedXIRR !== details.xirr_return) {
             details = { ...details, xirr_return: recalculatedXIRR };
+            console.log('Recalculated XIRR for property:', details.property_details, 'Old:', inc.details.xirr_return, 'New:', recalculatedXIRR);
           }
         }
         
