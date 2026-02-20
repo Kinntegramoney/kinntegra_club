@@ -16,6 +16,7 @@ export default function SurplusSection({ family, isReadOnly }) {
   const expenseDetails = family?.expense_details || [];
   const investmentDetails = family?.investment_details || [];
   const goalDetails = family?.goal_details || [];
+  const insurancePremiumsData = family?.insurance_premiums || [];
 
   const currentYear = new Date().getFullYear();
   
