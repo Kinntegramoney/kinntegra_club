@@ -281,7 +281,7 @@ export default function DataGathering() {
     setSelectedSubBroker("");
     setFamilyName("");
     setProceedOption("");
-    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }]);
+    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", retirement_year: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }]);
     setActiveTab("introduction");
   };
 
