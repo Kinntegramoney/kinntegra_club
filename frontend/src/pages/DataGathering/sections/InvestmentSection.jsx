@@ -96,12 +96,30 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
     }
     
     // Add SIPs from income (these are read-only in this section)
-    sipFromIncome.forEach(sip => {
+    const sipInvestments = incomeDetails
+      .filter(inc => inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0))
+      .map(inc => {
+        const sipAmount = parseFloat(inc.details?.sip_amount || inc.sip_amount || 0);
+        const memberId = inc.member_ids?.[0] || inc.member_id;
+        return {
+          id: `income_sip_${inc.id}`,
+          category: 'mutual_fund_equity',
+          member_id: memberId,
+          amount: sipAmount,
+          frequency: 'monthly',
+          annual_amount: sipAmount * 12,
+          description: inc.details?.description || inc.description || 'MF SIP (from Income)',
+          isFromIncome: true,
+          isReadOnly: true
+        };
+      });
+    
+    sipInvestments.forEach(sip => {
       allInvestments.push(sip);
     });
     
     setInvestments(allInvestments);
-  }, [family?.id, existingInvestments.length, sipFromIncome.length]);
+  }, [family?.id, existingInvestments, incomeDetails]);
 
   const addInvestment = () => {
     const newInvestment = {
