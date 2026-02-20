@@ -1250,7 +1250,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     })]);
     
     const cashFlowSheet = XLSX.utils.aoa_to_sheet(cashFlowData);
-    cashFlowSheet['!cols'] = [{ wch: 45 }, { wch: 5 }, ...allYears.map(() => ({ wch: 14 }))];
+    cashFlowSheet['!cols'] = autoFitColumns(cashFlowData);
     cashFlowSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, cashFlowSheet, "9. Surplus");
 
