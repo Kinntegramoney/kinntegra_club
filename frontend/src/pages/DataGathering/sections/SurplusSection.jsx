@@ -1672,8 +1672,11 @@ function AllocationSimulator({
         totalGoals = getMemberGoalExpenses(entityId, yearStr);
       }
       
+      // Add maturity amounts for this year (insurance, FD, PPF, EPF, bonds, etc.)
+      const yearMaturities = maturitiesByYear[year]?.total || 0;
+      
       const yearSurplus = totalIncome - totalExpenses - totalGoals;
-      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus;
+      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus + yearMaturities;
       
       // Store data point for chart (sample every 5 years or key years)
       const yearsFromNow = year - currentYear;
