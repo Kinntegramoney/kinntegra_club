@@ -5,8 +5,10 @@ import { User, Landmark, Home, Car, Gem, Wallet, TrendingUp, Building, PiggyBank
 // Note: Pension is excluded - it's an income source, not an asset
 const ASSET_CATEGORIES = [
   { value: "rental", label: "Rental Property", icon: Home, investmentKey: "investment_amount", marketKey: "market_value" },
+  { value: "mutual_fund", label: "Mutual Funds", icon: TrendingUp, investmentKey: null, marketKey: "market_value" },
   { value: "ppf", label: "PPF", icon: PiggyBank, investmentKey: null, marketKey: "market_value" },
   { value: "epf", label: "EPF", icon: PiggyBank, investmentKey: null, marketKey: "market_value" },
+  { value: "nps", label: "NPS", icon: PiggyBank, investmentKey: null, marketKey: ["current_value", "market_value"] },
   { value: "gratuity", label: "Gratuity", icon: Wallet, investmentKey: null, marketKey: "market_value" },
   { value: "fd", label: "Fixed Deposits", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
   { value: "rd_pis", label: "RD / PIS", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_value" },
