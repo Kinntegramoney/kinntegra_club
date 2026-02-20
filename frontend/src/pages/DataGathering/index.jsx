@@ -738,11 +738,23 @@ export default function DataGathering() {
                   case "income": count = selectedFamily.income_details?.length || 0; break;
                   case "goals": count = selectedFamily.goal_details?.length || 0; break;
                   case "expenses": {
-                    // Count regular expenses + insurance premiums + liabilities
+                    // Count regular expenses + insurance premiums + liabilities (deduplicated)
                     const expenseCount = selectedFamily.expense_details?.length || 0;
-                    const insuranceCount = selectedFamily.insurance_premiums?.length || 0;
+                    
+                    // Deduplicate insurance premiums by unique key (category + member + premium + coverage)
+                    const insurancePremiums = selectedFamily.insurance_premiums || [];
+                    const seenInsuranceKeys = new Set();
+                    let uniqueInsuranceCount = 0;
+                    insurancePremiums.forEach(ins => {
+                      const key = `${ins.category}-${ins.member_ids?.[0]}-${ins.yearly_premium || ins.amount_today}-${ins.coverage_amount}`;
+                      if (!seenInsuranceKeys.has(key)) {
+                        seenInsuranceKeys.add(key);
+                        uniqueInsuranceCount++;
+                      }
+                    });
+                    
                     const liabilityCount = selectedFamily.liabilities?.length || 0;
-                    count = expenseCount + insuranceCount + liabilityCount;
+                    count = expenseCount + uniqueInsuranceCount + liabilityCount;
                     break;
                   }
                   case "insurance": count = selectedFamily.insurance_premiums?.length || 0; break;
