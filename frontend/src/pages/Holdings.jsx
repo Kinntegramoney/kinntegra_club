@@ -2572,16 +2572,15 @@ export default function Holdings() {
                                   expectedSaleDate, projectedAedToInrAtSale, handoverDate, isSellingBeforeCompletion,
                                   paidAmountInr, payableAmountInr, paidAmountAed, payableAmountAed,
                                   paymentsAfterSaleAed, totalInvestmentInr, netSaleProceedsAed, netSaleProceedsInr,
-                                  profitFromSaleAed, totalProfitInr, saleProceedsInr, netCurrencyImpact,
+                                  profitFromSaleAed, profitFromSaleInrNoForex, forexImpactOnSale, totalProfitInr, 
+                                  saleProceedsInr, netCurrencyImpact, totalCostAed, totalInvestmentAed,
+                                  paidFromScheduleInr, payableFromScheduleInr,
                                   netSaleValueForXirr, expectedXirr, actualXirr, totalSqft, balconyArea, apartmentArea,
                                   currentRate, currencySymbol
                                 } = financials;
                                 
                                 const today = new Date();
                                 const projectedAedToInr = projectedAedToInrAtSale;
-                                const totalInvestmentProjected = totalInvestmentInr;
-                                const paidAmountProjected = paidAmountInr;
-                                const payableAmountProjected = payableAmountInr;
                                 
                                 // Current INR rate for display
                                 const currentInrRate = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
@@ -2613,19 +2612,20 @@ export default function Holdings() {
                                       </p>
                                     </td>
                                     
-                                    {/* Investment Amount - with payment schedule tooltip */}
+                                    {/* Investment Amount - Total cost including DLD + Admin fees */}
                                     <td className="px-2 py-2 text-right overflow-visible">
                                       <div className="cursor-help group/inv relative">
-                                        <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentProjected)}</p>
+                                        <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentInr)}</p>
                                         <p className="text-[10px]">
-                                          <span className="text-emerald-600">Paid: {formatINR(paidAmountProjected)}</span>
+                                          <span className="text-emerald-600">Paid: {formatINR(paidFromScheduleInr)}</span>
                                           <span className="mx-1 text-gray-400">|</span>
-                                          <span className="text-blue-600">Due: {formatINR(payableAmountProjected)}</span>
+                                          <span className="text-blue-600">Due: {formatINR(payableFromScheduleInr)}</span>
                                         </p>
                                         {/* Payment Schedule Tooltip */}
                                         <div className="absolute hidden group-hover/inv:block left-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '380px'}}>
                                           <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
-                                            <p className="font-bold text-amber-400">Payment Schedule</p>
+                                            <p className="font-bold text-amber-400">Investment Breakdown</p>
+                                            <p className="text-gray-400 text-[9px]">Total: {formatAED(totalCostAed)} @ ₹{currentInrRate.toFixed(2)}/AED</p>
                                           </div>
                                           <div className="p-3">
                                             <table className="w-full">
