@@ -49,7 +49,11 @@ export default function SurplusSection({ family, isReadOnly }) {
   // Get member-specific income info and growth rates
   const getMemberIncomeInfo = (memberId) => {
     const member = members.find(m => m.id === memberId);
-    const memberIncomes = incomeDetails.filter(inc => inc.member_ids?.includes(memberId));
+    // Match income by member_ids array containing memberId
+    const memberIncomes = incomeDetails.filter(inc => {
+      const incMemberIds = inc.member_ids || [];
+      return incMemberIds.includes(memberId) || incMemberIds.includes(String(memberId));
+    });
     
     let salaryGrowth = 0, businessGrowth = 0, retirementAge = 60, retirementYear = null;
     let baseSalary = 0, baseBusiness = 0, baseRental = 0, basePension = 0;
@@ -61,8 +65,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     memberIncomes.forEach(income => {
       const details = income.details || {};
+      const category = income.category || '';
       
-      switch (income.category) {
+      switch (category) {
         case 'salary':
           const salaryYearly = parseFloat(details.net_income_yearly) || 0;
           const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
@@ -70,13 +75,16 @@ export default function SurplusSection({ family, isReadOnly }) {
           salaryGrowth = Math.max(salaryGrowth, parseFloat(details.avg_growth_rate) || 0);
           break;
         case 'business':
-          baseBusiness += parseFloat(details.net_income_yearly) || 0;
+          const businessYearly = parseFloat(details.net_income_yearly) || 0;
+          const businessMonthly = parseFloat(details.net_income_monthly) || 0;
+          baseBusiness += businessYearly > 0 ? businessYearly : businessMonthly * 12;
           businessGrowth = Math.max(businessGrowth, parseFloat(details.avg_growth_rate) || 0);
           break;
         case 'rental':
-          if (details.is_on_rent === 'Yes') {
-            const annualRent = parseFloat(details.annual_rent) || 0;
-            const rentPerMonth = parseFloat(details.rent_per_month) || 0;
+          // Include rental income regardless of is_on_rent status for income calculations
+          const annualRent = parseFloat(details.annual_rent) || 0;
+          const rentPerMonth = parseFloat(details.rent_per_month) || 0;
+          if (details.is_on_rent === 'Yes' || annualRent > 0 || rentPerMonth > 0) {
             baseRental += annualRent > 0 ? annualRent : rentPerMonth * 12;
           }
           break;
@@ -99,7 +107,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     // If no retirement year set on member, calculate from age
     const memberAge = calculateAge(member?.date_of_birth);
     if (!retirementYear) {
-      retirementYear = currentYear + (retirementAge - memberAge);
+      retirementYear = currentYear + Math.max(0, retirementAge - memberAge);
     }
     
     let baseMutualFund = 0;
