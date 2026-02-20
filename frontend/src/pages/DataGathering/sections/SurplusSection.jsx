@@ -856,13 +856,14 @@ export default function SurplusSection({ family, isReadOnly }) {
         const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         const outstanding = (parseFloat(exp.monthly_emi || 0) * parseFloat(exp.num_installments || 0));
         const completionYear = currentYear + Math.ceil(parseFloat(exp.num_installments || 0) / 12);
-        expensesData.push([categoryLabel, memberName, exp.monthly_emi || '', exp.num_installments || '', outstanding || '', completionYear || '']);
+        expensesData.push([categoryLabel, memberName, formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', formatCurrencyINR(outstanding), completionYear || '']);
       });
       expensesData.push([]);
     }
     
     const expensesSheet = XLSX.utils.aoa_to_sheet(expensesData);
     expensesSheet['!cols'] = [{ wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 }];
+    expensesSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, expensesSheet, "4. Expenses");
 
     // ========== SHEET 5: INVESTMENTS ==========
@@ -874,7 +875,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       const memberName = members.find(m => m.id === inv.member_id)?.name || '';
       const categoryLabel = getCategoryLabel(inv.category) || inv.category || 'Other';
       const source = inv.isFromIncome ? 'From Income' : 'Direct Investment';
-      investmentsData.push([source, categoryLabel, memberName, Math.round(inv.annual_amount || 0), inv.upto_year || '']);
+      investmentsData.push([source, categoryLabel, memberName, formatCurrencyINR(inv.annual_amount), inv.upto_year || '']);
     });
     investmentsData.push([]);
     
@@ -888,11 +889,12 @@ export default function SurplusSection({ family, isReadOnly }) {
       investmentByCategory[cat] += parseFloat(inv.annual_amount) || 0;
     });
     Object.entries(investmentByCategory).forEach(([cat, total]) => {
-      investmentsData.push([cat, Math.round(total)]);
+      investmentsData.push([cat, formatCurrencyINR(total)]);
     });
     
     const investmentsSheet = XLSX.utils.aoa_to_sheet(investmentsData);
     investmentsSheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 12 }];
+    investmentsSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, investmentsSheet, "5. Investments");
 
     // ========== SHEET 6: SURPLUS / CASH FLOW ==========
