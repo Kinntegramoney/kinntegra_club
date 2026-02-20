@@ -138,7 +138,11 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
     setHasChanges(true);
   };
 
-  const removeInvestment = (id) => {
+  const removeInvestment = (id, isFromIncome) => {
+    if (isFromIncome) {
+      toast.error("SIP investments from Income section cannot be deleted here. Please edit in Income tab.");
+      return;
+    }
     setInvestments(prev => prev.filter(inv => inv.id !== id));
     setHasChanges(true);
   };
