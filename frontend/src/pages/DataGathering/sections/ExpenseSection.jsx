@@ -164,22 +164,26 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       }
     });
 
-    // Load insurance items
+    // Load insurance items - check for duplicates by ID
     existingInsurance.forEach(ins => {
       const category = ins.category;
       if (itemsByCategory[category] !== undefined) {
-        if (!added.includes(category)) added.push(category);
-        itemsByCategory[category].push({
-          id: ins.id,
-          memberId: ins.member_ids?.[0] || "",
-          details: {
-            yearly_premium: ins.yearly_premium || ins.amount_today || "",
-            upto_year: ins.upto_year || ins.goal_year || "",
-            coverage_amount: ins.coverage_amount || ""
-          },
-          isNew: false,
-          isModified: false
-        });
+        // Check if this insurance item is already added (by ID)
+        const alreadyExists = itemsByCategory[category].some(item => item.id === ins.id);
+        if (!alreadyExists) {
+          if (!added.includes(category)) added.push(category);
+          itemsByCategory[category].push({
+            id: ins.id,
+            memberId: ins.member_ids?.[0] || "",
+            details: {
+              yearly_premium: ins.yearly_premium || ins.amount_today || "",
+              upto_year: ins.upto_year || ins.goal_year || "",
+              coverage_amount: ins.coverage_amount || ""
+            },
+            isNew: false,
+            isModified: false
+          });
+        }
       }
     });
 
@@ -192,7 +196,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       setExpandedCategories(expanded);
       setInitialLoadDone(true);
     }
-  }, [family?.id, existingExpenses.length, existingLiabilities.length, existingInsurance.length, initialLoadDone]);
+  }, [family?.id, initialLoadDone]);
 
   const getCategoryConfig = (val) => EXPENSE_CATEGORIES.find(c => c.value === val);
 
