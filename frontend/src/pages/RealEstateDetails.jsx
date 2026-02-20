@@ -2642,8 +2642,8 @@ export default function RealEstateDetails() {
                               {convertCurrency(milestoneAmount)}
                             </td>
                             {/* Per-user contribution */}
-                            {opp.investors?.length > 0 ? (
-                              opp.investors.map((inv, i) => {
+                            {visibleInvestors.length > 0 ? (
+                              visibleInvestors.map((inv, i) => {
                                 const userContribution = milestoneAmount * (inv.share_percentage / 100);
                                 return (
                                   <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
@@ -2687,8 +2687,8 @@ export default function RealEstateDetails() {
                             {convertCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}
                           </td>
                           {/* Per-user DLD contribution */}
-                          {opp.investors?.length > 0 ? (
-                            opp.investors.map((inv, i) => {
+                          {visibleInvestors.length > 0 ? (
+                            visibleInvestors.map((inv, i) => {
                               const dldAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
                               const userDld = dldAmount * (inv.share_percentage / 100);
                               return (
