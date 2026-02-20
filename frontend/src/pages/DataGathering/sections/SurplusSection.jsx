@@ -1562,17 +1562,15 @@ function AllocationSimulator({
     const meetsLifeExpectancy = lastYear >= youngestMemberEndYear;
 
     return (
-      <div className="mt-2 flex flex-col items-center justify-center gap-2">
-        <div className="flex items-center gap-2">
-          {success ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : (
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          )}
-          <span className={`text-xs font-semibold ${success ? 'text-green-600' : 'text-red-600'}`}>
-            {success ? `Lasts till ${lastYear}` : `Exhausts in ${lastYear}`}
-          </span>
-        </div>
+      <div className="mt-2 flex items-center justify-center gap-2">
+        {success ? (
+          <CheckCircle className="h-4 w-4 text-green-500" />
+        ) : (
+          <AlertTriangle className="h-4 w-4 text-red-500" />
+        )}
+        <span className={`text-xs font-semibold ${success ? 'text-green-600' : 'text-red-600'}`}>
+          {success ? `Lasts till ${lastYear}` : `Exhausts in ${lastYear}`}
+        </span>
         {!meetsLifeExpectancy && (
           <span className="text-[10px] text-red-600 bg-red-50 px-2 py-0.5 rounded font-semibold">
             {yearsFromLifeExpectancy}y short of life expectancy ({youngestMemberEndYear})
