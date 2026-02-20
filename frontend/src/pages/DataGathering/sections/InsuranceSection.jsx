@@ -186,7 +186,7 @@ export default function InsuranceSection({ family }) {
 
       {/* Insurance Coverage Table with Member Columns */}
       <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[500px]">
+        <table className="w-full min-w-[600px]">
           <thead>
             {/* Member Names Row */}
             <tr className="bg-teal-50 border-b border-gray-200">
@@ -197,7 +197,7 @@ export default function InsuranceSection({ family }) {
                 <th 
                   key={member.id} 
                   colSpan={2} 
-                  className={`text-center text-xs font-semibold text-teal-700 px-2 py-2 ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}
+                  className={`text-center text-xs font-semibold text-teal-700 px-3 py-2 ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}
                 >
                   <div className="flex flex-col items-center gap-0.5">
                     <div className="flex items-center gap-1">
@@ -216,10 +216,10 @@ export default function InsuranceSection({ family }) {
             <tr className="bg-gray-50 border-b border-gray-200">
               {members.map((member, idx) => (
                 <React.Fragment key={`sub-${member.id}`}>
-                  <th className="text-right text-[10px] font-medium text-gray-500 px-2 py-1.5 w-24">
+                  <th className="text-right text-[10px] font-medium text-gray-500 px-3 py-1.5 min-w-[100px]">
                     Suggested
                   </th>
-                  <th className={`text-right text-[10px] font-medium text-gray-500 px-2 py-1.5 w-24 ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}>
+                  <th className={`text-right text-[10px] font-medium text-gray-500 px-3 py-1.5 min-w-[100px] ${idx < members.length - 1 ? 'border-r border-gray-200' : ''}`}>
                     Actual
                   </th>
                 </React.Fragment>
