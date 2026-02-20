@@ -48,10 +48,16 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   // Get member-specific income info and growth rates
   const getMemberIncomeInfo = (memberId) => {
+    const member = members.find(m => m.id === memberId);
     const memberIncomes = incomeDetails.filter(inc => inc.member_ids?.includes(memberId));
     
     let salaryGrowth = 0, businessGrowth = 0, retirementAge = 60, retirementYear = null;
     let baseSalary = 0, baseBusiness = 0, baseRental = 0, basePension = 0;
+    
+    // First priority: Use member's retirement_year if set
+    if (member?.retirement_year) {
+      retirementYear = parseInt(member.retirement_year);
+    }
     
     memberIncomes.forEach(income => {
       const details = income.details || {};
@@ -62,20 +68,10 @@ export default function SurplusSection({ family, isReadOnly }) {
           const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
           baseSalary += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
           salaryGrowth = Math.max(salaryGrowth, parseFloat(details.avg_growth_rate) || 0);
-          if (details.retirement_age) retirementAge = Math.min(retirementAge, parseInt(details.retirement_age));
-          if (details.year_of_retirement) {
-            const yr = parseInt(details.year_of_retirement);
-            retirementYear = retirementYear ? Math.min(retirementYear, yr) : yr;
-          }
           break;
         case 'business':
           baseBusiness += parseFloat(details.net_income_yearly) || 0;
           businessGrowth = Math.max(businessGrowth, parseFloat(details.avg_growth_rate) || 0);
-          if (details.retirement_age) retirementAge = Math.min(retirementAge, parseInt(details.retirement_age));
-          if (details.year_of_retirement) {
-            const yr = parseInt(details.year_of_retirement);
-            retirementYear = retirementYear ? Math.min(retirementYear, yr) : yr;
-          }
           break;
         case 'rental':
           if (details.is_on_rent === 'Yes') {
@@ -100,7 +96,8 @@ export default function SurplusSection({ family, isReadOnly }) {
       }
     });
     
-    const memberAge = calculateAge(members.find(m => m.id === memberId)?.date_of_birth);
+    // If no retirement year set on member, calculate from age
+    const memberAge = calculateAge(member?.date_of_birth);
     if (!retirementYear) {
       retirementYear = currentYear + (retirementAge - memberAge);
     }
