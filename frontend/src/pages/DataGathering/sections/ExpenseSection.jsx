@@ -66,30 +66,34 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const existingInsurance = family?.insurance_details || [];
   const currentYear = new Date().getFullYear();
 
-  // Calculate youngest member's retirement year (assuming retirement at 60)
+  // Calculate primary member's retirement year (assuming retirement at 60)
   const RETIREMENT_AGE = 60;
-  const getYoungestMemberRetirementYear = () => {
+  const getPrimaryMemberRetirementYear = () => {
     if (members.length === 0) return currentYear + 30; // Default fallback
     
-    let youngestDOB = null;
-    members.forEach(member => {
-      if (member.date_of_birth) {
-        const dob = new Date(member.date_of_birth);
-        if (!youngestDOB || dob > youngestDOB) {
-          youngestDOB = dob;
-        }
-      }
-    });
+    // Find primary member
+    const primaryMember = members.find(m => m.isPrimary || m.is_primary) || members[0];
     
-    if (youngestDOB) {
-      const birthYear = youngestDOB.getFullYear();
+    if (primaryMember?.date_of_birth) {
+      const dob = new Date(primaryMember.date_of_birth);
+      const birthYear = dob.getFullYear();
       return birthYear + RETIREMENT_AGE;
+    }
+    
+    // If primary member has life expectancy, use that instead
+    if (primaryMember?.life_expectancy) {
+      const lifeExp = parseInt(primaryMember.life_expectancy);
+      if (primaryMember?.date_of_birth) {
+        const dob = new Date(primaryMember.date_of_birth);
+        const birthYear = dob.getFullYear();
+        return birthYear + lifeExp;
+      }
     }
     
     return currentYear + 30; // Default fallback if no DOB found
   };
   
-  const defaultRetirementYear = getYoungestMemberRetirementYear();
+  const defaultRetirementYear = getPrimaryMemberRetirementYear();
 
   // Loan calculation helpers
   const calculateOutstanding = (emi, installments) => (parseFloat(emi) || 0) * (parseFloat(installments) || 0);
