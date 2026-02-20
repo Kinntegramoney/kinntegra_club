@@ -869,17 +869,26 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([]);
     
     // ========== INSURANCE PREMIUMS ==========
+    dgData.push([dgSeparator]);
+    dgData.push(['INSURANCE PREMIUMS']);
+    dgData.push([dgSeparator]);
     const insuranceExpenses = expenseDetails.filter(e => ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type));
     if (insuranceExpenses.length > 0) {
-      dgData.push([dgSeparator]);
-      dgData.push(['INSURANCE PREMIUMS']);
-      dgData.push([dgSeparator]);
-      dgData.push(['Type', 'Member', 'Annual Premium', 'Coverage Amount', 'Up to Year']);
+      dgData.push(['Type', 'Member', 'Policy Name', 'Annual Premium', 'Sum Assured/Coverage', 'Premium End Year']);
       insuranceExpenses.forEach(exp => {
-        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.yearly_premium || exp.annual_amount), formatCurrencyINR(exp.coverage_amount), exp.upto_year || '']);
+        dgData.push([
+          getCategoryLabel(exp.expense_type), 
+          getMemberNames(exp.member_ids), 
+          exp.policy_name || exp.description || '-',
+          formatCurrencyINR(exp.yearly_premium || exp.annual_amount), 
+          formatCurrencyINR(exp.coverage_amount || exp.sum_assured), 
+          exp.upto_year || exp.premium_end_year || '-'
+        ]);
       });
-      dgData.push([]);
+    } else {
+      dgData.push(['No insurance premiums recorded']);
     }
+    dgData.push([]);
     
     // ========== LIABILITIES ==========
     const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
