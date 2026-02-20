@@ -115,6 +115,18 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       const category = exp.expense_type;
       if (itemsByCategory[category] !== undefined) {
         if (!added.includes(category)) added.push(category);
+        // Determine amount_source: if monthly was stored and annual matches monthly*12, source is monthly
+        const monthlyAmt = exp.monthly_amount || 0;
+        const annualAmt = exp.annual_amount || 0;
+        let amountSource = null;
+        if (monthlyAmt > 0 && annualAmt === monthlyAmt * 12) {
+          amountSource = "monthly";
+        } else if (annualAmt > 0) {
+          amountSource = "annual";
+        } else if (monthlyAmt > 0) {
+          amountSource = "monthly";
+        }
+        
         itemsByCategory[category].push({
           id: exp.id, 
           memberId: exp.member_ids?.[0] || "",
@@ -125,7 +137,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             inflation_percent: exp.inflation_percent ?? 5,
             consider_post_retirement: exp.consider_post_retirement || false,
             post_retirement_member: exp.post_retirement_member || "",
-            post_retirement_percent: exp.post_retirement_percent ?? 100
+            post_retirement_percent: exp.post_retirement_percent ?? 100,
+            amount_source: amountSource
           },
           isNew: false, 
           isModified: false
