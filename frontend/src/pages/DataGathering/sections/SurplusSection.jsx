@@ -152,12 +152,15 @@ export default function SurplusSection({ family, isReadOnly }) {
   // Get member contribution investments from income_details (EPF, PPF, MF, Shares)
   const getMemberContributionInvestments = (memberId, year) => {
     const targetYear = parseInt(year);
+    const memberInfo = getMemberIncomeInfo(memberId);
+    const memberRetirementYear = memberInfo.retirementYear;
     let total = 0;
     
     incomeDetails
       .filter(inc => inc.member_id === memberId)
       .forEach(inc => {
-        const uptoYear = parseInt(inc.upto_year) || 9999;
+        // Use upto_year if filled, otherwise default to member's retirement year
+        const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
         
         // Only include if year is within upto_year
         if (targetYear <= uptoYear) {
@@ -180,6 +183,8 @@ export default function SurplusSection({ family, isReadOnly }) {
   const getMemberInvestmentBreakdown = (memberId, year) => {
     const breakdown = {};
     const targetYear = parseInt(year);
+    const memberInfo = getMemberIncomeInfo(memberId);
+    const memberRetirementYear = memberInfo.retirementYear;
     
     // From investment_details
     investmentDetails
@@ -194,7 +199,8 @@ export default function SurplusSection({ family, isReadOnly }) {
     incomeDetails
       .filter(inc => inc.member_id === memberId)
       .forEach(inc => {
-        const uptoYear = parseInt(inc.upto_year) || 9999;
+        // Use upto_year if filled, otherwise default to member's retirement year
+        const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
         
         if (targetYear <= uptoYear) {
           if (inc.income_type === 'EPF') {
