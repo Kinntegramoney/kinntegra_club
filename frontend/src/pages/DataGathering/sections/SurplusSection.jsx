@@ -1686,6 +1686,9 @@ function AllocationSimulator({
     const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
     
+    // Get maturities by year for this simulation
+    const simMaturitiesByYear = getMaturitiesByYear();
+    
     // Get assets for this entity
     const entityAssets = getAssetsForEntity(entityId);
     
