@@ -947,30 +947,58 @@ export default function SurplusSection({ family, isReadOnly }) {
     goalsSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, goalsSheet, "4. Goals");
 
-    // ========== SHEET 5: INVESTMENTS ==========
+    // ========== SHEET 5: INVESTMENTS (Year-wise Cash Flow) ==========
     const investmentsData = [];
-    investmentsData.push(['INVESTMENT SUMMARY']);
-    investmentsData.push([]);
-    investmentsData.push(['Source', 'Category', 'Member', 'Annual Amount', 'Up to Year']);
-    combinedInvestments.forEach(inv => {
-      const memberName = members.find(m => m.id === inv.member_id)?.name || '';
-      const categoryLabel = getCategoryLabel(inv.category) || inv.category || 'Other';
-      const source = inv.isFromIncome ? 'From Income' : 'Direct Investment';
-      investmentsData.push([source, categoryLabel, memberName, formatCurrencyINR(inv.annual_amount), inv.upto_year || '']);
-    });
+    investmentsData.push(['INVESTMENTS - YEAR-WISE CASH FLOW']);
     investmentsData.push([]);
     
-    investmentsData.push(['INVESTMENT SUMMARY BY CATEGORY']);
-    investmentsData.push(['Category', 'Total Annual Amount']);
-    const investmentByCategory = {};
+    // Generate projection years for investments
+    const invProjectionYears = [];
+    const invMaxYears = Math.min(endYear, currentYear + 30);
+    for (let y = currentYear; y <= invMaxYears; y++) {
+      invProjectionYears.push(y);
+    }
+    
+    // Header row with years
+    investmentsData.push(['Year', '', ...invProjectionYears]);
+    // Age row
+    investmentsData.push(['Age', 'Growth', ...invProjectionYears.map(y => primaryAge + (y - currentYear))]);
+    
+    // Group investments by category and show year-wise
+    const investmentsByCategory = {};
     combinedInvestments.forEach(inv => {
-      const cat = getCategoryLabel(inv.category) || 'Other';
-      if (!investmentByCategory[cat]) investmentByCategory[cat] = 0;
-      investmentByCategory[cat] += parseFloat(inv.annual_amount) || 0;
+      const cat = getCategoryLabel(inv.category) || inv.category || 'Other';
+      if (!investmentsByCategory[cat]) {
+        investmentsByCategory[cat] = { annualAmount: 0, uptoYear: endYear };
+      }
+      investmentsByCategory[cat].annualAmount += parseFloat(inv.annual_amount) || 0;
+      // Use earliest upto_year
+      if (inv.upto_year && parseInt(inv.upto_year) < investmentsByCategory[cat].uptoYear) {
+        investmentsByCategory[cat].uptoYear = parseInt(inv.upto_year);
+      }
     });
-    Object.entries(investmentByCategory).forEach(([cat, total]) => {
-      investmentsData.push([cat, formatCurrencyINR(total)]);
+    
+    Object.entries(investmentsByCategory).forEach(([category, data]) => {
+      const yearValues = invProjectionYears.map(year => {
+        if (year > data.uptoYear) return 0;
+        return Math.round(data.annualAmount);
+      });
+      
+      investmentsData.push([category, '-', ...yearValues.map(v => v > 0 ? formatCurrencyINR(v) : 0)]);
     });
+    
+    // Total row
+    investmentsData.push([]);
+    const invTotalRow = ['Total', '', ...invProjectionYears.map(year => {
+      let yearTotal = 0;
+      Object.entries(investmentsByCategory).forEach(([_, data]) => {
+        if (year <= data.uptoYear) {
+          yearTotal += data.annualAmount;
+        }
+      });
+      return formatCurrencyINR(Math.round(yearTotal));
+    })];
+    investmentsData.push(invTotalRow);
     
     const investmentsSheet = XLSX.utils.aoa_to_sheet(investmentsData);
     investmentsSheet['!cols'] = autoFitColumns(investmentsData);
