@@ -206,6 +206,14 @@ export default function RealEstateDetails() {
     fetchLiveCurrencyRates();
   }, []);
 
+  // Auto-show payment schedule modal when coming from holdings with a specific client
+  useEffect(() => {
+    if (isFromHoldings && holdingsClientInvestor && opportunity) {
+      // Auto-open payment schedule modal for the specific client when coming from holdings
+      setShowPaymentScheduleModal(true);
+    }
+  }, [isFromHoldings, holdingsClientInvestor, opportunity]);
+
   const fetchData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
