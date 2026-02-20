@@ -869,21 +869,21 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     dgData.push([]);
     
-    // ========== INSURANCE PREMIUMS ==========
+    // ========== INSURANCE PREMIUMS (from insurance_premiums collection) ==========
     dgData.push([dgSeparator]);
     dgData.push(['INSURANCE PREMIUMS']);
     dgData.push([dgSeparator]);
-    const insuranceExpenses = expenseDetails.filter(e => ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type));
-    if (insuranceExpenses.length > 0) {
+    if (insurancePremiumsData.length > 0) {
       dgData.push(['Type', 'Member', 'Policy Name', 'Annual Premium', 'Sum Assured/Coverage', 'Premium End Year']);
-      insuranceExpenses.forEach(exp => {
+      insurancePremiumsData.forEach(ins => {
+        const memberName = ins.member_id ? (members.find(m => m.id === ins.member_id)?.name || 'Unknown') : 'Family';
         dgData.push([
-          getCategoryLabel(exp.expense_type), 
-          getMemberNames(exp.member_ids), 
-          exp.policy_name || exp.description || '-',
-          formatCurrencyINR(exp.yearly_premium || exp.annual_amount), 
-          formatCurrencyINR(exp.coverage_amount || exp.sum_assured), 
-          exp.upto_year || exp.premium_end_year || '-'
+          getCategoryLabel(ins.insurance_type || ins.category || ins.type), 
+          memberName,
+          ins.policy_name || ins.description || '-',
+          formatCurrencyINR(ins.yearly_premium || ins.annual_premium || ins.premium_amount), 
+          formatCurrencyINR(ins.coverage_amount || ins.sum_assured), 
+          ins.upto_year || ins.premium_end_year || '-'
         ]);
       });
     } else {
