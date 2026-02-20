@@ -2164,6 +2164,10 @@ function AllocationSimulator({
         totalRental += rental;
       });
       
+      // Get maturities for this year
+      const yearMaturityAmount = maturitiesByYear[y]?.total || 0;
+      const yearMaturityDetails = maturitiesByYear[y]?.details || [];
+      
       const totalIncome = totalSalary + totalBusiness + totalRental + totalInvestmentInc;
 
       // Detailed expense breakdown
