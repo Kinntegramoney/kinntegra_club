@@ -1500,6 +1500,7 @@ export default function SurplusSection({ family, isReadOnly }) {
         primaryAge={primaryAge}
         lifeExpectancy={lifeExpectancy}
         calculateAge={calculateAge}
+        handleExportToExcel={handleExportToExcel}
       />
     </div>
   );
