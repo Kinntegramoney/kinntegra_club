@@ -1115,7 +1115,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     assetsData.push(['GRAND TOTAL', formatCurrencyINR(grandTotalAssets)]);
     
     const assetsSheet = XLSX.utils.aoa_to_sheet(assetsData);
-    assetsSheet['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    assetsSheet['!cols'] = autoFitColumns(assetsData);
     assetsSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, assetsSheet, "8. Assets");
 
