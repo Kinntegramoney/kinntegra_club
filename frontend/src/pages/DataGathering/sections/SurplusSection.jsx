@@ -1756,7 +1756,7 @@ function AllocationSimulator({
       }
       
       // Add maturity amounts for this year (insurance, FD, PPF, EPF, bonds, etc.)
-      const yearMaturities = maturitiesByYear[year]?.total || 0;
+      const yearMaturities = simMaturitiesByYear[year]?.total || 0;
       
       // Surplus = Income - Expenses - Goals - Investments + Maturities
       const yearSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments;
