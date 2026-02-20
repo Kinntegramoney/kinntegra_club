@@ -488,16 +488,43 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                   </Select>
                                 </div>
                                 <div className="flex flex-col flex-1 min-w-[120px]">
-                                  <span className="text-[10px] text-gray-400 mb-1">Monthly Amt *</span>
+                                  <span className="text-[10px] text-gray-400 mb-1">Monthly Amt</span>
                                   <div className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
-                                    <Input type="number" value={item.details.monthly_amount || ""} onChange={e => updateItem(cat.value, item.id, "monthly_amount", e.target.value)} className="h-8 w-full text-xs bg-white border-gray-200 pl-5" disabled={isReadOnly} />
+                                    <Input 
+                                      type="number" 
+                                      value={item.details.monthly_amount || ""} 
+                                      onChange={e => {
+                                        const monthly = e.target.value;
+                                        updateItem(cat.value, item.id, "monthly_amount", monthly);
+                                        // Auto-fill annual amount
+                                        if (monthly) {
+                                          updateItem(cat.value, item.id, "annual_amount", (parseFloat(monthly) * 12).toString());
+                                        }
+                                      }} 
+                                      className="h-8 w-full text-xs bg-white border-gray-200 pl-5" 
+                                      disabled={isReadOnly} 
+                                    />
                                   </div>
                                 </div>
-                                <div className="flex flex-col flex-1 min-w-[110px]">
+                                <div className="flex flex-col flex-1 min-w-[120px]">
                                   <span className="text-[10px] text-gray-400 mb-1">Annual Amt</span>
-                                  <div className="h-8 px-3 flex items-center bg-gray-100 border border-gray-200 rounded-md text-xs text-gray-700">
-                                    {item.details.monthly_amount ? formatCurrency(parseFloat(item.details.monthly_amount) * 12) : '-'}
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                    <Input 
+                                      type="number" 
+                                      value={item.details.annual_amount || ""} 
+                                      onChange={e => {
+                                        const annual = e.target.value;
+                                        updateItem(cat.value, item.id, "annual_amount", annual);
+                                        // Auto-fill monthly amount
+                                        if (annual) {
+                                          updateItem(cat.value, item.id, "monthly_amount", (parseFloat(annual) / 12).toFixed(0));
+                                        }
+                                      }} 
+                                      className="h-8 w-full text-xs bg-white border-gray-200 pl-5" 
+                                      disabled={isReadOnly} 
+                                    />
                                   </div>
                                 </div>
                                 <div className="flex flex-col w-[100px]">
