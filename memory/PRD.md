@@ -1,175 +1,129 @@
-# Kinntegraa Financial Cash Flow Projection Tool - PRD
+# Kinntegraa Cash Flow Projection Tool - PRD
 
 ## Original Problem Statement
-Enhance a financial cash flow projection tool with Excel export overhaul, UI improvements, currency logic, and bug fixes for a wealth management platform.
+Enhance a financial cash flow projection tool within the `Data Gathering` module. The tool helps financial advisors collect and manage comprehensive family financial data including members, income, expenses, goals, insurance, investments, and liabilities.
 
 ## User Personas
-- **Brokers**: Manage client portfolios, tag reinvestments, send approval emails
-- **Sub-brokers**: Tag reinvestments under broker supervision
-- **Clients**: Approve/reject reinvestment tags, view holdings
+- **Brokers**: Financial advisors who manage multiple client families
+- **Sub-brokers**: Work under brokers to manage specific clients
+- **Clients**: End users whose financial data is being gathered
 
 ## Core Requirements
 
+### Data Gathering Module
+1. **Members Section**: Family member management with retirement year, life expectancy, tax details
+2. **Income Section**: Multiple income types (salary, rental, insurance income, mutual funds, etc.)
+3. **Expenses Section**: Categorized expenses with inflation and post-retirement considerations
+4. **Goals Section**: Financial goals with target years and inflation
+5. **Insurance Section**: Insurance premiums and coverage tracking
+6. **Investments Section**: Investment tracking
+7. **Assets Section**: Asset management
+8. **Liabilities Section**: Loan and liability tracking
+9. **Surplus Section**: Cash flow projection and Excel export
+
+### Key Features
+- Cross-member data association
+- Inflation-adjusted projections
+- Post-retirement expense calculations
+- Comprehensive Excel export
+
+---
+
+## What's Been Implemented
+
 ### Completed Features (Feb 2026)
+- ✅ Retirement Year field added to Members table
+- ✅ Backend model updated for retirement_year
+- ✅ Mutual exclusion for Monthly/Annual expense fields
+- ✅ Default new expense targets whole family
+- ✅ Insurance premium loading from Expenses tab
+- ✅ Tab count deduplication logic
+- ✅ "Lasts till" message with life expectancy warning
+- ✅ Data persistence bug fixes (deleted items reappearing)
 
-#### Session: Feb 19, 2026 (Latest Update - Session 2)
-**Real Estate XIRR Calculation - Sell Before Completion Logic:**
-1. **Sell-Before-Completion Scenario Handling** - When expected sale date is BEFORE handover date:
-   - Payments due AFTER the expected sale date are now EXCLUDED from XIRR calculation
-   - These completion payments become the buyer's obligation
-   - Sale value is reduced by the amount of remaining payments (net sale proceeds)
-2. **XIRR Tooltip Enhancement** - Both Expected and Actual XIRR tooltips now show:
-   - "Selling before handover - completion payments excluded" warning when applicable
-   - New "Incl?" column showing ✓ for included payments, ✗ for excluded payments
-   - Excluded payments shown with opacity-40 and strikethrough styling
-   - Note at bottom: "X AED completion payments deducted from sale (buyer's obligation)"
-3. **Logic Implementation**:
-   - `handoverDate` determined from `property.handover_date` or last payment milestone date
-   - `isSellingBeforeCompletion` flag set when `expectedSaleDate < handoverDate`
-   - `paymentsAfterSaleAed` calculated to track excluded amounts
-   - `netSaleValueForXirr` = `expectedSalePrice - paymentsAfterSaleAed`
+### Data Migration (Feb 20, 2026)
+- ✅ Migrated "Pradeep Dattatray Prabhu & Family" from old environment
+- Family ID: `869d412b-0cb8-4839-9459-d2a02b2860f1`
+- Includes: 3 members, 9 income items, 8 goals, 12 expenses, 16 insurance, 1 liability
 
-**Bond XIRR Tooltips (Session 1):**
-4. **Syntax Fix** - Removed duplicate `</td>` tag that was causing parsing issues
-5. **Overflow Fix** - Added `overflow-y-visible` to Bonds table container to prevent tooltip clipping
+---
 
-#### Session: Feb 19, 2026 (Previous Update)
-**Real Estate Holdings - Currency Projection Enhancement:**
-1. **Dual Currency Display in Holdings Table** - Investment Amount, Expected Sale Amount, and Total Profit columns now show:
-   - **Base Currency (AED)**: Original amounts in AED
-   - **Projected Currency (INR)**: Converted amounts using date-based projected exchange rates
-   - Clear separation between base and projected currencies with dividers
-2. **Payment-Date-Based Rate Calculation** - Implemented `getProjectedRateForDate()` helper:
-   - Paid amounts use actual/historical rates
-   - Payable amounts use projected rates based on payment milestone dates
-   - 3% annual depreciation rate assumption for INR against AED
-3. **Enhanced Profit Breakdown**:
-   - Property gain shown in AED (base)
-   - Sale profit and currency benefit shown separately in INR
-   - Projected exchange rate shown with expected sale date
+## Known Issues (Priority Order)
 
-**Real Estate Holdings - Property Details Fix:**
-4. **Backend API Enhancement** - Updated `/api/real-estate-opportunities/client/{client_id}` endpoint to include:
-   - `total_area`, `carpet_area`, `balcony_area` (Area details)
-   - `handover_date`, `expected_sale_rate`, `estimated_sell_date` (Sale details)
-   - `unit_number`, `floor`, `unit_type`, `location`, `images`
-5. **Apartment Size Column Now Shows**:
-   - Total sqft (from `total_area`)
-   - Apartment area (from `carpet_area`)
-   - Balcony area (from `balcony_area`)
-6. **Expected Sale Amount Shows**:
-   - Sale date from property's `estimated_sell_date`
-   - Projected exchange rate at sale date
+### P0 - Critical
+1. **Insurance Tab Duplication**: Coverage amounts are duplicated/summed incorrectly
+   - File: `/app/frontend/src/pages/DataGathering/sections/InsuranceSection.jsx`
+   - Function: `getActualCover` needs deduplication logic
 
-#### Session: Feb 18, 2026 (Previous Update)
-**Bug Fixes:**
-1. **Email Shows Sub-broker Name** - Reinvestment approval emails now show sub-broker's name instead of broker's name when client is linked to a sub-broker
-2. **"Maturity Amount" → "Repayment Amount"** - Updated text in ClientApprovals.jsx:
-   - Info box: "upcoming repayment amounts" (was "maturity amounts")
-   - Date label: "Repayment:" (was "Maturity:")
-3. **Back Button Navigation Fixed** - In RealEstateDetails.jsx, client back button now goes to `/client/opportunities` instead of `/client/real-estate`
+2. **Bond Presentation Not Visible**: Ephemeral file storage issue on live server
 
-**Previous Session Updates (Feb 18, 2026):**
-**P0 Bug Fixes:**
-1. **Currency Projection Calculation Fixed** - Changed from regression slope to simple 5-year average:
-   - Now uses `(current_rate - oldest_rate) / 5` for annual change
-   - Projections: 2027=25.21, 2028=26.00, 2029=26.80, etc. (for INR)
-   - More intuitive and matches user expectations
-2. **Custom Share % State Fixed** - Each RealEstateCard now has independent local state:
-   - `cardSharePercent`, `cardCustomInput`, `showCardCustomInput` per card
-   - Changing share % on one card no longer affects other cards
+### P1 - High Priority
+1. **Excel Export Broken**: `generateExcelExport is not defined` error
+   - File: `/app/frontend/src/pages/DataGathering/sections/SurplusSection.jsx`
+   - Solution: Extract to `/app/frontend/src/utils/exportUtils.js`
 
-**UI Improvements:**
-3. **Timeline Dates Visible** - Payment schedule dates now shown directly above timeline (not as hover)
-4. **Confirmed Participants Display** - Shows "X participants" with "Y% committed"
-5. **Removed "Available Slots"** - Simplified UI by removing available slots from opportunity cards
+2. **"Multi" Display Bug**: Shows "Multi" for single portfolio allocation
 
-#### Previous Session: Feb 18, 2026
-1. **Currency Settings on Dashboard** - Moved Currency Settings button to Dashboard's Market Rates section for global access
-2. **Horizontal Payment Timeline Component** - Created `/app/frontend/src/components/HorizontalPaymentTimeline.jsx`:
-   - Colorful horizontal bar with segments (amber→orange→red→pink→purple→teal)
-   - Circular nodes positioned on the timeline
-   - Alternating info above/below for full version
-   - Compact version for opportunity cards
-   - Supports currency conversion with conversionRate prop
-3. **Opportunities Page Enhancements**:
-   - Replaced "Payment Progress" bar with horizontal payment timeline
-   - Shows share values for each payment milestone
-   - **Currency Selector** dropdown (AED, INR, USD, EUR, GBP, SGD)
-   - **Projected Rate Display** showing current rate and future projections
-4. **Holdings Page Timeline** - Updated real estate holdings to use new horizontal timeline
-5. **Backend: Projected Currency Rates API** - `/api/currency/projected-rates`:
-   - Fetches 5 years of historical data from Frankfurter API
-   - Uses 5-year average for projection calculations
-   - Returns confidence level based on data consistency
+3. **Duplicate Reinvestment Emails**: Clients receive multiple approval emails
 
-#### Session: Feb 16, 2026
-1. **Client Approval Count Fix** - Fixed pending approvals count to match all statuses
-2. **Email Spam Fix** - Disabled individual auto-emails, only "New MF Purchase Order" email sent
-3. **"Multi" Display Fix** - Shows only when multiple UCCs/portfolios actually selected
-4. **Reinvestment Tagging Flow** - Unified flow via checkbox + modal (no inline dropdowns)
-5. **Investment Date Fix** - API sends broker-selected date, not approval date
+### P2 - Medium Priority
+1. **Expense Section Spacing**: Layout alignment issues
+2. **"Expected Sale Date" Bug**: Date changes unexpectedly
+3. **Missing Data in Excel**: Specific client Excel missing data
 
-#### Previous Sessions
-- DLD/Admin Fee Display in payment schedule modal
-- Holdings Value Display (bond vs real estate filtering)
-- "Repaid" Column in bond holdings report
-- Repayment Status Bar fix (using gross_repaid)
-- Dashboard & Holdings data alignment
-- Historical Currency API integration (`/api/currency/historical_rate`)
+---
 
-### In Progress
-- **"Multi" display bug (P1)** - May still show "Multi" for single allocations (needs user verification)
-- **Duplicate approval emails (P1)** - Previous fix needs user verification
+## Prioritized Backlog
 
-### Completed: Feb 19, 2026
-#### **P0 Bug Fix: Bond Presentation PDF Viewer**
-- **Root Cause**: Static file mount (`app.mount("/api/uploads", ...)`) was conflicting with API router routes, causing inconsistent routing
-- **Solution**: 
-  1. Removed the static file mount - all file serving now goes through the API route `/api/uploads/{folder}/{filename}`
-  2. Improved `serve_upload` endpoint with proper content-type detection and detailed logging
-  3. Added debug endpoint `/api/uploads/debug/{folder}` (broker-only) to diagnose file issues
-- **Testing**: PDF viewer confirmed working in preview environment - shows filename, download button, and embedded PDF
+### P0 Features
+- Fix Insurance tab deduplication
+- Fix Excel export functionality
 
-### Pending Issues (User to Verify on Live Environment)
-- **Bond Presentation on Live Environment** - If still failing, use the debug endpoint:
-  - `GET /api/uploads/debug/bond_presentations` to verify files exist on server
-  - Check backend logs for file path issues
-- **Expected Sale Date Bug (P1)** - Dates change unexpectedly (recurring, not investigated)
-- **Logo Circle Size (P2)** - Pending user feedback
+### P1 Features  
+- Implement cloud storage for file uploads (AWS S3)
+- Hide 5-year history for pegged currencies
+- Add currency support to "View Details" page
 
-### Future/Backlog
-- XIRR deviation display (Projected/Actual/Client Paid/Today's Rate)
-- Backend storage of historical currency rates when payments made
-- Excel Export Overhaul
-- Dashboard UI: Fix presentation downloads, move "Fix Data" button
+### P2 Features
+- Enhance Bond Presentation viewer with navigation
+- Dashboard UI fixes
+
+---
 
 ## Technical Architecture
 
-### Stack
-- **Frontend**: React, Tailwind CSS, Shadcn UI
-- **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **External APIs**: Frankfurter.app (currency), Kinntegra MF Buy Scheduler
+```
+/app
+├── backend/
+│   ├── server.py          # Main FastAPI server
+│   ├── auth.py            # Authentication
+│   └── email_service.py   # Email functionality
+└── frontend/
+    └── src/
+        └── pages/
+            └── DataGathering/
+                ├── index.jsx              # Main container
+                └── sections/
+                    ├── MembersSection.jsx
+                    ├── IncomeSection.jsx
+                    ├── ExpenseSection.jsx
+                    ├── GoalSection.jsx
+                    ├── InsuranceSection.jsx
+                    ├── InvestmentSection.jsx
+                    ├── AssetsSection.jsx
+                    ├── LiabilitySection.jsx
+                    ├── NetworthSection.jsx
+                    └── SurplusSection.jsx
+```
 
-### Key Files
-- `/app/backend/server.py` - Main backend (27K+ lines, needs refactoring)
-- `/app/frontend/src/pages/ReinvestmentTagging.jsx` - Tagging UI
-- `/app/frontend/src/pages/Holdings.jsx` - Holdings display
-- `/app/frontend/src/pages/RealEstateDetails.jsx` - Real estate details
+## Key API Endpoints
+- `GET/PUT /api/data-gathering/family/{family_id}` - Family CRUD
+- `POST /api/data-gathering/family/{family_id}/insurance` - Insurance premiums
 
-### Key API Endpoints
-- `GET /api/holdings/clients` - Client list with investment totals
-- `GET /api/holdings/client/{id}` - Client holdings detail
-- `GET /api/currency/historical_rate` - Historical currency rates
-- `POST /api/reinvestment/send-approval-email` - Send combined approval email
-- `POST /api/client/approve-reinvestment/{log_id}` - Client approval action
+## Database Schema
+- Collection: `data_gathering_families`
+- Key fields: members[], income_details[], expense_details[], goal_details[], insurance_premiums[], liabilities[]
 
 ## Test Credentials
-- **PAN**: ANVPB5297J
-- **Password**: kinntegra123
-- **PIN**: 1234
-
-## Known Limitations
-- Currency API (frankfurter.app) doesn't support AED directly - calculated via USD (1 USD = 3.6725 AED)
-- Large files need refactoring: server.py, RealEstateDetails.jsx
+- Broker PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
+- Test Family: `869d412b-0cb8-4839-9459-d2a02b2860f1`
