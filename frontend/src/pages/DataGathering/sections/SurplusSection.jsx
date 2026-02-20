@@ -546,6 +546,14 @@ export default function SurplusSection({ family, isReadOnly }) {
   const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
     
+    // Helper function to format currency with Indian comma format
+    const formatCurrencyINR = (num) => {
+      if (num === null || num === undefined || num === '' || isNaN(num)) return '';
+      const n = parseFloat(num);
+      if (n === 0) return '0';
+      return n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    };
+    
     // Helper function to get member names from IDs
     const getMemberNames = (memberIds) => {
       if (!memberIds || memberIds.length === 0) return 'N/A';
@@ -579,6 +587,35 @@ export default function SurplusSection({ family, isReadOnly }) {
         'other': 'Other'
       };
       return labels[category] || category || 'Other';
+    };
+    
+    // Helper to apply styling to worksheet
+    const applyWorksheetStyle = (ws, sectionRows, headerRows, dataRows) => {
+      // Set column widths
+      ws['!cols'] = Array(20).fill({ wch: 18 });
+      
+      // Protect the worksheet
+      ws['!protect'] = {
+        password: '',
+        sheet: true,
+        objects: true,
+        scenarios: true,
+        formatCells: false,
+        formatColumns: false,
+        formatRows: false,
+        insertColumns: false,
+        insertRows: false,
+        insertHyperlinks: false,
+        deleteColumns: false,
+        deleteRows: false,
+        selectLockedCells: true,
+        sort: false,
+        autoFilter: false,
+        pivotTables: false,
+        selectUnlockedCells: true
+      };
+      
+      return ws;
     };
     
     // Generate all years from current to life expectancy
