@@ -1287,14 +1287,29 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                     disabled={isReadOnly || field.readOnly}
                                   />
                                 ) : field.readOnly ? (
-                                  <div className={`h-8 px-3 w-full flex items-center text-xs border border-gray-200 rounded-md font-medium ${
-                                    ['xirr_return', 'absolute_return', 'gross_xirr'].includes(field.key) 
-                                      ? (parseFloat(item.details[field.key]) >= 8 
-                                          ? 'bg-green-100 text-green-700 border-green-300' 
-                                          : 'bg-red-100 text-red-700 border-red-300')
-                                      : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                    {formatValue(item.details[field.key], field.key)}
+                                  <div className="relative group">
+                                    <div className={`h-8 px-3 w-full flex items-center text-xs border border-gray-200 rounded-md font-medium ${
+                                      ['xirr_return', 'absolute_return', 'gross_xirr'].includes(field.key) 
+                                        ? (parseFloat(item.details[field.key]) >= 8 
+                                            ? 'bg-green-100 text-green-700 border-green-300' 
+                                            : 'bg-red-100 text-red-700 border-red-300')
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {formatValue(item.details[field.key], field.key)}
+                                      {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
+                                        <span className="ml-1 text-amber-600 cursor-help" title="Inflation adjusted">*</span>
+                                      )}
+                                    </div>
+                                    {/* Tooltip for inflation-adjusted XIRR */}
+                                    {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
+                                      <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
+                                        <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 w-64 shadow-lg">
+                                          <p className="font-semibold mb-1">Real Return (Inflation Adjusted)</p>
+                                          <p>Since Investment = Market Value, XIRR is calculated assuming 8% annual inflation to show the real loss in purchasing power.</p>
+                                        </div>
+                                        <div className="absolute top-full left-4 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
+                                      </div>
+                                    )}
                                   </div>
                                 ) : field.type === "text" ? (
                                   <Input
