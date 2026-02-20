@@ -44,7 +44,7 @@ const INCOME_CATEGORIES = [
   },
   { 
     value: "rental", 
-    label: "Rental Income", 
+    label: "Property Details", 
     icon: Building,
     color: "teal",
     fields: [
@@ -54,7 +54,7 @@ const INCOME_CATEGORIES = [
       { key: "investment_date", label: "Investment Date", type: "monthyear" },
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "market_value_date", label: "As On Date", type: "monthyear" },
-      { key: "xirr_return", label: "XIRR Return %", type: "number", readOnly: true, calculated: true },
+      { key: "xirr_return", label: "XIRR Return %", type: "number", readOnly: true, calculated: true, allowNegative: true },
       { key: "is_on_rent", label: "Is On Rent", type: "select", options: ["Yes", "No"], defaultValue: "No" },
       { key: "rental_details", label: "Rental Details", type: "text", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "rent_per_month", label: "Rent Per Month", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
@@ -63,7 +63,7 @@ const INCOME_CATEGORIES = [
       { key: "end_date", label: "End Date", type: "monthyear", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "maintenance", label: "Maintenance (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
       { key: "property_tax", label: "Property Tax (Yearly)", type: "number", dependsOn: "is_on_rent", showWhen: "Yes" },
-      { key: "absolute_return", label: "Absolute Return %", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes" }
+      { key: "absolute_return", label: "Absolute Return %", type: "number", readOnly: true, calculated: true, dependsOn: "is_on_rent", showWhen: "Yes", allowNegative: true }
     ]
   },
   { 
