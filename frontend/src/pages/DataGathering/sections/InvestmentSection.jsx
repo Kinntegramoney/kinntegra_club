@@ -147,8 +147,10 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
+      // Filter out SIPs that come from income - they should only be edited in Income section
+      const investmentsToSave = investments.filter(inv => !inv.isFromIncome);
       const payload = {
-        investment_details: investments.map(inv => ({
+        investment_details: investmentsToSave.map(inv => ({
           id: inv.isNew ? undefined : inv.id,
           category: inv.category,
           member_id: inv.member_id,
