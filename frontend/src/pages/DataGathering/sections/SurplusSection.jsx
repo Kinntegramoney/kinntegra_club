@@ -1204,6 +1204,78 @@ export default function SurplusSection({ family, isReadOnly }) {
               })}
             </tr>
 
+            {/* Maturities Row - Insurance, FD, PPF, EPF, Bonds etc. */}
+            {displayYears.some(year => maturitiesByYear[parseInt(year)]?.total > 0) && (
+              <tr className="bg-teal-50/30 hover:bg-teal-50/50">
+                <td className="px-3 py-2 border-r border-gray-100">
+                  <div className="flex items-center gap-1">
+                    <Landmark className="h-3 w-3 text-teal-600" />
+                    <span className="text-xs font-medium text-gray-800">Maturities</span>
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-gray-400 cursor-help hover:text-blue-500" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs max-w-[220px]">
+                          <p>Maturity amounts from Insurance, FD, PPF, EPF, Bonds and other investments maturing in that year.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </td>
+                {displayYears.map((year, yearIdx) => {
+                  const yearInt = parseInt(year);
+                  const yearMaturities = maturitiesByYear[yearInt] || { total: 0, details: [] };
+                  return (
+                    <React.Fragment key={`mat-${year}`}>
+                      {members.map((member) => {
+                        // Calculate member's share of maturities
+                        const memberMaturity = yearMaturities.details
+                          .filter(d => d.memberIds.includes(member.id) || d.memberIds.length === 0)
+                          .reduce((sum, d) => {
+                            const share = d.memberIds.length > 0 ? d.value / d.memberIds.length : d.value / members.length;
+                            return sum + share;
+                          }, 0);
+                        return (
+                          <td key={`mat-${year}-${member.id}`} className="px-1 py-2 text-center">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`text-[10px] ${memberMaturity > 0 ? 'text-teal-700 cursor-help' : 'text-gray-300'}`}>
+                                    {memberMaturity > 0 ? formatAmount(memberMaturity) : '-'}
+                                  </span>
+                                </TooltipTrigger>
+                                {memberMaturity > 0 && (
+                                  <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                    <div className="space-y-1">
+                                      <div className="font-semibold border-b pb-1">{member.name} - {year} Maturities</div>
+                                      {yearMaturities.details
+                                        .filter(d => d.memberIds.includes(member.id) || d.memberIds.length === 0)
+                                        .map((d, i) => (
+                                          <div key={i} className="flex justify-between gap-2">
+                                            <span>{d.type}: {d.description || ''}</span>
+                                            <span>{formatAmount(d.value)}</span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                          </td>
+                        );
+                      })}
+                      <td className={`px-1 py-2 text-center bg-teal-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                        <span className={`text-[10px] font-semibold ${yearMaturities.total > 0 ? 'text-teal-800' : 'text-gray-300'}`}>
+                          {yearMaturities.total > 0 ? formatAmount(yearMaturities.total) : '-'}
+                        </span>
+                      </td>
+                    </React.Fragment>
+                  );
+                })}
+              </tr>
+            )}
+
             {/* Expenses Row */}
             <tr className="hover:bg-gray-50">
               <td className="px-3 py-2 border-r border-gray-100">
