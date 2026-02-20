@@ -505,6 +505,18 @@ export default function DataGathering() {
                   />
                 </div>
                 <div>
+                  <Label className="lg:hidden text-xs text-gray-500 mb-1">Ret. Year</Label>
+                  <Input
+                    type="number"
+                    value={member.retirement_year}
+                    onChange={(e) => updateMember(member.id, 'retirement_year', e.target.value)}
+                    placeholder="Year"
+                    className="h-9"
+                    min="2020"
+                    max="2100"
+                  />
+                </div>
+                <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Tax Status</Label>
                   <Select 
                     value={member.tax_status} 
