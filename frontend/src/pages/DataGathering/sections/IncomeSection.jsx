@@ -73,6 +73,7 @@ const INCOME_CATEGORIES = [
     color: "green",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
+      { key: "annual_contribution", label: "Annual Contribution", type: "number" },
       { key: "as_on_date", label: "As On Date", type: "monthyear" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
@@ -85,6 +86,7 @@ const INCOME_CATEGORIES = [
     color: "emerald",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
+      { key: "annual_contribution", label: "Annual Contribution", type: "number" },
       { key: "as_on_date", label: "As On Date", type: "monthyear" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
       { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
