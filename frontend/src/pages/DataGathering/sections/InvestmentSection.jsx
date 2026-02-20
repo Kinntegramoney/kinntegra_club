@@ -50,26 +50,54 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
 
   const members = family?.members || [];
   const existingInvestments = family?.investment_details || [];
+  const incomeDetails = family?.income_details || [];
+
+  // Extract SIP investments from income_details (mutual funds with SIP amounts)
+  const sipFromIncome = incomeDetails
+    .filter(inc => inc.category === 'mutual_fund' && inc.sip_amount > 0)
+    .map(inc => ({
+      id: `income_sip_${inc.id}`,
+      category: 'mutual_fund_equity', // Map to investment category
+      member_id: inc.member_id,
+      amount: inc.sip_amount || 0,
+      frequency: 'monthly',
+      annual_amount: (inc.sip_amount || 0) * 12,
+      description: inc.description || 'MF SIP (from Income)',
+      isFromIncome: true, // Flag to indicate this is derived from income
+      isReadOnly: true // Cannot edit here, must edit in Income section
+    }));
 
   useEffect(() => {
-    // Load existing investments
+    // Load existing investments + SIPs from income
+    const allInvestments = [];
+    
+    // Add dedicated investments
     if (existingInvestments.length > 0) {
-      setInvestments(existingInvestments.map(inv => ({
-        id: inv.id,
-        category: inv.category,
-        member_id: inv.member_id,
-        amount: inv.amount || "",
-        frequency: inv.frequency || "monthly",
-        annual_amount: inv.annual_amount || 0,
-        start_date: inv.start_date || "",
-        end_date: inv.end_date || "",
-        upto_year: inv.upto_year || "",
-        description: inv.description || "",
-        isNew: false,
-        isModified: false
-      })));
+      existingInvestments.forEach(inv => {
+        allInvestments.push({
+          id: inv.id,
+          category: inv.category,
+          member_id: inv.member_id,
+          amount: inv.amount || "",
+          frequency: inv.frequency || "monthly",
+          annual_amount: inv.annual_amount || 0,
+          start_date: inv.start_date || "",
+          end_date: inv.end_date || "",
+          upto_year: inv.upto_year || "",
+          description: inv.description || "",
+          isNew: false,
+          isModified: false
+        });
+      });
     }
-  }, [family?.id]);
+    
+    // Add SIPs from income (these are read-only in this section)
+    sipFromIncome.forEach(sip => {
+      allInvestments.push(sip);
+    });
+    
+    setInvestments(allInvestments);
+  }, [family?.id, existingInvestments.length, sipFromIncome.length]);
 
   const addInvestment = () => {
     const newInvestment = {
