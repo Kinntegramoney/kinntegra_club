@@ -435,11 +435,12 @@ export default function DataGathering() {
 
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="hidden lg:grid lg:grid-cols-9 gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+          <div className="hidden lg:grid lg:grid-cols-10 gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
             <span>Name</span>
             <span>DOB</span>
             <span>Relation</span>
             <span>Life Exp.</span>
+            <span>Ret. Year</span>
             <span>Tax Status</span>
             <span>Tax Regime</span>
             <span>Tax Slab</span>
@@ -452,7 +453,7 @@ export default function DataGathering() {
             {members.map((member) => {
               const isForeignPassport = member.tax_status === "Foreign Passport" || member.tax_status === "NRI with Foreign Passport";
               return (
-              <div key={member.id} className="grid grid-cols-1 lg:grid-cols-9 gap-2 px-4 py-3 items-center">
+              <div key={member.id} className="grid grid-cols-1 lg:grid-cols-10 gap-2 px-4 py-3 items-center">
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Name</Label>
                   <Input
