@@ -1147,7 +1147,7 @@ export default function SurplusSection({ family, isReadOnly }) {
                 return (
                   <React.Fragment key={`inv-${year}`}>
                     {members.map((member) => {
-                      const breakdown = getMemberInvestmentBreakdown(member.id);
+                      const breakdown = getMemberInvestmentBreakdown(member.id, year);
                       const value = getProjectedMemberInvestments(member.id, year);
                       return (
                         <td key={`inv-${year}-${member.id}`} className="px-1 py-2 text-center">
