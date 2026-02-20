@@ -565,7 +565,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               }
               
               // Calculate XIRR Return % when relevant fields change
-              // Uses REAL RETURN (inflation-adjusted) with 8% annual inflation
+              // Uses REAL RETURN (inflation-adjusted) ONLY when investment = market value
               if (["investment_amount", "investment_date", "market_value", "market_value_date"].includes(field)) {
                 const investmentAmount = field === "investment_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_amount) || 0);
                 const marketValue = field === "market_value" ? parseFloat(value || 0) : (parseFloat(newDetails.market_value) || 0);
@@ -591,17 +591,30 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                   const years = days / 365;
                   
                   if (years > 0) {
-                    // Calculate inflation-adjusted investment value (8% annual inflation)
-                    const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+                    // Calculate nominal XIRR first
+                    const nominalXirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
                     
-                    // Calculate REAL XIRR using inflation-adjusted value
-                    const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
-                    newDetails.xirr_return = Math.round(realXirr * 100) / 100; // Round to 2 decimals
+                    // Check if investment equals market value (within 0.1% tolerance)
+                    const isEqualValue = Math.abs(marketValue - investmentAmount) / investmentAmount < 0.001;
+                    
+                    if (isEqualValue) {
+                      // Apply inflation adjustment only when investment = market value
+                      const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+                      const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
+                      newDetails.xirr_return = Math.round(realXirr * 100) / 100;
+                      newDetails.is_inflation_adjusted = true;
+                    } else {
+                      // Use nominal XIRR for all other cases
+                      newDetails.xirr_return = Math.round(nominalXirr * 100) / 100;
+                      newDetails.is_inflation_adjusted = false;
+                    }
                   } else {
                     newDetails.xirr_return = 0;
+                    newDetails.is_inflation_adjusted = false;
                   }
                 } else {
                   newDetails.xirr_return = 0;
+                  newDetails.is_inflation_adjusted = false;
                 }
               }
               
