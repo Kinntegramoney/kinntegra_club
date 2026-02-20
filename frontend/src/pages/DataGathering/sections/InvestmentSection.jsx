@@ -333,20 +333,24 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
                       </Select>
                     </td>
                     <td className="px-3 py-2">
-                      <Select
-                        value={inv.upto_year?.toString() || ""}
-                        onValueChange={(v) => updateInvestment(inv.id, 'upto_year', v)}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-24">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {YEAR_OPTIONS.map(year => (
-                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {inv.isFromIncome ? (
+                        <span className="text-xs text-gray-500">-</span>
+                      ) : (
+                        <Select
+                          value={inv.upto_year?.toString() || ""}
+                          onValueChange={(v) => updateInvestment(inv.id, 'upto_year', v)}
+                          disabled={isDisabled}
+                        >
+                          <SelectTrigger className="h-8 text-xs w-24">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEAR_OPTIONS.map(year => (
+                              <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <span className="text-xs font-medium text-purple-600">
@@ -354,20 +358,24 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <Input
-                        value={inv.description}
-                        onChange={(e) => updateInvestment(inv.id, 'description', e.target.value)}
-                        placeholder="Optional"
-                        className="h-8 text-xs w-32"
-                        disabled={isReadOnly}
-                      />
+                      {inv.isFromIncome ? (
+                        <span className="text-xs text-gray-500">{inv.description}</span>
+                      ) : (
+                        <Input
+                          value={inv.description}
+                          onChange={(e) => updateInvestment(inv.id, 'description', e.target.value)}
+                          placeholder="Optional"
+                          className="h-8 text-xs w-32"
+                          disabled={isDisabled}
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2">
-                      {!isReadOnly && (
+                      {!isReadOnly && !inv.isFromIncome && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeInvestment(inv.id)}
+                          onClick={() => removeInvestment(inv.id, inv.isFromIncome)}
                           className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
