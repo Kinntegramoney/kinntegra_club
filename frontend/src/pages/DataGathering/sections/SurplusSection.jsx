@@ -508,7 +508,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
     expenseCategories.forEach(cat => {
       const categoryExpenses = expenseDetails.filter(e => e.expense_type === cat);
-      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount || e.monthly_amount * 12 || 0) || 0), 0);
       dataSheetData.push([cat.replace(/_/g, ' '), totalAmount, '']);
     });
     dataSheetData.push([]);
@@ -1713,7 +1713,7 @@ function AllocationSimulator({
     let totalExpenses = 0;
     expenseCategories.forEach(cat => {
       const categoryExpenses = expenseDetails.filter(e => e.expense_type === cat);
-      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount || e.monthly_amount * 12 || 0) || 0), 0);
       const avgInflation = categoryExpenses.length > 0 
         ? categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.inflation_percent) || 6), 0) / categoryExpenses.length 
         : 6;
