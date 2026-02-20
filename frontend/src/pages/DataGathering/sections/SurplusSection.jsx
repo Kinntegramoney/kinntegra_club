@@ -415,9 +415,11 @@ export default function SurplusSection({ family, isReadOnly }) {
         maturityYear = parseInt(details.maturity_year);
       }
       
-      // Get maturity value
+      // Get maturity value - for EPF/PPF/NPS/Gratuity, use market_value as maturity amount
+      const isRetirementInstrument = ['epf', 'ppf', 'nps', 'gratuity'].includes(inc.category);
       maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 
-                     parseFloat(details.expected_maturity) || parseFloat(details.maturity_corpus) || 0;
+                     parseFloat(details.expected_maturity) || parseFloat(details.maturity_corpus) ||
+                     (isRetirementInstrument ? parseFloat(details.market_value) : 0) || 0;
       
       // Calculate maturity value if not provided
       if (maturityYear && maturityValue === 0) {
