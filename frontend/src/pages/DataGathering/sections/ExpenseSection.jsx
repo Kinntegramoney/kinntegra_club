@@ -204,20 +204,25 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     const type = config?.type;
     
     let details;
+    let defaultMemberId;
+    
     if (type === "loan") {
       details = { monthly_emi: "", num_installments: "" };
+      defaultMemberId = members[0]?.id || "";
     } else if (type === "insurance") {
       details = { yearly_premium: "", upto_year: defaultRetirementYear.toString(), coverage_amount: "" };
+      defaultMemberId = members[0]?.id || "";
     } else {
-      // For expenses, default upto_year to youngest member's retirement year
+      // For expenses, default upto_year to latest member's retirement year and default member to "family"
       details = { monthly_amount: "", annual_amount: "", upto_year: defaultRetirementYear.toString(), inflation_percent: 5, consider_post_retirement: false, post_retirement_member: "", post_retirement_percent: 100 };
+      defaultMemberId = "family"; // Default to "Family" for expenses
     }
     
     setItems(prev => ({
       ...prev,
       [cat]: [...(prev[cat] || []), {
         id: `new_${Date.now()}`,
-        memberId: members[0]?.id || "",
+        memberId: defaultMemberId,
         details,
         isNew: true,
         isModified: false
