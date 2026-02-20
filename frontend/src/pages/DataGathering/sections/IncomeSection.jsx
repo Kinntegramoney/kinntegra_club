@@ -279,6 +279,42 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const members = family?.members || [];
   const existingIncomes = family?.income_details || [];
 
+  // Helper function to recalculate XIRR for property items
+  const recalculatePropertyXIRR = (details) => {
+    const investmentAmount = parseFloat(details.investment_amount) || 0;
+    const marketValue = parseFloat(details.market_value) || 0;
+    const investmentDateStr = details.investment_date;
+    const marketValueDateStr = details.market_value_date;
+    
+    if (investmentAmount > 0 && marketValue > 0 && investmentDateStr && marketValueDateStr) {
+      const parseMMYY = (mmyy) => {
+        const [month, year] = mmyy.split('/');
+        let fullYear;
+        if (year.length === 4) {
+          fullYear = parseInt(year);
+        } else {
+          fullYear = parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+        }
+        return new Date(fullYear, parseInt(month) - 1, 1);
+      };
+      
+      try {
+        const investDate = parseMMYY(investmentDateStr);
+        const marketDate = parseMMYY(marketValueDateStr);
+        const days = Math.max(1, (marketDate - investDate) / (1000 * 60 * 60 * 24));
+        const years = days / 365;
+        
+        if (years > 0) {
+          const xirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
+          return Math.round(xirr * 100) / 100;
+        }
+      } catch (e) {
+        console.log('XIRR calculation error:', e);
+      }
+    }
+    return details.xirr_return; // Return existing value if can't calculate
+  };
+
   useEffect(() => {
     const itemsByCategory = {};
     const added = [];
@@ -288,10 +324,20 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       const category = inc.category;
       if (itemsByCategory[category]) {
         if (!added.includes(category)) added.push(category);
+        
+        // Recalculate XIRR for property items on load to ensure correct negative values
+        let details = inc.details || {};
+        if (category === 'property' && details.investment_amount && details.market_value) {
+          const recalculatedXIRR = recalculatePropertyXIRR(details);
+          if (recalculatedXIRR !== undefined && recalculatedXIRR !== details.xirr_return) {
+            details = { ...details, xirr_return: recalculatedXIRR };
+          }
+        }
+        
         itemsByCategory[category].push({
           id: inc.id,
           memberId: inc.member_ids?.[0] || "",
-          details: inc.details || {},
+          details: details,
           isNew: false,
           isModified: false
         });
