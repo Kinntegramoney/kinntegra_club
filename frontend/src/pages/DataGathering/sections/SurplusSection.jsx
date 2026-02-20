@@ -555,6 +555,32 @@ export default function SurplusSection({ family, isReadOnly }) {
       }).filter(n => n).join(', ') || 'N/A';
     };
     
+    // Helper function to get category label
+    const getCategoryLabel = (category) => {
+      const labels = {
+        'salary': 'Salary',
+        'business': 'Business Income',
+        'rental': 'Rental Income',
+        'pension': 'Pension',
+        'mutual_fund': 'Mutual Fund',
+        'ppf': 'PPF',
+        'epf': 'EPF',
+        'nps': 'NPS',
+        'fd': 'Fixed Deposit',
+        'rd_pis': 'RD/PIS',
+        'bond': 'Bonds',
+        'bonds': 'Bonds',
+        'insurance_income': 'Insurance',
+        'shares_pms': 'Shares/PMS',
+        'gratuity': 'Gratuity',
+        'commodities': 'Commodities',
+        'cash': 'Cash',
+        'vehicle': 'Vehicle',
+        'other': 'Other'
+      };
+      return labels[category] || category || 'Other';
+    };
+    
     // Generate all years from current to life expectancy
     const allYears = [];
     for (let y = currentYear; y <= endYear; y++) {
