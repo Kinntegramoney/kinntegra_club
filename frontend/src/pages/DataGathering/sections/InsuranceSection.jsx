@@ -284,12 +284,13 @@ export default function InsuranceSection({ family }) {
                         </td>
                         <td className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
                           <span className={`text-xs font-mono font-medium ${
-                            cellStatus === 'adequate' ? 'text-green-600' :
-                            cellStatus === 'partial' ? 'text-amber-600' :
-                            cellStatus === 'insufficient' ? 'text-red-500' :
-                            'text-gray-300'
+                            actual > 0 ? (
+                              cellStatus === 'adequate' ? 'text-green-600' :
+                              cellStatus === 'partial' ? 'text-amber-600' :
+                              'text-blue-600'
+                            ) : 'text-gray-400'
                           }`}>
-                            {formatCurrency(actual)}
+                            {actual > 0 ? formatCurrency(actual) : '-'}
                           </span>
                         </td>
                       </React.Fragment>
