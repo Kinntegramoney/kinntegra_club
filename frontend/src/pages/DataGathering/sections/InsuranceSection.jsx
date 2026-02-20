@@ -53,14 +53,18 @@ export default function InsuranceSection({ family }) {
   // Get actual cover for a specific member and category from both insurance_details and insurance_premiums
   const getActualCover = (memberId, categoryValue) => {
     // Check insurance_details
-    const policiesFromDetails = existingInsurance.filter(
-      ins => ins.category === categoryValue && ins.member_ids?.includes(memberId)
-    );
+    const policiesFromDetails = existingInsurance.filter(ins => {
+      const memberIds = ins.member_ids || [];
+      const matchesMember = memberIds.includes(memberId) || memberIds.includes(String(memberId));
+      return ins.category === categoryValue && matchesMember;
+    });
     
     // Check insurance_premiums (from Expenses tab)
-    const policiesFromPremiums = insurancePremiums.filter(
-      ins => ins.category === categoryValue && ins.member_ids?.includes(memberId)
-    );
+    const policiesFromPremiums = insurancePremiums.filter(ins => {
+      const memberIds = ins.member_ids || [];
+      const matchesMember = memberIds.includes(memberId) || memberIds.includes(String(memberId));
+      return ins.category === categoryValue && matchesMember;
+    });
     
     // Sum from insurance_details
     const sumFromDetails = policiesFromDetails.reduce((sum, ins) => {
@@ -72,8 +76,8 @@ export default function InsuranceSection({ family }) {
       return sum + (parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0);
     }, 0);
     
-    // Return the higher of the two (to avoid double counting if same data exists in both)
-    return Math.max(sumFromDetails, sumFromPremiums);
+    // Return total from both sources (they could have different policies)
+    return sumFromDetails + sumFromPremiums;
   };
 
   // Get suggested cover for a member and category based on new rules
