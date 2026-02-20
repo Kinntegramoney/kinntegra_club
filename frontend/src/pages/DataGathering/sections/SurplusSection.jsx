@@ -159,19 +159,20 @@ export default function SurplusSection({ family, isReadOnly }) {
     incomeDetails
       .filter(inc => inc.member_ids?.includes(memberId))
       .forEach(inc => {
+        const details = inc.details || {};
         // Use upto_year if filled, otherwise default to member's retirement year
-        const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
+        const uptoYear = details.upto_year ? parseInt(details.upto_year) : memberRetirementYear;
         
         // Only include if year is within upto_year
         if (targetYear <= uptoYear) {
-          if (inc.income_type === 'EPF') {
-            total += parseFloat(inc.annual_contribution) || 0;
-          } else if (inc.income_type === 'PPF') {
-            total += parseFloat(inc.annual_contribution) || 0;
-          } else if (inc.income_type === 'Mutual Fund') {
-            total += parseFloat(inc.annual_amount) || (parseFloat(inc.sip_amount) * 12) || 0;
-          } else if (inc.income_type === 'Shares/PMS') {
-            total += parseFloat(inc.annual_contribution) || 0;
+          if (inc.category === 'epf') {
+            total += parseFloat(details.annual_contribution) || 0;
+          } else if (inc.category === 'ppf') {
+            total += parseFloat(details.annual_contribution) || 0;
+          } else if (inc.category === 'mutual_fund') {
+            total += parseFloat(details.annual_amount) || (parseFloat(details.sip_amount) * 12) || 0;
+          } else if (inc.category === 'shares_pms') {
+            total += parseFloat(details.annual_contribution) || 0;
           }
         }
       });
@@ -199,22 +200,23 @@ export default function SurplusSection({ family, isReadOnly }) {
     incomeDetails
       .filter(inc => inc.member_ids?.includes(memberId))
       .forEach(inc => {
+        const details = inc.details || {};
         // Use upto_year if filled, otherwise default to member's retirement year
-        const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
+        const uptoYear = details.upto_year ? parseInt(details.upto_year) : memberRetirementYear;
         
         if (targetYear <= uptoYear) {
-          if (inc.income_type === 'EPF') {
+          if (inc.category === 'epf') {
             if (!breakdown['EPF']) breakdown['EPF'] = 0;
-            breakdown['EPF'] += parseFloat(inc.annual_contribution) || 0;
-          } else if (inc.income_type === 'PPF') {
+            breakdown['EPF'] += parseFloat(details.annual_contribution) || 0;
+          } else if (inc.category === 'ppf') {
             if (!breakdown['PPF']) breakdown['PPF'] = 0;
-            breakdown['PPF'] += parseFloat(inc.annual_contribution) || 0;
-          } else if (inc.income_type === 'Mutual Fund') {
+            breakdown['PPF'] += parseFloat(details.annual_contribution) || 0;
+          } else if (inc.category === 'mutual_fund') {
             if (!breakdown['MF SIP']) breakdown['MF SIP'] = 0;
-            breakdown['MF SIP'] += parseFloat(inc.annual_amount) || (parseFloat(inc.sip_amount) * 12) || 0;
-          } else if (inc.income_type === 'Shares/PMS') {
+            breakdown['MF SIP'] += parseFloat(details.annual_amount) || (parseFloat(details.sip_amount) * 12) || 0;
+          } else if (inc.category === 'shares_pms') {
             if (!breakdown['Shares/PMS']) breakdown['Shares/PMS'] = 0;
-            breakdown['Shares/PMS'] += parseFloat(inc.annual_contribution) || 0;
+            breakdown['Shares/PMS'] += parseFloat(details.annual_contribution) || 0;
           }
         }
       });
