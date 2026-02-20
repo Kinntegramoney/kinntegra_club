@@ -284,7 +284,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       const preRetYears = info.retirementYear - currentYear;
       const postRetYears = targetYear - info.retirementYear;
       const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, preRetYears + postRetYears);
-      return rental + info.basePension;
+      return rental + info.basePension + (info.baseMutualFund || 0);
     }
     
     const salary = info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
