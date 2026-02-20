@@ -771,6 +771,31 @@ export default function SurplusSection({ family, isReadOnly }) {
     Object.entries(investmentByCategory).forEach(([cat, total]) => {
       dataSheetData.push([cat, Math.round(total)]);
     });
+    dataSheetData.push([]);
+    
+    // --- FINANCIAL SUMMARY ---
+    dataSheetData.push(['FINANCIAL SUMMARY']);
+    const totalAnnualIncome = members.reduce((sum, m) => {
+      const info = getMemberIncomeInfo(m.id);
+      return sum + info.baseSalary + info.baseBusiness + info.baseRental + info.basePension;
+    }, 0);
+    const totalAnnualExpenses = expenseDetails.reduce((sum, e) => {
+      return sum + (parseFloat(e.annual_amount) || (parseFloat(e.monthly_amount) * 12) || 0);
+    }, 0);
+    const totalAnnualInvestments = combinedInvestments.reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
+    const netSavings = totalAnnualIncome - totalAnnualExpenses - totalAnnualInvestments;
+    const savingsRate = totalAnnualIncome > 0 ? (netSavings / totalAnnualIncome) * 100 : 0;
+    
+    dataSheetData.push(['Total Annual Income', Math.round(totalAnnualIncome)]);
+    dataSheetData.push(['Total Annual Expenses', Math.round(totalAnnualExpenses)]);
+    dataSheetData.push(['Total Annual Investments', Math.round(totalAnnualInvestments)]);
+    dataSheetData.push(['Net Savings', Math.round(netSavings)]);
+    // Only show savings rate if positive
+    if (savingsRate > 0) {
+      dataSheetData.push(['Savings Rate', `${savingsRate.toFixed(1)}%`]);
+    } else {
+      dataSheetData.push(['Savings Rate', 'N/A (Deficit)']);
+    }
 
     const dataSheet = XLSX.utils.aoa_to_sheet(dataSheetData);
     dataSheet['!cols'] = [{ wch: 35 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 20 }];
