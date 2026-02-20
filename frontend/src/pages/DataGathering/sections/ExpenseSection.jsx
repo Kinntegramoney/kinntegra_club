@@ -62,7 +62,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
 
   const members = family?.members || [];
   const existingExpenses = family?.expense_details || [];
-  const existingLiabilities = family?.liability_details || [];
+  const existingLiabilities = family?.liability_details || family?.liabilities || [];
   const existingInsurance = family?.insurance_premiums || family?.insurance_details || [];
   const currentYear = new Date().getFullYear();
 
