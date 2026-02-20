@@ -1720,10 +1720,19 @@ function AllocationSimulator({
         totalGoals = getMemberGoalExpenses(entityId, yearStr);
       }
       
+      // Calculate total investments for this year
+      let totalInvestments;
+      if (isFamily) {
+        totalInvestments = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0);
+      } else {
+        totalInvestments = getProjectedMemberInvestments(entityId, yearStr);
+      }
+      
       // Add maturity amounts for this year (insurance, FD, PPF, EPF, bonds, etc.)
       const yearMaturities = maturitiesByYear[year]?.total || 0;
       
-      const yearSurplus = totalIncome - totalExpenses - totalGoals;
+      // Surplus = Income - Expenses - Goals - Investments + Maturities
+      const yearSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments;
       corpus = corpus * (1 + weightedReturn / 100) + yearSurplus + yearMaturities;
       
       // Store data point for chart (sample every 5 years or key years)
