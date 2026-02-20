@@ -1092,17 +1092,55 @@ export default function SurplusSection({ family, isReadOnly }) {
           const inflRate = parseFloat(exp.inflation_percent) ?? 5;
           const uptoYr = parseInt(exp.upto_year) || endYear;
           
+          // Check for loan completion
+          if (['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(exp.expense_type)) {
+            const numInstallments = parseFloat(exp.num_installments) || 0;
+            const completionYear = currentYear + Math.ceil(numInstallments / 12);
+            if (year >= completionYear) {
+              return; // Loan completed
+            }
+            yearExp += baseAnn; // EMIs don't inflate
+            return;
+          }
+          
+          // Insurance premiums don't inflate
+          if (['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(exp.expense_type)) {
+            if (year <= uptoYr) {
+              yearExp += baseAnn;
+            }
+            return;
+          }
+          
           if (year <= uptoYr) {
             const yearsFromNow = year - currentYear;
             let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
             
             // Apply post-retirement reduction
-            if (exp.consider_post_retirement) {
-              const memberRetYr = members.find(m => exp.member_ids?.includes(m.id))?.retirement_year;
-              if (memberRetYr && year >= parseInt(memberRetYr)) {
-                amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
+            // Check if ANY member associated with this expense has retired
+            const memberIds = exp.member_ids || [];
+            const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+            
+            if (isFamilyExpense) {
+              // For family expenses, check primary member's retirement
+              const primaryMember = members.find(m => m.is_primary);
+              const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
+              if (year >= primaryRetYear && exp.consider_post_retirement) {
+                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+                amount = amount * postRetPct / 100;
+              }
+            } else {
+              // For individual expenses, check the specific member's retirement
+              const memberRetYear = memberIds.map(mid => {
+                const m = members.find(mem => mem.id === mid);
+                return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
+              }).reduce((min, yr) => Math.min(min, yr), endYear);
+              
+              if (year >= memberRetYear && exp.consider_post_retirement) {
+                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+                amount = amount * postRetPct / 100;
               }
             }
+            
             yearExp += amount;
           }
         });
@@ -1114,8 +1152,60 @@ export default function SurplusSection({ family, isReadOnly }) {
     // Total Expenses
     const totExpRow = ['TOTAL EXPENSES (B)'];
     projectionYears.forEach(year => {
-      const yrExp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
-      totExpRow.push(formatCurrencyINR(Math.round(yrExp)));
+      // Recalculate total with post-retirement logic
+      let totalYearExp = 0;
+      expenseDetails.forEach(exp => {
+        const baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
+        const inflRate = parseFloat(exp.inflation_percent) ?? 5;
+        const uptoYr = parseInt(exp.upto_year) || endYear;
+        
+        // Loans
+        if (['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(exp.expense_type)) {
+          const numInstallments = parseFloat(exp.num_installments) || 0;
+          const completionYear = currentYear + Math.ceil(numInstallments / 12);
+          if (year < completionYear) {
+            totalYearExp += baseAnn;
+          }
+          return;
+        }
+        
+        // Insurance
+        if (['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(exp.expense_type)) {
+          if (year <= uptoYr) {
+            totalYearExp += baseAnn;
+          }
+          return;
+        }
+        
+        if (year <= uptoYr) {
+          const yearsFromNow = year - currentYear;
+          let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+          
+          // Post-retirement reduction
+          const memberIds = exp.member_ids || [];
+          const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+          
+          if (isFamilyExpense) {
+            const primaryMember = members.find(m => m.is_primary);
+            const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
+            if (year >= primaryRetYear && exp.consider_post_retirement) {
+              amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
+            }
+          } else {
+            const memberRetYear = memberIds.map(mid => {
+              const m = members.find(mem => mem.id === mid);
+              return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
+            }).reduce((min, yr) => Math.min(min, yr), endYear);
+            
+            if (year >= memberRetYear && exp.consider_post_retirement) {
+              amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
+            }
+          }
+          
+          totalYearExp += amount;
+        }
+      });
+      totExpRow.push(formatCurrencyINR(Math.round(totalYearExp)));
     });
     data.push(totExpRow);
     data.push([thinSeparator]);
