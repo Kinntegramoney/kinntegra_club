@@ -936,7 +936,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   };
 
   const formatValue = (value, key) => {
-    if (!value) return "-";
+    // For XIRR/return fields, 0 is a valid value - show it
+    if (key.includes('xirr') || key.includes('return')) {
+      if (value === null || value === undefined || value === '') return "-";
+      return `${parseFloat(value).toFixed(2)}%`;
+    }
+    if (value === null || value === undefined || value === '') return "-";
     if (key.includes("amount") || key.includes("income") || key.includes("payment") || key.includes("value") || key.includes("balance") || key.includes("principal")) {
       return `₹${parseFloat(value).toLocaleString('en-IN')}`;
     }
