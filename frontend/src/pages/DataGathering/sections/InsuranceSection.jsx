@@ -257,13 +257,13 @@ export default function InsuranceSection({ family }) {
                     
                     return (
                       <React.Fragment key={`${category.value}-${member.id}`}>
-                        <td className="px-2 py-2.5 text-right">
-                          <span className={`text-xs ${suggested > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className={`text-xs font-mono ${suggested > 0 ? 'text-gray-500' : 'text-gray-300'}`}>
                             {formatCurrency(suggested)}
                           </span>
                         </td>
-                        <td className={`px-2 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                          <span className={`text-xs font-medium ${
+                        <td className={`px-3 py-2.5 text-right ${idx < members.length - 1 ? 'border-r border-gray-100' : ''}`}>
+                          <span className={`text-xs font-mono font-medium ${
                             cellStatus === 'adequate' ? 'text-green-600' :
                             cellStatus === 'partial' ? 'text-amber-600' :
                             cellStatus === 'insufficient' ? 'text-red-500' :
