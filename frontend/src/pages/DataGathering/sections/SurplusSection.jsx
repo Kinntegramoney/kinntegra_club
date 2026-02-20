@@ -1288,60 +1288,95 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(netSavRow);
     data.push([thinSeparator]);
     
-    // PORTFOLIO PROJECTION (Fixed: Add savings first, then calculate returns on new balance)
-    data.push(['▶ PORTFOLIO VALUE']);
-    data.push(['  (Opening Balance + Net Savings) then apply returns']);
-    data.push(['  Equity: 80% @ 12% | Debt: 20% @ 7%']);
-    data.push([]);
+    // EQUITY PORTFOLIO (80% Allocation)
+    data.push(['▶ EQUITY PORTFOLIO (80% Allocation @ 12% Return)']);
+    const eqOpeningRow = ['  Opening Balance'];
+    const eqSavingsRow = ['  (+) Savings Allocated (80%)'];
+    const eqBalanceRow = ['  Balance After Savings'];
+    const eqReturnsRow = ['  (+) Returns @ 12%'];
+    const eqClosingRow = ['  CLOSING BALANCE'];
     
-    // Opening Balance Row
-    const openingRow = ['  Opening Balance'];
-    // Net Savings Added Row
-    const savingsAddedRow = ['  (+) Net Savings Added'];
-    // Balance After Savings
-    const balanceAfterSavRow = ['  Balance After Savings'];
-    // Equity Returns Row
-    const equityRetRow = ['  (+) Equity Returns (80% @ 12%)'];
-    // Debt Returns Row
-    const debtRetRow = ['  (+) Debt Returns (20% @ 7%)'];
-    // Closing Balance Row
-    const closingRow = ['  CLOSING BALANCE'];
+    let equityBalance = totalAssets * 0.8;
+    projectionYears.forEach((year, idx) => {
+      const netSav = netSavingsArray[idx];
+      const eqOpening = equityBalance;
+      eqOpeningRow.push(formatCurrencyINR(Math.round(eqOpening)));
+      
+      const eqSavAlloc = netSav > 0 ? netSav * 0.8 : netSav * 0.8; // 80% of savings (can be negative)
+      eqSavingsRow.push(formatCurrencyINR(Math.round(eqSavAlloc)));
+      
+      const eqBalAfterSav = eqOpening + eqSavAlloc;
+      eqBalanceRow.push(formatCurrencyINR(Math.round(eqBalAfterSav)));
+      
+      const eqReturn = eqBalAfterSav * 0.12;
+      eqReturnsRow.push(formatCurrencyINR(Math.round(eqReturn)));
+      
+      equityBalance = eqBalAfterSav + eqReturn;
+      eqClosingRow.push(formatCurrencyINR(Math.round(equityBalance)));
+    });
     
-    let portfolio = totalAssets;
+    data.push(eqOpeningRow);
+    data.push(eqSavingsRow);
+    data.push(eqBalanceRow);
+    data.push(eqReturnsRow);
+    data.push(eqClosingRow);
+    data.push([thinSeparator]);
+    
+    // DEBT PORTFOLIO (20% Allocation)
+    data.push(['▶ DEBT PORTFOLIO (20% Allocation @ 7% Return)']);
+    const dbOpeningRow = ['  Opening Balance'];
+    const dbSavingsRow = ['  (+) Savings Allocated (20%)'];
+    const dbBalanceRow = ['  Balance After Savings'];
+    const dbReturnsRow = ['  (+) Returns @ 7%'];
+    const dbClosingRow = ['  CLOSING BALANCE'];
+    
+    let debtBalance = totalAssets * 0.2;
+    projectionYears.forEach((year, idx) => {
+      const netSav = netSavingsArray[idx];
+      const dbOpening = debtBalance;
+      dbOpeningRow.push(formatCurrencyINR(Math.round(dbOpening)));
+      
+      const dbSavAlloc = netSav > 0 ? netSav * 0.2 : netSav * 0.2; // 20% of savings (can be negative)
+      dbSavingsRow.push(formatCurrencyINR(Math.round(dbSavAlloc)));
+      
+      const dbBalAfterSav = dbOpening + dbSavAlloc;
+      dbBalanceRow.push(formatCurrencyINR(Math.round(dbBalAfterSav)));
+      
+      const dbReturn = dbBalAfterSav * 0.07;
+      dbReturnsRow.push(formatCurrencyINR(Math.round(dbReturn)));
+      
+      debtBalance = dbBalAfterSav + dbReturn;
+      dbClosingRow.push(formatCurrencyINR(Math.round(debtBalance)));
+    });
+    
+    data.push(dbOpeningRow);
+    data.push(dbSavingsRow);
+    data.push(dbBalanceRow);
+    data.push(dbReturnsRow);
+    data.push(dbClosingRow);
+    data.push([thinSeparator]);
+    
+    // TOTAL PORTFOLIO VALUE
+    data.push(['▶ TOTAL PORTFOLIO VALUE (Equity + Debt)']);
+    const totalPortfolioRow = ['  TOTAL PORTFOLIO'];
+    
+    // Recalculate for display
+    let eqBal = totalAssets * 0.8;
+    let dbBal = totalAssets * 0.2;
     projectionYears.forEach((year, idx) => {
       const netSav = netSavingsArray[idx];
       
-      // Opening balance for this year
-      const opening = portfolio;
-      openingRow.push(formatCurrencyINR(Math.round(opening)));
+      // Equity
+      const eqSavAlloc = netSav * 0.8;
+      eqBal = (eqBal + eqSavAlloc) * 1.12;
       
-      // Add net savings to get balance before returns
-      savingsAddedRow.push(formatCurrencyINR(Math.round(netSav)));
+      // Debt
+      const dbSavAlloc = netSav * 0.2;
+      dbBal = (dbBal + dbSavAlloc) * 1.07;
       
-      const balanceAfterSav = opening + netSav;
-      balanceAfterSavRow.push(formatCurrencyINR(Math.round(balanceAfterSav)));
-      
-      // Calculate returns on the balance AFTER adding savings
-      const equityReturn = balanceAfterSav * 0.8 * 0.12;
-      const debtReturn = balanceAfterSav * 0.2 * 0.07;
-      
-      equityRetRow.push(formatCurrencyINR(Math.round(equityReturn)));
-      debtRetRow.push(formatCurrencyINR(Math.round(debtReturn)));
-      
-      // Closing balance = balance after savings + returns
-      const closing = balanceAfterSav + equityReturn + debtReturn;
-      closingRow.push(formatCurrencyINR(Math.round(closing)));
-      
-      // Set portfolio for next year's opening
-      portfolio = closing;
+      totalPortfolioRow.push(formatCurrencyINR(Math.round(eqBal + dbBal)));
     });
-    
-    data.push(openingRow);
-    data.push(savingsAddedRow);
-    data.push(balanceAfterSavRow);
-    data.push(equityRetRow);
-    data.push(debtRetRow);
-    data.push(closingRow);
+    data.push(totalPortfolioRow);
     data.push([separator]);
     
     // Create Financial Plan Sheet
