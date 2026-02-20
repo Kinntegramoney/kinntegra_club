@@ -2275,6 +2275,9 @@ function AllocationSimulator({
         totalBusiness: Math.round(totalBusiness),
         totalRental: Math.round(totalRental),
         totalIncome: Math.round(totalIncome),
+        // Maturity details
+        maturityAmount: Math.round(yearMaturityAmount),
+        maturityDetails: yearMaturityDetails,
         // Expense details
         memberExpenses,
         totalLivingExp: Math.round(totalLivingExp),
