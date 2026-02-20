@@ -174,21 +174,29 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       }
     });
 
-    // Load insurance items - check for duplicates by ID
+    // Load insurance items - deduplicate by values (yearly_premium + upto_year + coverage_amount)
+    const seenInsuranceKeys = new Set();
     existingInsurance.forEach(ins => {
       const category = ins.category;
       if (itemsByCategory[category] !== undefined) {
-        // Check if this insurance item is already added (by ID)
-        const alreadyExists = itemsByCategory[category].some(item => item.id === ins.id);
-        if (!alreadyExists) {
+        // Create a unique key from the values to detect duplicates
+        const premium = ins.yearly_premium || ins.amount_today || "";
+        const uptoYear = ins.upto_year || ins.goal_year || "";
+        const coverage = ins.coverage_amount || "";
+        const memberId = ins.member_ids?.[0] || "";
+        const uniqueKey = `${category}-${memberId}-${premium}-${uptoYear}-${coverage}`;
+        
+        // Check if this combination already exists
+        if (!seenInsuranceKeys.has(uniqueKey)) {
+          seenInsuranceKeys.add(uniqueKey);
           if (!added.includes(category)) added.push(category);
           itemsByCategory[category].push({
             id: ins.id,
-            memberId: ins.member_ids?.[0] || "",
+            memberId: memberId,
             details: {
-              yearly_premium: ins.yearly_premium || ins.amount_today || "",
-              upto_year: ins.upto_year || ins.goal_year || "",
-              coverage_amount: ins.coverage_amount || ""
+              yearly_premium: premium,
+              upto_year: uptoYear,
+              coverage_amount: coverage
             },
             isNew: false,
             isModified: false
