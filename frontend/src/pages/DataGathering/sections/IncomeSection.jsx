@@ -559,6 +559,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               }
               
               // Calculate XIRR Return % when relevant fields change
+              // Uses REAL RETURN (inflation-adjusted) with 8% annual inflation
               if (["investment_amount", "investment_date", "market_value", "market_value_date"].includes(field)) {
                 const investmentAmount = field === "investment_amount" ? parseFloat(value || 0) : (parseFloat(newDetails.investment_amount) || 0);
                 const marketValue = field === "market_value" ? parseFloat(value || 0) : (parseFloat(newDetails.market_value) || 0);
@@ -584,9 +585,12 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                   const years = days / 365;
                   
                   if (years > 0) {
-                    // XIRR = ((Final Value / Initial Value) ^ (1/years)) - 1
-                    const xirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
-                    newDetails.xirr_return = Math.round(xirr * 100) / 100; // Round to 2 decimals
+                    // Calculate inflation-adjusted investment value (8% annual inflation)
+                    const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+                    
+                    // Calculate REAL XIRR using inflation-adjusted value
+                    const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
+                    newDetails.xirr_return = Math.round(realXirr * 100) / 100; // Round to 2 decimals
                   } else {
                     newDetails.xirr_return = 0;
                   }
