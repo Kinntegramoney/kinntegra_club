@@ -705,15 +705,17 @@ export default function SurplusSection({ family, isReadOnly }) {
     dataSheetData.push(['Interest Rate', ...liabilities.map(l => l.interest_rate || '')]);
     dataSheetData.push([]);
 
-    // --- GOALS ---
-    dataSheetData.push(['Goals', 'Amount', 'Inflation', 'Year']);
+    // --- GOALS (without Future Value) ---
+    dataSheetData.push(['FINANCIAL GOALS']);
+    dataSheetData.push(['Goal Name', 'Current Amount', 'Inflation %', 'Target Year(s)']);
     goalDetails.forEach(goal => {
       const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+      const goalName = goal.name || goal.goal_name || goal.category || 'Goal';
       dataSheetData.push([
-        goal.category || 'Goal',
-        goal.goal_amount || 0,
+        goalName,
+        Math.round(parseFloat(goal.goal_amount) || 0),
         `${goal.inflation_percent || 0}%`,
-        goalYears.join(',')
+        goalYears.join(', ')
       ]);
     });
     dataSheetData.push([]);
