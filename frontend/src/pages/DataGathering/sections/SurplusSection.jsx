@@ -1102,11 +1102,12 @@ export default function SurplusSection({ family, isReadOnly }) {
       const memberIncome = info.baseSalary + info.baseBusiness + info.baseRental + info.basePension;
       const memberExpenses = getProjectedMemberExpenses(m.id, currentYear.toString());
       const memberInvestments = getProjectedMemberInvestments(m.id, currentYear.toString());
-      summaryData.push([m.name, Math.round(memberIncome), Math.round(memberExpenses), Math.round(memberInvestments), info.retirementYear]);
+      summaryData.push([m.name, formatCurrencyINR(memberIncome), formatCurrencyINR(memberExpenses), formatCurrencyINR(memberInvestments), info.retirementYear]);
     });
     
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
     summarySheet['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    summarySheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, summarySheet, "8. Summary");
 
     // Generate and download file
