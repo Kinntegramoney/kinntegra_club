@@ -476,7 +476,7 @@ export default function SurplusSection({ family, isReadOnly }) {
   };
 
   // Export to Excel function - Individual sheets for each Data Gathering tab
-  const exportToExcel = () => {
+  const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
     
     // Helper function to get member names from IDs
