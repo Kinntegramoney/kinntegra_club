@@ -373,17 +373,27 @@ export default function SurplusSection({ family, isReadOnly }) {
     return total;
   };
 
-  // Calculate projected member investments
+  // Calculate projected member investments (includes both investment_details and income contributions)
   const getProjectedMemberInvestments = (memberId, year) => {
     const baseInv = getMemberBaseInvestments(memberId);
+    const contributionInv = getMemberContributionInvestments(memberId, year);
     const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
     const isPostRetirement = targetYear >= info.retirementYear;
     
-    if (yearsFromNow <= 0) return baseInv;
-    if (isPostRetirement) return baseInv * 0.5;
-    return baseInv * Math.pow(1.05, yearsFromNow);
+    // Contribution investments already consider upto_year, so use as-is
+    // Base investments from investment_details don't have upto_year, apply growth
+    let projectedBase = baseInv;
+    if (yearsFromNow > 0) {
+      if (isPostRetirement) {
+        projectedBase = baseInv * 0.5; // Reduce post-retirement
+      } else {
+        projectedBase = baseInv * Math.pow(1.05, yearsFromNow);
+      }
+    }
+    
+    return projectedBase + contributionInv;
   };
 
   // Get member goal expenses for a year
