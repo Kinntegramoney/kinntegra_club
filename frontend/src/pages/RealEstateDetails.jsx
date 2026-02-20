@@ -829,9 +829,23 @@ export default function RealEstateDetails() {
                           ClientSidebar;
   
   const getBackPath = () => {
+    // If coming from holdings, go back to holdings with the appropriate tab
+    if (isFromHoldings) {
+      const rolePrefix = user.role === 'sub_broker' ? '/sub-broker' : user.role === 'client' ? '/client' : '/broker';
+      const tabParam = holdingsTab === 'bonds' ? '?tab=bonds' : '?tab=real-estate';
+      return `${rolePrefix}/holdings${tabParam}`;
+    }
+    // Default: go back to opportunities
     if (user.role === 'sub_broker') return '/sub-broker/opportunities';
     if (user.role === 'client') return '/client/opportunities';
     return '/broker/opportunities';
+  };
+  
+  const getBackLabel = () => {
+    if (isFromHoldings) {
+      return holdingsTab === 'bonds' ? 'Back to Holdings (Bonds)' : 'Back to Holdings (Real Estate)';
+    }
+    return 'Back to Opportunities';
   };
 
   if (loading) {
