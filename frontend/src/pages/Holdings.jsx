@@ -2879,9 +2879,9 @@ export default function Holdings() {
                                         className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 text-xs px-2 py-1"
                                         onClick={() => {
                                           const prefix = user?.role === 'broker' ? '/broker' : user?.role === 'sub_broker' ? '/sub-broker' : '/client';
-                                          // Pass client_id when coming from holdings so the details page shows only that client's data
+                                          // Pass client_id and tab when coming from holdings so the details page shows only that client's data and can navigate back correctly
                                           const clientParam = selectedClient ? `&client_id=${selectedClient.id}` : '';
-                                          window.location.href = `${prefix}/real-estate/${property.opportunity_id || property.id}?from=holdings${clientParam}`;
+                                          window.location.href = `${prefix}/real-estate/${property.opportunity_id || property.id}?from=holdings&tab=real-estate${clientParam}`;
                                         }}
                                       >
                                         View
