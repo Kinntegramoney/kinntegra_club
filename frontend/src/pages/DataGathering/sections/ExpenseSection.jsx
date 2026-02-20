@@ -107,8 +107,14 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
   const formatCurrency = (value) => (!value || value === 0) ? "₹0" : `₹${parseFloat(value).toLocaleString('en-IN')}`;
 
   useEffect(() => {
-    // Only load on initial mount or when family changes
-    if (initialLoadDone && family?.id) return;
+    // Reset when family changes
+    if (family?.id !== lastFamilyId) {
+      setLastFamilyId(family?.id);
+      setInitialLoadDone(false);
+    }
+    
+    // Only load once per family
+    if (initialLoadDone) return;
     
     const itemsByCategory = {};
     const added = [];
