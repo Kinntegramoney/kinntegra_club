@@ -473,7 +473,28 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     }
   };
 
-  const skipCategory = (categoryValue) => {
+  const skipCategory = async (categoryValue) => {
+    // Get all existing (non-new) items in this category that need to be deleted from DB
+    const itemsToDelete = (incomeItems[categoryValue] || []).filter(item => !item.isNew);
+    
+    if (itemsToDelete.length > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        // Delete all items from database
+        for (const item of itemsToDelete) {
+          await axios.delete(`${API}/data-gathering/family/${family.id}/income/${item.id}`, { 
+            headers: { Authorization: `Bearer ${token}` } 
+          });
+        }
+        toast.success(`${categoryValue} deleted`);
+        onRefresh();
+      } catch (error) {
+        toast.error("Failed to delete");
+        return;
+      }
+    }
+    
+    // Remove from local state
     setAddedCategories(prev => prev.filter(c => c !== categoryValue));
     setExpandedCategories(prev => ({ ...prev, [categoryValue]: false }));
     setIncomeItems(prev => ({ ...prev, [categoryValue]: [] }));
