@@ -1348,67 +1348,6 @@ export default function SurplusSection({ family, isReadOnly }) {
               </tr>
             )}
 
-            {/* Surplus Row */}
-            <tr className="bg-blue-50/30 hover:bg-blue-50/50">
-              <td className="px-3 py-2 border-r border-gray-100">
-                <div className="flex items-center gap-1">
-                  <PiggyBank className="h-3 w-3 text-blue-600" />
-                  <span className="text-xs font-semibold text-gray-800">Surplus</span>
-                  <TooltipProvider>
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-gray-400 cursor-help hover:text-blue-500" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="text-xs max-w-[220px]">
-                        <p>Surplus = Income - Expenses - Goals - Investments</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </td>
-              {displayYears.map((year, yearIdx) => {
-                const yearInt = parseInt(year);
-                const yearMaturities = maturitiesByYear[yearInt]?.total || 0;
-                return (
-                  <React.Fragment key={`sav-${year}`}>
-                    {members.map((member) => {
-                      const inc = getProjectedMemberIncome(member.id, year);
-                      const exp = getProjectedMemberExpenses(member.id, year);
-                      const goal = getMemberGoalExpenses(member.id, year);
-                      const invest = getProjectedMemberInvestments(member.id, year);
-                      // Include member's share of maturities in income
-                      const memberMaturities = (maturitiesByYear[yearInt]?.details || [])
-                        .filter(d => d.memberIds.includes(member.id) || d.memberIds.length === 0)
-                        .reduce((sum, d) => {
-                          const share = d.memberIds.length > 0 ? d.value / d.memberIds.length : d.value / members.length;
-                          return sum + share;
-                        }, 0);
-                      const surplus = inc + memberMaturities - exp - goal - invest;
-                      return (
-                        <td key={`sav-${year}-${member.id}`} className="px-1 py-2 text-center">
-                          <span className={`text-[10px] font-medium ${surplus >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                            {formatAmount(surplus)}
-                          </span>
-                        </td>
-                      );
-                    })}
-                    <td className={`px-1 py-2 text-center bg-blue-50/50 ${yearIdx < displayYears.length - 1 ? 'border-r border-gray-100' : ''}`}>
-                      {(() => {
-                        const total = members.reduce((sum, m) => {
-                          const inc = getProjectedMemberIncome(m.id, year);
-                          const exp = getProjectedMemberExpenses(m.id, year);
-                          const goal = getMemberGoalExpenses(m.id, year);
-                          const invest = getProjectedMemberInvestments(m.id, year);
-                          return sum + inc - exp - goal - invest;
-                        }, 0) + yearMaturities;
-                        return <span className={`text-[10px] font-bold ${total >= 0 ? 'text-blue-800' : 'text-red-700'}`}>{formatAmount(total)}</span>;
-                      })()}
-                    </td>
-                  </React.Fragment>
-                );
-              })}
-            </tr>
-
             {/* Investments Row */}
             <tr className="hover:bg-gray-50">
               <td className="px-3 py-2 border-r border-gray-100">
