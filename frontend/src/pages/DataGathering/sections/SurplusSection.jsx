@@ -1524,7 +1524,8 @@ function AllocationSimulator({
   investmentDetails,
   primaryAge,
   lifeExpectancy,
-  calculateAge
+  calculateAge,
+  handleExportToExcel
 }) {
   // State for family-level allocation
   const [familyAllocation, setFamilyAllocation] = useState({
