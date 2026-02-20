@@ -54,18 +54,22 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
 
   // Extract SIP investments from income_details (mutual funds with SIP amounts)
   const sipFromIncome = incomeDetails
-    .filter(inc => inc.category === 'mutual_fund' && inc.sip_amount > 0)
-    .map(inc => ({
-      id: `income_sip_${inc.id}`,
-      category: 'mutual_fund_equity', // Map to investment category
-      member_id: inc.member_id,
-      amount: inc.sip_amount || 0,
-      frequency: 'monthly',
-      annual_amount: (inc.sip_amount || 0) * 12,
-      description: inc.description || 'MF SIP (from Income)',
-      isFromIncome: true, // Flag to indicate this is derived from income
-      isReadOnly: true // Cannot edit here, must edit in Income section
-    }));
+    .filter(inc => inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0))
+    .map(inc => {
+      const sipAmount = parseFloat(inc.details?.sip_amount || inc.sip_amount || 0);
+      const memberId = inc.member_ids?.[0] || inc.member_id;
+      return {
+        id: `income_sip_${inc.id}`,
+        category: 'mutual_fund_equity', // Map to investment category
+        member_id: memberId,
+        amount: sipAmount,
+        frequency: 'monthly',
+        annual_amount: sipAmount * 12,
+        description: inc.details?.description || inc.description || 'MF SIP (from Income)',
+        isFromIncome: true, // Flag to indicate this is derived from income
+        isReadOnly: true // Cannot edit here, must edit in Income section
+      };
+    });
 
   useEffect(() => {
     // Load existing investments + SIPs from income
