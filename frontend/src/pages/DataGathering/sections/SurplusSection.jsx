@@ -1358,7 +1358,7 @@ export default function SurplusSection({ family, isReadOnly }) {
                         <Info className="h-3 w-3 text-gray-400 cursor-help hover:text-blue-500" />
                       </TooltipTrigger>
                       <TooltipContent side="right" className="text-xs max-w-[220px]">
-                        <p>Net Savings = Income + Maturities - Expenses - Goals</p>
+                        <p>Net Savings = Income (including Maturities) - Expenses - Goals</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
