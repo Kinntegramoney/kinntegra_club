@@ -1686,8 +1686,52 @@ function AllocationSimulator({
     const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
     
-    // Get maturities by year for this simulation
-    const simMaturitiesByYear = getMaturitiesByYear();
+    // Calculate maturities by year inline (Insurance, FD, PPF, EPF, Bonds, etc.)
+    const simMaturitiesByYear = {};
+    for (let y = currentYear; y <= endYear; y++) {
+      simMaturitiesByYear[y] = { total: 0, details: [] };
+    }
+    
+    incomeDetails.forEach(inc => {
+      const details = inc.details || {};
+      let maturityYear = null;
+      let maturityValue = 0;
+      
+      // Parse maturity date
+      if (details.maturity_date) {
+        const dateStr = details.maturity_date;
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          const year = parts[1] || parts[0];
+          maturityYear = year.length === 4 ? parseInt(year) : (parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year));
+        } else if (dateStr.includes('-')) {
+          maturityYear = new Date(dateStr).getFullYear();
+        }
+      } else if (details.maturity_year) {
+        maturityYear = parseInt(details.maturity_year);
+      }
+      
+      // Get maturity value - for EPF/PPF/NPS/Gratuity, use market_value as maturity amount
+      const isRetirementInstrument = ['epf', 'ppf', 'nps', 'gratuity'].includes(inc.category);
+      maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 
+                     parseFloat(details.expected_maturity) || parseFloat(details.maturity_corpus) ||
+                     (isRetirementInstrument ? parseFloat(details.market_value) : 0) || 0;
+      
+      // Calculate maturity value if not provided
+      if (maturityYear && maturityValue === 0) {
+        const investmentVal = parseFloat(details.investment_value) || parseFloat(details.investment_amount) || 0;
+        const interestRate = parseFloat(details.interest_rate) || parseFloat(details.expected_return) || 0;
+        const tenureYears = maturityYear - currentYear;
+        if (investmentVal > 0 && tenureYears > 0) {
+          maturityValue = investmentVal * Math.pow(1 + interestRate / 100, tenureYears);
+        }
+      }
+      
+      // Add to maturities if valid
+      if (maturityYear && maturityValue > 0 && simMaturitiesByYear[maturityYear]) {
+        simMaturitiesByYear[maturityYear].total += maturityValue;
+      }
+    });
     
     // Get assets for this entity
     const entityAssets = getAssetsForEntity(entityId);
