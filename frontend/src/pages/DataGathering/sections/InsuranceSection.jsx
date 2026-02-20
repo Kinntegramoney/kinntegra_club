@@ -50,34 +50,50 @@ export default function InsuranceSection({ family }) {
     return totalAnnual;
   };
 
-  // Get actual cover for a specific member and category from both insurance_details and insurance_premiums
+  // Get actual cover for a specific member and category from both insurance_details and insurance_premiums (deduplicated)
   const getActualCover = (memberId, categoryValue) => {
-    // Check insurance_details
-    const policiesFromDetails = existingInsurance.filter(ins => {
+    // Collect all policies from both sources
+    const allPolicies = [];
+    
+    // From insurance_details
+    existingInsurance.forEach(ins => {
       const memberIds = ins.member_ids || [];
       const matchesMember = memberIds.includes(memberId) || memberIds.includes(String(memberId));
-      return ins.category === categoryValue && matchesMember;
+      if (ins.category === categoryValue && matchesMember) {
+        allPolicies.push({
+          coverage: parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0,
+          premium: ins.yearly_premium || ins.amount_today || 0,
+          uptoYear: ins.upto_year || ''
+        });
+      }
     });
     
-    // Check insurance_premiums (from Expenses tab)
-    const policiesFromPremiums = insurancePremiums.filter(ins => {
+    // From insurance_premiums (Expenses tab)
+    insurancePremiums.forEach(ins => {
       const memberIds = ins.member_ids || [];
       const matchesMember = memberIds.includes(memberId) || memberIds.includes(String(memberId));
-      return ins.category === categoryValue && matchesMember;
+      if (ins.category === categoryValue && matchesMember) {
+        allPolicies.push({
+          coverage: parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0,
+          premium: ins.yearly_premium || ins.amount_today || 0,
+          uptoYear: ins.upto_year || ''
+        });
+      }
     });
     
-    // Sum from insurance_details
-    const sumFromDetails = policiesFromDetails.reduce((sum, ins) => {
-      return sum + (parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0);
-    }, 0);
+    // Deduplicate by coverage amount + premium combination
+    const seenKeys = new Set();
+    let totalCoverage = 0;
     
-    // Sum from insurance_premiums (Expenses tab)
-    const sumFromPremiums = policiesFromPremiums.reduce((sum, ins) => {
-      return sum + (parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0);
-    }, 0);
+    allPolicies.forEach(policy => {
+      const key = `${policy.coverage}-${policy.premium}-${policy.uptoYear}`;
+      if (!seenKeys.has(key) && policy.coverage > 0) {
+        seenKeys.add(key);
+        totalCoverage += policy.coverage;
+      }
+    });
     
-    // Return total from both sources (they could have different policies)
-    return sumFromDetails + sumFromPremiums;
+    return totalCoverage;
   };
 
   // Get suggested cover for a member and category based on new rules
