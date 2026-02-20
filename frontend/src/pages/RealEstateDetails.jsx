@@ -207,6 +207,37 @@ export default function RealEstateDetails() {
     fetchLiveCurrencyRates();
   }, []);
 
+  // When coming from holdings with a specific client, filter to show only that client's data
+  // For clients, always filter to their own data
+  const getTargetClientId = useCallback(() => {
+    if (user?.role === 'client') {
+      return user.id || user.client_id;
+    }
+    if (isFromHoldings && holdingsClientId) {
+      return holdingsClientId;
+    }
+    return null; // No filtering - show all investors
+  }, [user?.role, user?.id, user?.client_id, isFromHoldings, holdingsClientId]);
+  
+  const targetClientId = getTargetClientId();
+  
+  // Filtered investors list - when viewing from holdings or as client, only show the specific client
+  const visibleInvestors = useMemo(() => {
+    if (!opportunity?.investors) return [];
+    if (targetClientId) {
+      return opportunity.investors.filter(inv => inv.client_id === targetClientId);
+    }
+    return opportunity.investors;
+  }, [opportunity?.investors, targetClientId]);
+  
+  // Get the specific client's investor data when viewing from holdings
+  const holdingsClientInvestor = useMemo(() => {
+    if (targetClientId && opportunity?.investors) {
+      return opportunity.investors.find(inv => inv.client_id === targetClientId);
+    }
+    return null;
+  }, [opportunity?.investors, targetClientId]);
+
   // Auto-show payment schedule modal when coming from holdings with a specific client
   useEffect(() => {
     if (isFromHoldings && holdingsClientInvestor && opportunity) {
