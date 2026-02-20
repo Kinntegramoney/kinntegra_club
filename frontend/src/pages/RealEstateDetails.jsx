@@ -2732,8 +2732,8 @@ export default function RealEstateDetails() {
                             {convertCurrency(opp.admin_fee)}
                           </td>
                           {/* Per-user Admin contribution */}
-                          {opp.investors?.length > 0 ? (
-                            opp.investors.map((inv, i) => {
+                          {visibleInvestors.length > 0 ? (
+                            visibleInvestors.map((inv, i) => {
                               const userAdmin = opp.admin_fee * (inv.share_percentage / 100);
                               return (
                                 <td key={i} className="py-3 px-3 text-center bg-green-50/50">
@@ -2760,8 +2760,8 @@ export default function RealEstateDetails() {
                         <td className="py-2 px-4 text-right font-semibold text-gray-700">
                           {convertCurrency(opp.unit_price)}
                         </td>
-                        {opp.investors?.length > 0 ? (
-                          opp.investors.map((inv, i) => {
+                        {visibleInvestors.length > 0 ? (
+                          visibleInvestors.map((inv, i) => {
                             const userSubtotal = opp.unit_price * (inv.share_percentage / 100);
                             return (
                               <td key={i} className="py-2 px-3 text-center bg-blue-50">
@@ -2786,8 +2786,8 @@ export default function RealEstateDetails() {
                           {convertCurrency(opp.total_cost || (opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0)))}
                         </td>
                         {/* Per-user grand total */}
-                        {opp.investors?.length > 0 ? (
-                          opp.investors.map((inv, i) => {
+                        {visibleInvestors.length > 0 ? (
+                          visibleInvestors.map((inv, i) => {
                             const totalCost = opp.total_cost || (opp.unit_price + (opp.dld_fee || 0) + (opp.admin_fee || 0));
                             const userGrandTotal = totalCost * (inv.share_percentage / 100);
                             return (
