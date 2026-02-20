@@ -2773,7 +2773,7 @@ export default function Holdings() {
                                                   const amt = (milestone.percentage / 100) * investmentAmount;
                                                   const isPaid = i < (property.payments_completed || 0);
                                                   const actualDate = isPaid ? (property.actual_payment_dates?.[i] || milestone.date) : milestone.date;
-                                                  const rate = getProjectedRateForDate(actualDate);
+                                                  const rate = getRateForDate(actualDate);
                                                   const milestoneDate = new Date(milestone.date);
                                                   // Excluded if selling before completion and payment is after sale date and not yet paid
                                                   const isExcluded = isSellingBeforeCompletion && !isPaid && milestoneDate > expectedSaleDate;
