@@ -1549,10 +1549,20 @@ function AllocationSimulator({
       return null;
     }
 
-    const { success, finalCorpus, lastYear, yearsShort } = result;
+    const { success, finalCorpus, lastYear, yearsShort, entityEndYear, lifeExpectancy } = result;
+    
+    // Calculate years short of youngest member's life expectancy
+    const youngestMemberEndYear = Math.max(...members.map(m => {
+      const age = calculateAge(m.date_of_birth);
+      const lifeExp = parseInt(m.life_expectancy) || 85;
+      return currentYear + (lifeExp - age);
+    }));
+    
+    const yearsFromLifeExpectancy = youngestMemberEndYear - lastYear;
+    const meetsLifeExpectancy = lastYear >= youngestMemberEndYear;
 
     return (
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex items-center gap-2 flex-wrap">
         {success ? (
           <CheckCircle className="h-4 w-4 text-green-500" />
         ) : (
@@ -1561,9 +1571,14 @@ function AllocationSimulator({
         <span className={`text-xs font-semibold ${success ? 'text-green-600' : 'text-red-600'}`}>
           {success ? `Lasts till ${lastYear}` : `Exhausts in ${lastYear}`}
         </span>
-        {!success && yearsShort > 0 && (
-          <span className="text-[10px] text-red-500 bg-red-50 px-2 py-0.5 rounded">
-            {yearsShort}y short
+        {!meetsLifeExpectancy && (
+          <span className="text-[10px] text-red-600 bg-red-50 px-2 py-0.5 rounded font-semibold">
+            {yearsFromLifeExpectancy}y short of life expectancy ({youngestMemberEndYear})
+          </span>
+        )}
+        {meetsLifeExpectancy && success && (
+          <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded">
+            Covers life expectancy
           </span>
         )}
       </div>
