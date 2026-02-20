@@ -1411,9 +1411,21 @@ export default function SurplusSection({ family, isReadOnly }) {
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-emerald-700" />
                   <span className="text-xs font-bold text-emerald-800">Surplus</span>
+                  <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-emerald-600 cursor-help hover:text-emerald-800" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs max-w-[220px]">
+                        <p>Surplus = Income - Expenses - Goals - Investments</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </td>
               {displayYears.map((year, yearIdx) => {
+                const yearInt = parseInt(year);
+                const yearMaturities = maturitiesByYear[yearInt] || { total: 0, details: [] };
                 return (
                   <React.Fragment key={`sur-${year}`}>
                     {members.map((member) => {
@@ -1421,7 +1433,14 @@ export default function SurplusSection({ family, isReadOnly }) {
                       const exp = getProjectedMemberExpenses(member.id, year);
                       const goal = getMemberGoalExpenses(member.id, year);
                       const inv = getProjectedMemberInvestments(member.id, year);
-                      const sur = inc - exp - goal - inv;
+                      // Include member's share of maturities in income
+                      const memberMaturities = yearMaturities.details
+                        .filter(d => d.memberIds.includes(member.id) || d.memberIds.length === 0)
+                        .reduce((sum, d) => {
+                          const share = d.memberIds.length > 0 ? d.value / d.memberIds.length : d.value / members.length;
+                          return sum + share;
+                        }, 0);
+                      const sur = (inc + memberMaturities) - exp - goal - inv;
                       return (
                         <td key={`sur-${year}-${member.id}`} className={`px-1 py-2.5 text-center ${sur >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
                           <span className={`text-[10px] font-bold ${sur >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -1438,7 +1457,7 @@ export default function SurplusSection({ family, isReadOnly }) {
                           const goal = getMemberGoalExpenses(m.id, year);
                           const inv = getProjectedMemberInvestments(m.id, year);
                           return sum + inc - exp - goal - inv;
-                        }, 0);
+                        }, 0) + yearMaturities.total;
                         return (
                           <span className={`text-[10px] font-bold ${total >= 0 ? 'text-emerald-800 bg-emerald-100' : 'text-red-800 bg-red-100'}`}>
                             {formatAmount(total)}
