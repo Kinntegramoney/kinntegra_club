@@ -978,7 +978,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     
     const insuranceSheet = XLSX.utils.aoa_to_sheet(insuranceData);
-    insuranceSheet['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 18 }];
+    insuranceSheet['!cols'] = autoFitColumns(insuranceData);
     insuranceSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, insuranceSheet, "6. Insurance");
 
