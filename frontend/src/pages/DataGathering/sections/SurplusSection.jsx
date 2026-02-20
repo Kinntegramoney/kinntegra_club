@@ -606,6 +606,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     for (let y = currentYear; y <= maxYears; y++) {
       projectionYears.push(y);
     }
+    
+    // Line separator for Data Gathering
+    const dgSeparator = '────────────────────────────────────────────────────────────────────────';
 
     // ==================================================================================
     // SHEET 1: DATA GATHERING (Raw data from all tabs)
@@ -613,7 +616,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     const dgData = [];
     
     // ========== MEMBERS SECTION ==========
+    dgData.push([dgSeparator]);
     dgData.push(['MEMBERS']);
+    dgData.push([dgSeparator]);
     dgData.push(['Name', 'Date of Birth', 'Relation', 'Current Age', 'Retirement Year', 'Life Expectancy', 'Tax Status', 'Tax Regime']);
     members.forEach(m => {
       dgData.push([
@@ -625,7 +630,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([]);
     
     // ========== INCOME SECTION (ALL CATEGORIES) ==========
+    dgData.push([dgSeparator]);
     dgData.push(['INCOME']);
+    dgData.push([dgSeparator]);
     
     // Salary
     const salaryIncomes = incomeDetails.filter(inc => inc.category === 'salary');
