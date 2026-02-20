@@ -283,7 +283,6 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
               <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Category</th>
               <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Member</th>
               <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Amount</th>
-              <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Frequency</th>
               <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Up to Year</th>
               <th className="text-right text-xs font-medium text-gray-600 px-3 py-2">Annual</th>
               <th className="text-left text-xs font-medium text-gray-600 px-3 py-2">Description</th>
@@ -293,7 +292,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
           <tbody className="divide-y">
             {investments.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">
+                <td colSpan={7} className="text-center py-8 text-gray-500">
                   <TrendingUp className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                   <p>No investments added yet</p>
                   <p className="text-xs mt-1">Click "Add Investment" to start tracking</p>
