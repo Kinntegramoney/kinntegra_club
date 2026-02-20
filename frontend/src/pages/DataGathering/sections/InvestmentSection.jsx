@@ -368,24 +368,8 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <Select
-                        value={inv.frequency}
-                        onValueChange={(v) => updateInvestment(inv.id, 'frequency', v)}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FREQUENCY_OPTIONS.map(f => (
-                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2">
                       {inv.isFromIncome ? (
-                        <span className="text-xs text-gray-500">-</span>
+                        <span className="text-xs text-gray-600">{inv.upto_year || '-'}</span>
                       ) : (
                         <Select
                           value={inv.upto_year?.toString() || ""}
