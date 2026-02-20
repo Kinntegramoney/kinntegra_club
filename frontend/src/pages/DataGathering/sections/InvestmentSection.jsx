@@ -52,27 +52,8 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
   const existingInvestments = family?.investment_details || [];
   const incomeDetails = family?.income_details || [];
 
-  // Extract SIP investments from income_details (mutual funds with SIP amounts)
-  const sipFromIncome = incomeDetails
-    .filter(inc => inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0))
-    .map(inc => {
-      const sipAmount = parseFloat(inc.details?.sip_amount || inc.sip_amount || 0);
-      const memberId = inc.member_ids?.[0] || inc.member_id;
-      return {
-        id: `income_sip_${inc.id}`,
-        category: 'mutual_fund_equity', // Map to investment category
-        member_id: memberId,
-        amount: sipAmount,
-        frequency: 'monthly',
-        annual_amount: sipAmount * 12,
-        description: inc.details?.description || inc.description || 'MF SIP (from Income)',
-        isFromIncome: true, // Flag to indicate this is derived from income
-        isReadOnly: true // Cannot edit here, must edit in Income section
-      };
-    });
-
   useEffect(() => {
-    // Load existing investments + SIPs from income
+    // Load existing investments + data from income
     const allInvestments = [];
     
     // Add dedicated investments
@@ -95,13 +76,44 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
       });
     }
     
-    // Add SIPs from income (these are read-only in this section)
-    const sipInvestments = incomeDetails
-      .filter(inc => inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0))
-      .map(inc => {
+    // Extract investments from Income section
+    incomeDetails.forEach(inc => {
+      const memberId = inc.member_ids?.[0] || inc.member_id;
+      
+      // EPF - Annual Contribution
+      if (inc.category === 'epf' && inc.details?.annual_contribution > 0) {
+        allInvestments.push({
+          id: `income_epf_${inc.id}`,
+          category: 'epf',
+          member_id: memberId,
+          amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
+          frequency: 'yearly',
+          annual_amount: parseFloat(inc.details.annual_contribution),
+          description: 'EPF Annual Contribution (from Income)',
+          isFromIncome: true,
+          isReadOnly: true
+        });
+      }
+      
+      // PPF - Annual Contribution
+      if (inc.category === 'ppf' && inc.details?.annual_contribution > 0) {
+        allInvestments.push({
+          id: `income_ppf_${inc.id}`,
+          category: 'ppf',
+          member_id: memberId,
+          amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
+          frequency: 'yearly',
+          annual_amount: parseFloat(inc.details.annual_contribution),
+          description: 'PPF Annual Contribution (from Income)',
+          isFromIncome: true,
+          isReadOnly: true
+        });
+      }
+      
+      // Mutual Fund - SIP Amount
+      if (inc.category === 'mutual_fund' && (inc.details?.sip_amount > 0 || inc.sip_amount > 0)) {
         const sipAmount = parseFloat(inc.details?.sip_amount || inc.sip_amount || 0);
-        const memberId = inc.member_ids?.[0] || inc.member_id;
-        return {
+        allInvestments.push({
           id: `income_sip_${inc.id}`,
           category: 'mutual_fund_equity',
           member_id: memberId,
@@ -111,11 +123,23 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
           description: inc.details?.description || inc.description || 'MF SIP (from Income)',
           isFromIncome: true,
           isReadOnly: true
-        };
-      });
-    
-    sipInvestments.forEach(sip => {
-      allInvestments.push(sip);
+        });
+      }
+      
+      // Shares / PMS - Annual Contribution
+      if (inc.category === 'shares_pms' && inc.details?.annual_contribution > 0) {
+        allInvestments.push({
+          id: `income_shares_${inc.id}`,
+          category: 'stocks',
+          member_id: memberId,
+          amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
+          frequency: 'yearly',
+          annual_amount: parseFloat(inc.details.annual_contribution),
+          description: 'Shares/PMS Annual Contribution (from Income)',
+          isFromIncome: true,
+          isReadOnly: true
+        });
+      }
     });
     
     setInvestments(allInvestments);
