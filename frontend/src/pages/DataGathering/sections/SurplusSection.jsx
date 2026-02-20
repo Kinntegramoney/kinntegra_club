@@ -906,7 +906,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     goalsData.push(totalRow);
     
     const goalsSheet = XLSX.utils.aoa_to_sheet(goalsData);
-    goalsSheet['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, ...goalYearsRange.map(() => ({ wch: 15 }))];
+    goalsSheet['!cols'] = autoFitColumns(goalsData);
     goalsSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, goalsSheet, "4. Goals");
 
