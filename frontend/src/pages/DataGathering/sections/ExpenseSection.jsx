@@ -198,9 +198,10 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     if (type === "loan") {
       details = { monthly_emi: "", num_installments: "" };
     } else if (type === "insurance") {
-      details = { yearly_premium: "", upto_year: (currentYear + 20).toString(), coverage_amount: "" };
+      details = { yearly_premium: "", upto_year: defaultRetirementYear.toString(), coverage_amount: "" };
     } else {
-      details = { monthly_amount: "", annual_amount: "", upto_year: (currentYear + 30).toString(), inflation_percent: 5, consider_post_retirement: false, post_retirement_member: "", post_retirement_percent: 100 };
+      // For expenses, default upto_year to youngest member's retirement year
+      details = { monthly_amount: "", annual_amount: "", upto_year: defaultRetirementYear.toString(), inflation_percent: 5, consider_post_retirement: false, post_retirement_member: "", post_retirement_percent: 100 };
     }
     
     setItems(prev => ({
