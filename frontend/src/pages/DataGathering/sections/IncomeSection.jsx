@@ -280,7 +280,7 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const existingIncomes = family?.income_details || [];
 
   // Helper function to recalculate XIRR for property items
-  // Uses REAL RETURN (inflation-adjusted) with 8% annual inflation assumption
+  // Uses REAL RETURN (inflation-adjusted) ONLY when investment = market value (0% nominal return)
   const ANNUAL_INFLATION_RATE = 0.08; // 8% annual inflation
   
   const recalculatePropertyXIRR = (details) => {
@@ -323,28 +323,34 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
         
         if (!investDate || !marketDate) {
           console.log('Failed to parse dates:', investmentDateStr, marketValueDateStr);
-          return details.xirr_return;
+          return { xirr: details.xirr_return, isInflationAdjusted: false };
         }
         
         const days = Math.max(1, (marketDate - investDate) / (1000 * 60 * 60 * 24));
         const years = days / 365;
         
         if (years > 0) {
-          // Calculate inflation-adjusted investment value (what the investment would need to be worth to maintain purchasing power)
-          const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+          // Calculate nominal XIRR first
+          const nominalXirr = (Math.pow(marketValue / investmentAmount, 1 / years) - 1) * 100;
           
-          // Calculate REAL XIRR using inflation-adjusted value
-          // Real XIRR = ((Market Value / Inflation-Adjusted Investment) ^ (1/years) - 1) * 100
-          // This shows the REAL return after accounting for inflation
-          const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
+          // Check if investment equals market value (within 0.1% tolerance for floating point)
+          const isEqualValue = Math.abs(marketValue - investmentAmount) / investmentAmount < 0.001;
           
-          return Math.round(realXirr * 100) / 100;
+          if (isEqualValue) {
+            // Apply inflation adjustment only when investment = market value
+            const inflationAdjustedInvestment = investmentAmount * Math.pow(1 + ANNUAL_INFLATION_RATE, years);
+            const realXirr = (Math.pow(marketValue / inflationAdjustedInvestment, 1 / years) - 1) * 100;
+            return { xirr: Math.round(realXirr * 100) / 100, isInflationAdjusted: true };
+          } else {
+            // Use nominal XIRR for all other cases
+            return { xirr: Math.round(nominalXirr * 100) / 100, isInflationAdjusted: false };
+          }
         }
       } catch (e) {
         console.log('XIRR calculation error:', e);
       }
     }
-    return details.xirr_return; // Return existing value if can't calculate
+    return { xirr: details.xirr_return, isInflationAdjusted: details.is_inflation_adjusted || false };
   };
 
   useEffect(() => {
