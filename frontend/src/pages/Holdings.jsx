@@ -72,19 +72,35 @@ const CURRENCY_SYMBOLS = {
 const AED_TO_INR_CURRENT = 22.5;
 const DEPRECIATION_RATE = 0.03;
 
-// Helper function for projected rate - moved outside
-const getProjectedRateForDate = (date, baseRate = AED_TO_INR_CURRENT, today = new Date()) => {
+// Helper function for projected rate - uses actual projected rates if available, falls back to depreciation
+const getProjectedRateForDate = (date, projectedRates = null, baseRate = AED_TO_INR_CURRENT, today = new Date()) => {
   const targetDate = new Date(date);
+  const targetYear = targetDate.getFullYear();
+  
+  // If we have projected rates from the API, use them
+  if (projectedRates && projectedRates[targetYear]) {
+    return projectedRates[targetYear];
+  }
+  
+  // Fallback to depreciation calculation
   const yearsFromNow = (targetDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
   if (yearsFromNow <= 0) return baseRate;
   return baseRate * Math.pow(1 + DEPRECIATION_RATE, yearsFromNow);
 };
 
 // Pre-compute property financials - memoizable helper
-const computePropertyFinancials = (property, clientResidency) => {
+const computePropertyFinancials = (property, clientResidency, projectedRates = null, currentRate = AED_TO_INR_CURRENT) => {
   const today = new Date();
-  const investmentAmount = property.investment_amount || 0;
-  const expectedSalePrice = property.expected_sale_value || (investmentAmount * 1.4);
+  
+  // Apply share_percentage to get client's portion of the property
+  const sharePercentage = (property.share_percentage || 100) / 100;
+  const fullInvestmentAmount = property.investment_amount || 0;
+  const fullExpectedSalePrice = property.expected_sale_value || (fullInvestmentAmount * 1.4);
+  
+  // Client's actual amounts based on their share
+  const investmentAmount = fullInvestmentAmount * sharePercentage;
+  const expectedSalePrice = fullExpectedSalePrice * sharePercentage;
+  
   const schedule = property.payment_schedule || [];
   
   const investorCurrency = property.investor_currency || property.currency || 
@@ -94,8 +110,14 @@ const computePropertyFinancials = (property, clientResidency) => {
     ? new Date(property.expected_sale_date || property.estimated_sell_date) 
     : new Date(today.getFullYear() + 3, today.getMonth(), today.getDate());
   
-  const yearsToSale = Math.max(0, (expectedSaleDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  const projectedAedToInrAtSale = AED_TO_INR_CURRENT * Math.pow(1 + DEPRECIATION_RATE, yearsToSale);
+  // Use actual projected rate for sale date year if available
+  const saleYear = expectedSaleDate.getFullYear();
+  const projectedAedToInrAtSale = projectedRates && projectedRates[saleYear] 
+    ? projectedRates[saleYear]
+    : (() => {
+        const yearsToSale = Math.max(0, (expectedSaleDate.getTime() - today.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        return currentRate * Math.pow(1 + DEPRECIATION_RATE, yearsToSale);
+      })();
   
   // Handover date
   const handoverDate = property.handover_date 
@@ -104,7 +126,7 @@ const computePropertyFinancials = (property, clientResidency) => {
   
   const isSellingBeforeCompletion = expectedSaleDate < handoverDate;
   
-  // Calculate payments
+  // Calculate payments (apply share percentage to each payment)
   let paidAmountInr = 0, payableAmountInr = 0, paidAmountAed = 0, payableAmountAed = 0;
   let paymentsAfterSaleAed = 0;
   
@@ -112,11 +134,11 @@ const computePropertyFinancials = (property, clientResidency) => {
     const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
     const isPaid = i < (property.payments_completed || 0);
     const milestoneDate = new Date(milestone.date);
-    const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+    const rateAtMilestone = getProjectedRateForDate(milestone.date, projectedRates, currentRate, today);
     
     if (isPaid) {
       const actualDate = property.actual_payment_dates?.[i] || milestone.date;
-      const actualRate = getProjectedRateForDate(actualDate, AED_TO_INR_CURRENT, today);
+      const actualRate = getProjectedRateForDate(actualDate, projectedRates, currentRate, today);
       paidAmountInr += milestoneAmountAed * actualRate;
       paidAmountAed += milestoneAmountAed;
     } else {
@@ -135,8 +157,8 @@ const computePropertyFinancials = (property, clientResidency) => {
   const totalProfitInr = netSaleProceedsInr - paidAmountInr;
   const saleProceedsInr = expectedSalePrice * projectedAedToInrAtSale;
   
-  const currencyBenefitOnSale = expectedSalePrice * (projectedAedToInrAtSale - AED_TO_INR_CURRENT);
-  const currencyLossOnPayments = totalInvestmentInr - (investmentAmount * AED_TO_INR_CURRENT);
+  const currencyBenefitOnSale = expectedSalePrice * (projectedAedToInrAtSale - currentRate);
+  const currencyLossOnPayments = totalInvestmentInr - (investmentAmount * currentRate);
   const netCurrencyImpact = currencyBenefitOnSale - currencyLossOnPayments;
   
   // XIRR Cashflows
@@ -154,7 +176,7 @@ const computePropertyFinancials = (property, clientResidency) => {
     
     // Expected cashflows
     if (!(isSellingBeforeCompletion && milestoneDate > expectedSaleDate)) {
-      const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+      const rateAtMilestone = getProjectedRateForDate(milestone.date, projectedRates, currentRate, today);
       expectedCashflowsInr.push({ date: milestone.date, amount: -(milestoneAmountAed * rateAtMilestone) });
     }
     
@@ -162,10 +184,10 @@ const computePropertyFinancials = (property, clientResidency) => {
     if (!(isSellingBeforeCompletion && !isPaid && milestoneDate > expectedSaleDate)) {
       if (isPaid) {
         const actualDate = property.actual_payment_dates?.[i] || milestone.date;
-        const rateAtPayment = getProjectedRateForDate(actualDate, AED_TO_INR_CURRENT, today);
+        const rateAtPayment = getProjectedRateForDate(actualDate, projectedRates, currentRate, today);
         actualCashflowsInr.push({ date: actualDate, amount: -(milestoneAmountAed * rateAtPayment) });
       } else {
-        const rateAtMilestone = getProjectedRateForDate(milestone.date, AED_TO_INR_CURRENT, today);
+        const rateAtMilestone = getProjectedRateForDate(milestone.date, projectedRates, currentRate, today);
         actualCashflowsInr.push({ date: milestone.date, amount: -(milestoneAmountAed * rateAtMilestone) });
       }
     }
