@@ -50,15 +50,30 @@ export default function InsuranceSection({ family }) {
     return totalAnnual;
   };
 
-  // Get actual cover for a specific member and category
+  // Get actual cover for a specific member and category from both insurance_details and insurance_premiums
   const getActualCover = (memberId, categoryValue) => {
-    const policies = existingInsurance.filter(
+    // Check insurance_details
+    const policiesFromDetails = existingInsurance.filter(
       ins => ins.category === categoryValue && ins.member_ids?.includes(memberId)
     );
     
-    return policies.reduce((sum, ins) => {
+    // Check insurance_premiums (from Expenses tab)
+    const policiesFromPremiums = insurancePremiums.filter(
+      ins => ins.category === categoryValue && ins.member_ids?.includes(memberId)
+    );
+    
+    // Sum from insurance_details
+    const sumFromDetails = policiesFromDetails.reduce((sum, ins) => {
       return sum + (parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0);
     }, 0);
+    
+    // Sum from insurance_premiums (Expenses tab)
+    const sumFromPremiums = policiesFromPremiums.reduce((sum, ins) => {
+      return sum + (parseFloat(ins.coverage_amount) || parseFloat(ins.sum_assured) || 0);
+    }, 0);
+    
+    // Return the higher of the two (to avoid double counting if same data exists in both)
+    return Math.max(sumFromDetails, sumFromPremiums);
   };
 
   // Get suggested cover for a member and category based on new rules
