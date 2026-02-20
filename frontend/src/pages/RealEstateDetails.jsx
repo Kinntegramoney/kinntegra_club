@@ -821,37 +821,6 @@ export default function RealEstateDetails() {
     return totalInvestors > 0 && verifiedCount >= totalInvestors;
   }, [canViewPaymentManagement, opportunity]);
 
-  // When coming from holdings with a specific client, filter to show only that client's data
-  // For clients, always filter to their own data
-  const getTargetClientId = useCallback(() => {
-    if (user?.role === 'client') {
-      return user.id || user.client_id;
-    }
-    if (isFromHoldings && holdingsClientId) {
-      return holdingsClientId;
-    }
-    return null; // No filtering - show all investors
-  }, [user?.role, user?.id, user?.client_id, isFromHoldings, holdingsClientId]);
-  
-  const targetClientId = getTargetClientId();
-  
-  // Filtered investors list - when viewing from holdings or as client, only show the specific client
-  const visibleInvestors = useMemo(() => {
-    if (!opportunity?.investors) return [];
-    if (targetClientId) {
-      return opportunity.investors.filter(inv => inv.client_id === targetClientId);
-    }
-    return opportunity.investors;
-  }, [opportunity?.investors, targetClientId]);
-  
-  // Get the specific client's investor data when viewing from holdings
-  const holdingsClientInvestor = useMemo(() => {
-    if (targetClientId && opportunity?.investors) {
-      return opportunity.investors.find(inv => inv.client_id === targetClientId);
-    }
-    return null;
-  }, [opportunity?.investors, targetClientId]);
-
   if (!user) return null;
 
   // Determine correct sidebar and navigation paths based on user role
