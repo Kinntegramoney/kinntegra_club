@@ -759,14 +759,73 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     // Age row
     cashFlowData.push(['Age', '', ...allYears.map(y => primaryAge + (y - currentYear))]);
+    cashFlowData.push([]);
+    
+    // === INCOME SECTION ===
+    cashFlowData.push(['INCOME']);
+    members.forEach(m => {
+      cashFlowData.push([`${m.name} - Salary/Business`, '', ...allYears.map(y => {
+        const info = getMemberIncomeInfo(m.id);
+        const yearStr = y.toString();
+        const targetYear = parseInt(y);
+        const yearsFromNow = targetYear - currentYear;
+        const isPostRetirement = targetYear >= info.retirementYear;
+        
+        if (isPostRetirement) return 0;
+        if (yearsFromNow <= 0) return Math.round(info.baseSalary + info.baseBusiness);
+        
+        const salary = info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
+        const business = info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+        return Math.round(salary + business);
+      })]);
+      
+      cashFlowData.push([`${m.name} - Rental`, '', ...allYears.map(y => {
+        const info = getMemberIncomeInfo(m.id);
+        const yearsFromNow = y - currentYear;
+        if (yearsFromNow <= 0) return Math.round(info.baseRental);
+        return Math.round(info.baseRental * Math.pow(1 + info.rentalGrowth / 100, yearsFromNow));
+      })]);
+      
+      cashFlowData.push([`${m.name} - Pension`, '', ...allYears.map(y => {
+        const info = getMemberIncomeInfo(m.id);
+        return Math.round(info.basePension);
+      })]);
+    });
+    cashFlowData.push(['TOTAL INCOME', '', ...allYears.map(y => {
+      const yearStr = y.toString();
+      return Math.round(members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0));
+    })]);
+    cashFlowData.push([]);
+    
+    // === EXPENSES SECTION ===
+    cashFlowData.push(['EXPENSES']);
+    members.forEach(m => {
+      cashFlowData.push([`${m.name} - Living Expenses`, '', ...allYears.map(y => {
+        const yearStr = y.toString();
+        return Math.round(getProjectedMemberExpenses(m.id, yearStr));
+      })]);
+    });
+    cashFlowData.push(['TOTAL EXPENSES', '', ...allYears.map(y => {
+      const yearStr = y.toString();
+      return Math.round(members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0));
+    })]);
+    cashFlowData.push([]);
+    
+    // === INVESTMENTS SECTION ===
+    cashFlowData.push(['ANNUAL INVESTMENTS']);
+    cashFlowData.push(['Total Investments', '', ...allYears.map(y => {
+      const yearStr = y.toString();
+      return Math.round(members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, yearStr), 0));
+    })]);
+    cashFlowData.push([]);
 
-    // Annual Savings (from previous calculation)
-    cashFlowData.push(['Annual Savings ', '', ...allYears.map(y => {
+    // Annual Savings (Income - Expenses - Goals)
+    cashFlowData.push(['NET SAVINGS (Income - Expenses - Goals)', '', ...allYears.map(y => {
       const yearStr = y.toString();
       const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
       const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
       const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
-      return Math.round(Math.max(0, totalIncome - totalExpenses - totalGoals));
+      return Math.round(totalIncome - totalExpenses - totalGoals);
     })]);
     cashFlowData.push([]);
 
