@@ -105,7 +105,14 @@ export default function SurplusSection({ family, isReadOnly }) {
       retirementYear = currentYear + (retirementAge - memberAge);
     }
     
-    return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension };
+    let baseMutualFund = 0;
+    memberIncomes.forEach(income => {
+      if (income.category === "mutual_fund") {
+        const details = income.details || {};
+        baseMutualFund += parseFloat(details.dividend_income_yearly) || 0;
+      }
+    });
+    return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension, baseMutualFund };
   };
 
   // Get member expenses with inflation (including family expenses distributed)
