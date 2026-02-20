@@ -132,11 +132,12 @@ export default function DataGathering() {
       dob: m.date_of_birth || "",
       relation: m.relation === "Primary" ? "Self" : m.relation,
       life_expectancy: m.life_expectancy ? String(m.life_expectancy) : "",
+      retirement_year: m.retirement_year ? String(m.retirement_year) : "",
       tax_regime: m.tax_regime || "",
       tax_status: m.tax_status || "",
       tax_slab: m.tax_slab || "",
       isPrimary: m.is_primary || idx === 0
-    })) || [{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }];
+    })) || [{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", retirement_year: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }];
     setMembers(loadedMembers);
   };
 
