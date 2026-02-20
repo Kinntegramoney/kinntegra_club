@@ -806,11 +806,12 @@ export default function SurplusSection({ family, isReadOnly }) {
       const memberName = getMemberNames(goal.member_ids);
       const goalYears = goal.goal_years ? goal.goal_years.join(', ') : (goal.goal_year || '');
       const categoryLabel = (goal.category || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      goalsData.push([categoryLabel, goal.name || goal.goal_name || '', memberName, goal.goal_amount || '', goal.inflation_percent || '', goalYears]);
+      goalsData.push([categoryLabel, goal.name || goal.goal_name || '', memberName, formatCurrencyINR(goal.goal_amount), goal.inflation_percent || '', goalYears]);
     });
     
     const goalsSheet = XLSX.utils.aoa_to_sheet(goalsData);
     goalsSheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 25 }];
+    goalsSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, goalsSheet, "3. Goals");
 
     // ========== SHEET 4: EXPENSES ==========
