@@ -782,7 +782,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     
     const incomeSheet = XLSX.utils.aoa_to_sheet(incomeData);
-    incomeSheet['!cols'] = Array(20).fill({ wch: 18 });
+    incomeSheet['!cols'] = autoFitColumns(incomeData);
     incomeSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, incomeSheet, "2. Income");
 
