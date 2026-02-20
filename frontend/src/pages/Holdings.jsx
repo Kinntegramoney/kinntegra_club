@@ -831,10 +831,15 @@ export default function Holdings() {
     const clientResidency = clientDetails?.country_of_residency;
     // Use projected rates from API if available, otherwise fall back to default
     const currentRate = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
-    return clientRealEstate.map(property => ({
-      property,
-      financials: computePropertyFinancials(property, clientResidency, reProjectedRates, currentRate)
-    }));
+    try {
+      return clientRealEstate.map(property => ({
+        property,
+        financials: computePropertyFinancials(property, clientResidency, reProjectedRates, currentRate)
+      }));
+    } catch (error) {
+      console.error('Error computing real estate financials:', error);
+      return [];
+    }
   }, [clientRealEstate, clientDetails?.country_of_residency, reProjectedRates, reCurrencyRates?.INR]);
 
   // Set page title
