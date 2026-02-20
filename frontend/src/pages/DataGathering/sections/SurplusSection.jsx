@@ -2289,8 +2289,8 @@ function AllocationSimulator({
         }
       });
 
-      // Annual savings (Income - Expenses - Goals + Maturities)
-      const annualSavings = totalIncome - totalExpense - totalGoalExp + yearMaturityAmount;
+      // Annual Surplus = Income - Expenses - Goals - Investments + Maturities
+      const annualSavings = totalIncome - totalExpense - totalGoalExp - totalInvestments + yearMaturityAmount;
       
       // Savings allocation
       const savingsEquity = annualSavings > 0 ? annualSavings * equity / 100 : 0;
