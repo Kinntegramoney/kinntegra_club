@@ -2503,20 +2503,10 @@ function AllocationSimulator({
     cashFlowData.push([]);
     cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
-    // ═══════════════ SAVINGS SECTION ═══════════════
-    cashFlowData.push([]);
-    cashFlowData.push(['▶ NET ANNUAL SAVINGS']);
-    cashFlowData.push([]);
-    cashFlowData.push(['  Net Savings = (A) - (B) - (C)', ...yearlyData.map(d => formatCurrency(d.annualSavings))]);
-    cashFlowData.push([`  Allocated to Equity (${equity}%)`, ...yearlyData.map(d => formatCurrency(d.savingsEquity))]);
-    cashFlowData.push([`  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => formatCurrency(d.savingsDebt))]);
-    cashFlowData.push([]);
-    cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
-
     // ═══════════════ INVESTMENTS SECTION ═══════════════
     if (entityInvestments.length > 0) {
       cashFlowData.push([]);
-      cashFlowData.push(['▶ ONGOING INVESTMENTS (SIP/Recurring) - Annual']);
+      cashFlowData.push(['▶ ONGOING INVESTMENTS (D) - SIP/Recurring - Annual']);
       cashFlowData.push([]);
       
       entityInvestments.forEach(inv => {
@@ -2528,6 +2518,22 @@ function AllocationSimulator({
           cashFlowData.push([`  ${invName}`, ...yearlyData.map(() => formatCurrency(annualAmount))]);
         }
       });
+      
+      cashFlowData.push([]);
+      cashFlowData.push(['  TOTAL INVESTMENTS (D)', ...yearlyData.map(d => formatCurrency(d.totalInvestments))]);
+      cashFlowData.push([]);
+      cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
+    }
+
+    // ═══════════════ SURPLUS SECTION ═══════════════
+    cashFlowData.push([]);
+    cashFlowData.push(['▶ NET ANNUAL SURPLUS']);
+    cashFlowData.push([]);
+    cashFlowData.push(['  Surplus = (A) - (B) - (C) - (D)', ...yearlyData.map(d => formatCurrency(d.annualSavings))]);
+    cashFlowData.push([`  Allocated to Equity (${equity}%)`, ...yearlyData.map(d => formatCurrency(d.savingsEquity))]);
+    cashFlowData.push([`  Allocated to Debt (${debt}%)`, ...yearlyData.map(d => formatCurrency(d.savingsDebt))]);
+    cashFlowData.push([]);
+    cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
       
       cashFlowData.push([]);
       cashFlowData.push(['  TOTAL ANNUAL INVESTMENTS', ...yearlyData.map(d => formatCurrency(d.totalInvestments))]);
