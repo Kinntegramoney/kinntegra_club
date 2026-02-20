@@ -786,57 +786,103 @@ export default function SurplusSection({ family, isReadOnly }) {
     incomeSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, incomeSheet, "2. Income");
 
-    // ========== SHEET 3: EXPENSES (All expense categories with section headers) ==========
+    // ========== SHEET 3: EXPENSES (Year-wise Cash Flow with Inflation) ==========
     const expensesData = [];
-    expensesData.push(['EXPENSE DETAILS']);
+    expensesData.push(['EXPENSES - YEAR-WISE CASH FLOW']);
     expensesData.push([]);
     
-    // Regular Expenses Section
-    const regularExpenses = expenseDetails.filter(e => !['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional', 'home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
-    if (regularExpenses.length > 0) {
-      expensesData.push(['REGULAR EXPENSES']);
-      expensesData.push(['Category', 'Member', 'Monthly Amount', 'Annual Amount', 'Inflation %', 'Up to Year', 'Post Retirement', 'Post Ret. %']);
-      regularExpenses.forEach(exp => {
-        const memberIds = exp.member_ids || [];
-        const memberName = memberIds.includes('family') || memberIds.length === 0 ? 'Family' : getMemberNames(memberIds);
-        const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        expensesData.push([categoryLabel, memberName, formatCurrencyINR(exp.monthly_amount), formatCurrencyINR(exp.annual_amount), exp.inflation_percent ?? 5, exp.upto_year || '', exp.consider_post_retirement ? 'Yes' : 'No', exp.post_retirement_percent ?? 100]);
-      });
-      expensesData.push([]);
+    // Generate projection years
+    const expProjectionYears = [];
+    const expMaxYears = Math.min(endYear, currentYear + 30);
+    for (let y = currentYear; y <= expMaxYears; y++) {
+      expProjectionYears.push(y);
     }
     
-    // Insurance Premiums Section (within Expenses sheet)
+    // Header row with years
+    expensesData.push(['Year', '', ...expProjectionYears]);
+    // Age row
+    expensesData.push(['Age', 'Inflation', ...expProjectionYears.map(y => primaryAge + (y - currentYear))]);
+    
+    // Regular Expenses - each expense as a row with year-wise values
+    const allExpenses = expenseDetails.filter(e => !['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional', 'home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
+    
+    allExpenses.forEach(exp => {
+      const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const baseAnnual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || 0;
+      const inflationRate = parseFloat(exp.inflation_percent) ?? 5;
+      const uptoYear = parseInt(exp.upto_year) || endYear;
+      
+      const yearValues = expProjectionYears.map(year => {
+        if (year > uptoYear) return 0;
+        const yearsFromNow = year - currentYear;
+        const inflatedAmount = baseAnnual * Math.pow(1 + inflationRate / 100, yearsFromNow);
+        return Math.round(inflatedAmount);
+      });
+      
+      expensesData.push([categoryLabel, `${inflationRate}%`, ...yearValues.map(v => v > 0 ? formatCurrencyINR(v) : 0)]);
+    });
+    
+    // Insurance Premiums
     const insuranceExpensesForSheet = expenseDetails.filter(e => ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type));
-    if (insuranceExpensesForSheet.length > 0) {
-      expensesData.push(['INSURANCE PREMIUMS']);
-      expensesData.push(['Type', 'Member', 'Yearly Premium', 'Up to Year', 'Coverage Amount']);
-      insuranceExpensesForSheet.forEach(exp => {
-        const memberName = getMemberNames(exp.member_ids);
-        const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        expensesData.push([categoryLabel, memberName, formatCurrencyINR(exp.yearly_premium || exp.annual_amount), exp.upto_year || '', formatCurrencyINR(exp.coverage_amount)]);
+    insuranceExpensesForSheet.forEach(exp => {
+      const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const baseAnnual = parseFloat(exp.yearly_premium) || parseFloat(exp.annual_amount) || 0;
+      const uptoYear = parseInt(exp.upto_year) || endYear;
+      
+      const yearValues = expProjectionYears.map(year => {
+        if (year > uptoYear) return 0;
+        return Math.round(baseAnnual); // Insurance premiums typically don't inflate
       });
-      expensesData.push([]);
-    }
+      
+      expensesData.push([`${categoryLabel} (Insurance)`, '0%', ...yearValues.map(v => v > 0 ? formatCurrencyINR(v) : 0)]);
+    });
     
-    // Loan EMIs Section (within Expenses sheet)
+    // Loan EMIs
     const loanExpensesForSheet = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
-    if (loanExpensesForSheet.length > 0) {
-      expensesData.push(['LOAN EMIs / LIABILITIES']);
-      expensesData.push(['Loan Type', 'Member', 'Monthly EMI', 'Installments Remaining', 'Outstanding Amount', 'Completion Year']);
-      loanExpensesForSheet.forEach(exp => {
-        const memberName = getMemberNames(exp.member_ids);
-        const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const outstanding = (parseFloat(exp.monthly_emi || 0) * parseFloat(exp.num_installments || 0));
-        const completionYear = currentYear + Math.ceil(parseFloat(exp.num_installments || 0) / 12);
-        expensesData.push([categoryLabel, memberName, formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', formatCurrencyINR(outstanding), completionYear || '']);
+    loanExpensesForSheet.forEach(exp => {
+      const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const monthlyEMI = parseFloat(exp.monthly_emi) || 0;
+      const numInstallments = parseFloat(exp.num_installments) || 0;
+      const completionYear = currentYear + Math.ceil(numInstallments / 12);
+      
+      const yearValues = expProjectionYears.map(year => {
+        if (year >= completionYear) return 0;
+        return Math.round(monthlyEMI * 12);
       });
-      expensesData.push([]);
-    }
+      
+      expensesData.push([`${categoryLabel} (EMI)`, '0%', ...yearValues.map(v => v > 0 ? formatCurrencyINR(v) : 0)]);
+    });
     
-    // If no expenses at all
-    if (regularExpenses.length === 0 && insuranceExpensesForSheet.length === 0 && loanExpensesForSheet.length === 0) {
-      expensesData.push(['No expenses recorded']);
-    }
+    // Total row
+    expensesData.push([]);
+    const expTotalRow = ['Total', '', ...expProjectionYears.map(year => {
+      let yearTotal = 0;
+      // Regular expenses
+      allExpenses.forEach(exp => {
+        const baseAnnual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || 0;
+        const inflationRate = parseFloat(exp.inflation_percent) ?? 5;
+        const uptoYear = parseInt(exp.upto_year) || endYear;
+        if (year <= uptoYear) {
+          const yearsFromNow = year - currentYear;
+          yearTotal += baseAnnual * Math.pow(1 + inflationRate / 100, yearsFromNow);
+        }
+      });
+      // Insurance
+      insuranceExpensesForSheet.forEach(exp => {
+        const baseAnnual = parseFloat(exp.yearly_premium) || parseFloat(exp.annual_amount) || 0;
+        const uptoYear = parseInt(exp.upto_year) || endYear;
+        if (year <= uptoYear) yearTotal += baseAnnual;
+      });
+      // Loans
+      loanExpensesForSheet.forEach(exp => {
+        const monthlyEMI = parseFloat(exp.monthly_emi) || 0;
+        const numInstallments = parseFloat(exp.num_installments) || 0;
+        const completionYear = currentYear + Math.ceil(numInstallments / 12);
+        if (year < completionYear) yearTotal += monthlyEMI * 12;
+      });
+      return formatCurrencyINR(Math.round(yearTotal));
+    })];
+    expensesData.push(expTotalRow);
     
     const expensesSheet = XLSX.utils.aoa_to_sheet(expensesData);
     expensesSheet['!cols'] = autoFitColumns(expensesData);
