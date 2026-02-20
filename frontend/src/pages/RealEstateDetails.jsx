@@ -2578,7 +2578,7 @@ export default function RealEstateDetails() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-green-600" />
-                    Payment Schedule {(!opp.investors || opp.investors.length === 0) ? `(${viewingSharePercentage}% Share)` : 'with Per-User Contribution'}
+                    Payment Schedule {(visibleInvestors.length === 0) ? `(${viewingSharePercentage}% Share)` : `(${visibleInvestors.length === 1 ? visibleInvestors[0]?.client_name || 'Investor' : visibleInvestors.length + ' Investors'})`}
                   </h3>
                   {/* Download Button */}
                   <button
@@ -2600,9 +2600,9 @@ export default function RealEstateDetails() {
                         <th className="text-center py-3 px-4 font-semibold text-gray-700">Date</th>
                         <th className="text-center py-3 px-4 font-semibold text-gray-700">%</th>
                         <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Amount</th>
-                        {/* User contribution columns - use actual investors or selected percentage for preview */}
-                        {opp.investors?.length > 0 ? (
-                          opp.investors.map((inv, i) => (
+                        {/* User contribution columns - use filtered investors when from holdings */}
+                        {visibleInvestors.length > 0 ? (
+                          visibleInvestors.map((inv, i) => (
                             <th key={i} className="text-center py-3 px-3 font-medium text-gray-700 min-w-[100px] bg-blue-50">
                               <div className="text-xs">{inv.client_name?.split(' ')[0] || inv.name}</div>
                               <div className="text-[10px] text-gray-500">{inv.share_percentage}%</div>
