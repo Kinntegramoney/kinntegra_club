@@ -2697,32 +2697,36 @@ export default function Holdings() {
                                       </div>
                                     </td>
                                     
-                                    {/* Total Profit - show Sale | Forex */}
+                                    {/* Total Profit - show Sale (without forex) | Forex */}
                                     <td className="px-2 py-2 text-right overflow-visible">
                                       <div className="cursor-help group relative">
                                         <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
                                         <p className="text-[10px]">
-                                          <span className="text-gray-500">Sale: {formatINR(profitFromSaleAed * projectedAedToInr)}</span>
+                                          <span className="text-gray-500">Sale: {formatINR(profitFromSaleInrNoForex)}</span>
                                           <span className="mx-1 text-gray-400">|</span>
-                                          <span className={netCurrencyImpact >= 0 ? 'text-amber-600' : 'text-red-500'}>
-                                            Forex: {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
+                                          <span className={forexImpactOnSale >= 0 ? 'text-amber-600' : 'text-red-500'}>
+                                            Forex: {forexImpactOnSale >= 0 ? '+' : ''}{formatINR(forexImpactOnSale)}
                                           </span>
                                         </p>
                                         {/* Tooltip with clear breakdown */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '220px'}}>
+                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '240px'}}>
                                           <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Profit Breakdown</p>
                                           <div className="space-y-1">
-                                            <p><span className="text-gray-400">Property Gain (AED):</span> <span className="float-right">{formatAED(profitFromSaleAed)}</span></p>
-                                            <p><span className="text-gray-400">Sale Proceeds (INR):</span> <span className="float-right">{formatINR(saleProceedsInr)}</span></p>
-                                            <p><span className="text-gray-400">Total Invested (INR):</span> <span className="float-right text-red-400">-{formatINR(totalInvestmentInr)}</span></p>
+                                            <p><span className="text-gray-400">Expected Sale (AED):</span> <span className="float-right">{formatAED(expectedSalePrice)}</span></p>
+                                            <p><span className="text-gray-400">Total Cost (AED):</span> <span className="float-right text-red-400">-{formatAED(totalCostAed)}</span></p>
+                                            <p className="border-t border-gray-600 pt-1 mt-1">
+                                              <span className="text-gray-400">Property Gain (AED):</span> 
+                                              <span className="float-right text-green-400">{formatAED(profitFromSaleAed)}</span>
+                                            </p>
+                                            <p><span className="text-gray-400">@ Current Rate (₹{currentInrRate.toFixed(2)}):</span> <span className="float-right">{formatINR(profitFromSaleInrNoForex)}</span></p>
                                             <p className="border-t border-gray-600 pt-1 mt-1">
                                               <span className="text-gray-400">Forex Impact:</span> 
-                                              <span className={`float-right ${netCurrencyImpact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                {netCurrencyImpact >= 0 ? '+' : ''}{formatINR(netCurrencyImpact)}
+                                              <span className={`float-right ${forexImpactOnSale >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {forexImpactOnSale >= 0 ? '+' : ''}{formatINR(forexImpactOnSale)}
                                               </span>
                                             </p>
                                             <p className="font-bold text-green-400 border-t border-gray-600 pt-1 mt-1">
-                                              Net Profit: <span className="float-right">{formatINR(totalProfitInr)}</span>
+                                              Total Profit: <span className="float-right">{formatINR(totalProfitInr)}</span>
                                             </p>
                                           </div>
                                         </div>
