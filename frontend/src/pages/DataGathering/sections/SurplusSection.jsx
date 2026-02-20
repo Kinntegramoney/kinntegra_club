@@ -1394,7 +1394,8 @@ function AllocationSimulator({
       salary: 'Salary Assets', business: 'Business', rental: 'Real Estate',
       mutual_fund: 'Mutual Funds', shares_pms: 'Stocks/PMS', fd: 'Fixed Deposits',
       bonds: 'Bonds', ppf: 'PPF', epf: 'EPF', nps: 'NPS', rd_pis: 'RD',
-      commodities: 'Gold/Commodities', insurance_income: 'Insurance', cash: 'Cash', vehicle: 'Vehicle'
+      commodities: 'Gold/Commodities', insurance_income: 'Insurance', 
+      cash: 'Cash In Hand', vehicle: 'Vehicle'
     };
     return labels[category] || category;
   };
