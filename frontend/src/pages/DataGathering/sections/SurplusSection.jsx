@@ -1813,6 +1813,9 @@ function AllocationSimulator({
     const now = new Date();
     const timestamp = now.toLocaleDateString('en-IN') + ' ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
+    console.log('Simulation result:', result);
+    console.log('Setting result for:', isFamily ? 'family' : entityId);
+
     if (isFamily) {
       setFamilyAllocation(prev => ({ ...prev, result, lastCalculated: timestamp }));
     } else {
