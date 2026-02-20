@@ -170,7 +170,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     const isPostRetirement = targetYear >= info.retirementYear;
     
     if (yearsFromNow <= 0) {
-      return { salary: info.baseSalary, business: info.baseBusiness, rental: info.baseRental, pension: info.basePension };
+      return { salary: info.baseSalary, business: info.baseBusiness, rental: info.baseRental, pension: info.basePension, mutualFund: info.baseMutualFund || 0 };
     }
     
     if (isPostRetirement) {
