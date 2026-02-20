@@ -545,7 +545,6 @@ export default function SurplusSection({ family, isReadOnly }) {
   // Export to Excel function - Individual sheets for each Data Gathering tab
   const handleExportToExcel = () => {
     const wb = XLSX.utils.book_new();
-    const data = [];
     
     // Helper function to format currency with Indian comma format
     const formatCurrencyINR = (num) => {
@@ -564,7 +563,7 @@ export default function SurplusSection({ family, isReadOnly }) {
         row.forEach((cell, colIdx) => {
           const cellValue = cell !== null && cell !== undefined ? String(cell) : '';
           const cellLength = cellValue.length;
-          const width = Math.min(20, Math.max(10, Math.ceil(cellLength * 1.1)));
+          const width = Math.min(25, Math.max(10, Math.ceil(cellLength * 1.1)));
           if (!colWidths[colIdx] || width > colWidths[colIdx]) {
             colWidths[colIdx] = width;
           }
@@ -573,12 +572,21 @@ export default function SurplusSection({ family, isReadOnly }) {
       return colWidths.map(wch => ({ wch }));
     };
     
+    // Helper to get member names
+    const getMemberNames = (memberIds) => {
+      if (!memberIds || memberIds.length === 0) return 'Family';
+      return memberIds.map(mid => {
+        const m = members.find(mem => mem.id === mid || String(mem.id) === String(mid));
+        return m?.name || '';
+      }).filter(n => n).join(', ') || 'Family';
+    };
+    
     // Helper to get category label
     const getCategoryLabel = (category) => {
       const labels = {
         'salary': 'Salary', 'business': 'Business', 'rental': 'Rental', 'pension': 'Pension',
         'mutual_fund': 'Mutual Fund', 'ppf': 'PPF', 'epf': 'EPF', 'nps': 'NPS',
-        'fd': 'FD', 'rd_pis': 'RD/PIS', 'bond': 'Bonds', 'insurance_income': 'Insurance',
+        'fd': 'Fixed Deposit', 'rd_pis': 'RD/PIS', 'bond': 'Bonds', 'insurance_income': 'Insurance (Income)',
         'shares_pms': 'Shares/PMS', 'gratuity': 'Gratuity', 'commodities': 'Commodities',
         'cash': 'Cash', 'vehicle': 'Vehicle', 'other': 'Other',
         'living_expenses': 'Living Expenses', 'housing': 'Housing', 'utilities': 'Utilities',
@@ -598,61 +606,572 @@ export default function SurplusSection({ family, isReadOnly }) {
     for (let y = currentYear; y <= maxYears; y++) {
       projectionYears.push(y);
     }
+
+    // ==================================================================================
+    // SHEET 1: DATA GATHERING (Raw data from all tabs)
+    // ==================================================================================
+    const dgData = [];
     
+    // ========== MEMBERS SECTION ==========
+    dgData.push(['MEMBERS']);
+    dgData.push(['Name', 'Date of Birth', 'Relation', 'Current Age', 'Retirement Year', 'Life Expectancy', 'Tax Status', 'Tax Regime']);
+    members.forEach(m => {
+      dgData.push([
+        m.name || '', m.date_of_birth || '', m.is_primary ? 'Self (Primary)' : (m.relation || ''),
+        calculateAge(m.date_of_birth) || '', m.retirement_year || '', m.life_expectancy || '',
+        m.tax_status || '', m.tax_regime || ''
+      ]);
+    });
+    dgData.push([]);
+    
+    // ========== INCOME SECTION (ALL CATEGORIES) ==========
+    dgData.push(['INCOME']);
+    
+    // Salary
+    const salaryIncomes = incomeDetails.filter(inc => inc.category === 'salary');
+    if (salaryIncomes.length > 0) {
+      dgData.push(['SALARY']);
+      dgData.push(['Member', 'Monthly Income', 'Annual Income', 'Growth Rate %']);
+      salaryIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.net_income_monthly), formatCurrencyINR(d.net_income_yearly), d.avg_growth_rate || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // Business
+    const businessIncomes = incomeDetails.filter(inc => inc.category === 'business');
+    if (businessIncomes.length > 0) {
+      dgData.push(['BUSINESS']);
+      dgData.push(['Member', 'Annual Income', 'Growth Rate %']);
+      businessIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.net_income_yearly), d.avg_growth_rate || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // Rental
+    const rentalIncomes = incomeDetails.filter(inc => inc.category === 'rental');
+    if (rentalIncomes.length > 0) {
+      dgData.push(['PROPERTY/RENTAL']);
+      dgData.push(['Member', 'Property Type', 'Investment Amount', 'Market Value', 'Annual Rent', 'Growth Rate %']);
+      rentalIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), d.property_type || '', formatCurrencyINR(d.investment_amount), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_rent), d.rental_growth_rate || '3']);
+      });
+      dgData.push([]);
+    }
+    
+    // Pension
+    const pensionIncomes = incomeDetails.filter(inc => inc.category === 'pension');
+    if (pensionIncomes.length > 0) {
+      dgData.push(['PENSION']);
+      dgData.push(['Member', 'Description', 'Amount (Yearly)', 'Start Date', 'End Date']);
+      pensionIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.amount_yearly), d.start_date || '', d.end_date || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // EPF
+    const epfIncomes = incomeDetails.filter(inc => inc.category === 'epf');
+    if (epfIncomes.length > 0) {
+      dgData.push(['EPF']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Maturity Date', 'Expected Maturity']);
+      epfIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), d.maturity_date || '', formatCurrencyINR(d.maturity_corpus || d.maturity_value)]);
+      });
+      dgData.push([]);
+    }
+    
+    // PPF
+    const ppfIncomes = incomeDetails.filter(inc => inc.category === 'ppf');
+    if (ppfIncomes.length > 0) {
+      dgData.push(['PPF']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Maturity Date', 'Expected Maturity']);
+      ppfIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), d.maturity_date || '', formatCurrencyINR(d.maturity_value)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Fixed Deposits
+    const fdIncomes = incomeDetails.filter(inc => inc.category === 'fd');
+    if (fdIncomes.length > 0) {
+      dgData.push(['FIXED DEPOSITS']);
+      dgData.push(['Member', 'Description', 'Investment Value', 'Interest Rate', 'Payout Frequency', 'Annual Interest', 'Maturity Date', 'Maturity Amount']);
+      fdIncomes.forEach(inc => {
+        const d = inc.details || {};
+        const annualInterest = (parseFloat(d.investment_value) || 0) * (parseFloat(d.interest_rate) || 0) / 100;
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.investment_value), `${d.interest_rate || ''}%`, d.payable_cycle || '', formatCurrencyINR(annualInterest), d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Bonds
+    const bondIncomes = incomeDetails.filter(inc => inc.category === 'bond');
+    if (bondIncomes.length > 0) {
+      dgData.push(['BONDS']);
+      dgData.push(['Member', 'Description', 'Investment Value', 'Payout Frequency', 'Annual Payout', 'Maturity Date', 'Maturity Amount']);
+      bondIncomes.forEach(inc => {
+        const d = inc.details || {};
+        const payoutAmt = parseFloat(d.payout_amount) || 0;
+        const freq = d.payout_frequency || 'yearly';
+        const annualPayout = freq === 'monthly' ? payoutAmt * 12 : freq === 'quarterly' ? payoutAmt * 4 : freq === 'half_yearly' ? payoutAmt * 2 : payoutAmt;
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.investment_value), freq, formatCurrencyINR(annualPayout), d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Mutual Funds
+    const mfIncomes = incomeDetails.filter(inc => inc.category === 'mutual_fund');
+    if (mfIncomes.length > 0) {
+      dgData.push(['MUTUAL FUNDS']);
+      dgData.push(['Member', 'Market Value', 'Monthly SIP', 'Annual SIP', 'Up to Year']);
+      mfIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.sip_amount), formatCurrencyINR(d.annual_sip_amount), d.upto_year || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // NPS
+    const npsIncomes = incomeDetails.filter(inc => inc.category === 'nps');
+    if (npsIncomes.length > 0) {
+      dgData.push(['NPS']);
+      dgData.push(['Member', 'Current Value', 'Monthly Contribution', 'Annual Contribution', 'Up to Year']);
+      npsIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.current_value), formatCurrencyINR(d.monthly_contribution), formatCurrencyINR(d.annual_contribution), d.upto_year || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // Shares/PMS
+    const sharesIncomes = incomeDetails.filter(inc => inc.category === 'shares_pms');
+    if (sharesIncomes.length > 0) {
+      dgData.push(['SHARES/PMS']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Up to Year']);
+      sharesIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), d.upto_year || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // Insurance (Income side)
+    const insuranceIncomes = incomeDetails.filter(inc => inc.category === 'insurance_income');
+    if (insuranceIncomes.length > 0) {
+      dgData.push(['INSURANCE (ENDOWMENT/ULIP)']);
+      dgData.push(['Member', 'Description', 'Premium Amount', 'Premium Frequency', 'Maturity Date', 'Maturity Amount']);
+      insuranceIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.premium_amount), d.premium_frequency || '', d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Cash
+    const cashIncomes = incomeDetails.filter(inc => inc.category === 'cash');
+    if (cashIncomes.length > 0) {
+      dgData.push(['CASH/BANK BALANCE']);
+      dgData.push(['Member', 'Description', 'Bank Balance']);
+      cashIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.bank_balance)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Commodities
+    const commodityIncomes = incomeDetails.filter(inc => inc.category === 'commodities');
+    if (commodityIncomes.length > 0) {
+      dgData.push(['COMMODITIES (Gold/Silver)']);
+      dgData.push(['Member', 'Type', 'Weight (Kg)', 'Price/Kg', 'Market Value']);
+      commodityIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), d.commodity_type || '', d.weight_kg || '', formatCurrencyINR(d.price_per_kg), formatCurrencyINR(d.market_value)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Gratuity
+    const gratuityIncomes = incomeDetails.filter(inc => inc.category === 'gratuity');
+    if (gratuityIncomes.length > 0) {
+      dgData.push(['GRATUITY']);
+      dgData.push(['Member', 'Market Value', 'Maturity Date', 'Expected Amount']);
+      gratuityIncomes.forEach(inc => {
+        const d = inc.details || {};
+        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), d.maturity_date || '', formatCurrencyINR(d.maturity_value || d.market_value)]);
+      });
+      dgData.push([]);
+    }
+    
+    // ========== EXPENSES SECTION ==========
+    dgData.push(['EXPENSES']);
+    dgData.push(['Category', 'Member', 'Monthly Amount', 'Annual Amount', 'Inflation %', 'Up to Year', 'Post Retirement', 'Post Ret. %']);
+    
+    expenseDetails.forEach(exp => {
+      const annual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
+      const monthly = parseFloat(exp.monthly_amount) || parseFloat(exp.monthly_emi) || Math.round(annual / 12);
+      dgData.push([
+        getCategoryLabel(exp.expense_type),
+        getMemberNames(exp.member_ids),
+        formatCurrencyINR(monthly),
+        formatCurrencyINR(annual),
+        `${exp.inflation_percent ?? 5}%`,
+        exp.upto_year || '',
+        exp.consider_post_retirement ? 'Yes' : 'No',
+        exp.post_retirement_percent ? `${exp.post_retirement_percent}%` : '100%'
+      ]);
+    });
+    dgData.push([]);
+    
+    // ========== GOALS SECTION ==========
+    dgData.push(['GOALS']);
+    dgData.push(['Goal Name', 'Category', 'Member', 'Current Amount', 'Target Year', 'Inflation %', 'Future Value']);
+    
+    goalDetails.forEach(goal => {
+      const baseAmount = parseFloat(goal.goal_amount) || 0;
+      const inflationRate = parseFloat(goal.inflation_percent) || 0;
+      const goalYear = goal.goal_years?.[0] || goal.goal_year || currentYear;
+      const yearsFromNow = parseInt(goalYear) - currentYear;
+      const futureValue = baseAmount * Math.pow(1 + inflationRate / 100, Math.max(0, yearsFromNow));
+      dgData.push([
+        goal.name || goal.goal_name || '', getCategoryLabel(goal.category), getMemberNames(goal.member_ids),
+        formatCurrencyINR(baseAmount), goalYear, `${inflationRate}%`, formatCurrencyINR(Math.round(futureValue))
+      ]);
+    });
+    dgData.push([]);
+    
+    // ========== INVESTMENTS SECTION ==========
+    dgData.push(['INVESTMENTS']);
+    dgData.push(['Category', 'Member', 'Annual Amount', 'Up to Year']);
+    combinedInvestments.forEach(inv => {
+      const memberName = members.find(m => m.id === inv.member_id)?.name || '';
+      dgData.push([getCategoryLabel(inv.category), memberName, formatCurrencyINR(inv.annual_amount), inv.upto_year || '']);
+    });
+    dgData.push([]);
+    
+    // ========== INSURANCE PREMIUMS ==========
+    const insuranceExpenses = expenseDetails.filter(e => ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type));
+    if (insuranceExpenses.length > 0) {
+      dgData.push(['INSURANCE PREMIUMS']);
+      dgData.push(['Type', 'Member', 'Annual Premium', 'Coverage Amount', 'Up to Year']);
+      insuranceExpenses.forEach(exp => {
+        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.yearly_premium || exp.annual_amount), formatCurrencyINR(exp.coverage_amount), exp.upto_year || '']);
+      });
+      dgData.push([]);
+    }
+    
+    // ========== LIABILITIES ==========
+    const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
+    if (loanExpenses.length > 0) {
+      dgData.push(['LIABILITIES']);
+      dgData.push(['Loan Type', 'Member', 'Monthly EMI', 'Remaining Installments', 'Outstanding Amount']);
+      loanExpenses.forEach(exp => {
+        const outstanding = (parseFloat(exp.monthly_emi) || 0) * (parseFloat(exp.num_installments) || 0);
+        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', formatCurrencyINR(outstanding)]);
+      });
+      dgData.push([]);
+    }
+    
+    // Create Data Gathering Sheet
+    const dgSheet = XLSX.utils.aoa_to_sheet(dgData);
+    dgSheet['!cols'] = autoFitColumns(dgData);
+    dgSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
+    XLSX.utils.book_append_sheet(wb, dgSheet, "Data Gathering");
+
+    // ==================================================================================
+    // SHEET 2: COMPREHENSIVE FINANCIAL PLAN (Year-wise Projection)
+    // ==================================================================================
+    const data = [];
     const separator = '═══════════════════════════════════════════════════════════════════════════════';
     const thinSeparator = '───────────────────────────────────────────────────────────────────────────────';
     
-    // ===================== HEADER =====================
-    data.push([separator]);
+    // Header
     data.push([`COMPREHENSIVE FINANCIAL PLAN - ${family?.family_name || 'Family'}`]);
     data.push([`Plan Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`]);
     data.push([separator]);
     data.push([]);
     
-    // ===================== SECTION 1: MEMBER DETAILS =====================
-    data.push(['SECTION 1: MEMBER DETAILS', thinSeparator]);
-    data.push([]);
-    
-    const memberHeaders = ['Particulars', ...members.map((_, i) => `Member ${i + 1}`)];
-    data.push(memberHeaders);
-    data.push(['Name', ...members.map(m => m.name || '')]);
-    data.push(['Relation', ...members.map(m => m.is_primary ? 'Self (Primary)' : (m.relation || ''))]);
-    data.push(['Date of Birth', ...members.map(m => m.date_of_birth || '')]);
-    data.push(['Current Age', ...members.map(m => calculateAge(m.date_of_birth) || '')]);
-    data.push(['Retirement Year', ...members.map(m => m.retirement_year || '')]);
-    data.push(['Life Expectancy', ...members.map(m => m.life_expectancy || '')]);
-    data.push([]);
-    
-    // ===================== SECTION 2: INCOME DETAILS (Annual) =====================
-    data.push(['SECTION 2: INCOME DETAILS (Annual)', thinSeparator]);
-    data.push([]);
-    
-    const incomeHeaders = ['Income Type', ...members.map(m => m.name || ''), 'Total'];
-    data.push(incomeHeaders);
-    
-    // Salary Income
-    const salaryRow = ['Salary Income'];
-    let totalSalary = 0;
+    // SECTION 1: MEMBER SUMMARY
+    data.push(['SECTION 1: MEMBER DETAILS']);
+    data.push(['Name', 'Relation', 'Age', 'Retirement Year', 'Life Expectancy']);
     members.forEach(m => {
-      const memberSalary = incomeDetails.filter(inc => inc.category === 'salary' && inc.member_ids?.includes(m.id))
-        .reduce((sum, inc) => sum + (parseFloat(inc.details?.net_income_yearly) || 0), 0);
-      salaryRow.push(memberSalary > 0 ? formatCurrencyINR(memberSalary) : '-');
-      totalSalary += memberSalary;
+      data.push([m.name, m.is_primary ? 'Self' : m.relation, calculateAge(m.date_of_birth), m.retirement_year, m.life_expectancy]);
     });
-    salaryRow.push(formatCurrencyINR(totalSalary));
-    data.push(salaryRow);
+    data.push([]);
     
-    // Business Income
-    const businessRow = ['Business Income'];
-    let totalBusiness = 0;
-    members.forEach(m => {
-      const memberBusiness = incomeDetails.filter(inc => inc.category === 'business' && inc.member_ids?.includes(m.id))
-        .reduce((sum, inc) => sum + (parseFloat(inc.details?.net_income_yearly) || 0), 0);
-      businessRow.push(memberBusiness > 0 ? formatCurrencyINR(memberBusiness) : '-');
-      totalBusiness += memberBusiness;
+    // SECTION 2: INCOME SUMMARY (ALL TYPES)
+    data.push(['SECTION 2: INCOME SUMMARY (Annual)']);
+    data.push(['Income Type', 'Member', 'Annual Amount', 'Growth/Interest Rate']);
+    
+    // Add all income types
+    incomeDetails.forEach(inc => {
+      const d = inc.details || {};
+      let annualAmount = 0;
+      let growthRate = '';
+      
+      switch(inc.category) {
+        case 'salary':
+          annualAmount = parseFloat(d.net_income_yearly) || 0;
+          growthRate = d.avg_growth_rate ? `${d.avg_growth_rate}% growth` : '';
+          break;
+        case 'business':
+          annualAmount = parseFloat(d.net_income_yearly) || 0;
+          growthRate = d.avg_growth_rate ? `${d.avg_growth_rate}% growth` : '';
+          break;
+        case 'rental':
+          annualAmount = parseFloat(d.annual_rent) || 0;
+          growthRate = d.rental_growth_rate ? `${d.rental_growth_rate}% growth` : '3% growth';
+          break;
+        case 'pension':
+          annualAmount = parseFloat(d.amount_yearly) || 0;
+          growthRate = 'Fixed';
+          break;
+        case 'fd':
+          annualAmount = (parseFloat(d.investment_value) || 0) * (parseFloat(d.interest_rate) || 0) / 100;
+          growthRate = d.interest_rate ? `${d.interest_rate}% interest` : '';
+          break;
+        case 'bond':
+          const payoutAmt = parseFloat(d.payout_amount) || 0;
+          const freq = d.payout_frequency || 'yearly';
+          annualAmount = freq === 'monthly' ? payoutAmt * 12 : freq === 'quarterly' ? payoutAmt * 4 : freq === 'half_yearly' ? payoutAmt * 2 : payoutAmt;
+          growthRate = 'Fixed payout';
+          break;
+        case 'mutual_fund':
+          annualAmount = parseFloat(d.annual_sip_amount) || (parseFloat(d.sip_amount) * 12) || 0;
+          growthRate = 'Market linked';
+          break;
+        default:
+          annualAmount = parseFloat(d.annual_contribution) || parseFloat(d.annual_rent) || 0;
+      }
+      
+      if (annualAmount > 0) {
+        data.push([getCategoryLabel(inc.category), getMemberNames(inc.member_ids), formatCurrencyINR(annualAmount), growthRate]);
+      }
     });
-    businessRow.push(formatCurrencyINR(totalBusiness));
-    data.push(businessRow);
+    
+    const totalIncome = incomeDetails.reduce((sum, inc) => {
+      const d = inc.details || {};
+      if (inc.category === 'salary' || inc.category === 'business') return sum + (parseFloat(d.net_income_yearly) || 0);
+      if (inc.category === 'rental') return sum + (parseFloat(d.annual_rent) || 0);
+      if (inc.category === 'pension') return sum + (parseFloat(d.amount_yearly) || 0);
+      if (inc.category === 'fd') return sum + ((parseFloat(d.investment_value) || 0) * (parseFloat(d.interest_rate) || 0) / 100);
+      return sum;
+    }, 0);
+    data.push(['TOTAL ANNUAL INCOME', '', formatCurrencyINR(totalIncome), '']);
+    data.push([]);
+    
+    // SECTION 3: EXPENSE SUMMARY
+    data.push(['SECTION 3: EXPENSE SUMMARY (Annual)']);
+    data.push(['Category', 'Annual Amount', 'Inflation %', 'Post Retirement %']);
+    
+    let totalExp = 0;
+    expenseDetails.forEach(exp => {
+      const annual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
+      totalExp += annual;
+      data.push([
+        getCategoryLabel(exp.expense_type), 
+        formatCurrencyINR(annual), 
+        `${exp.inflation_percent ?? 5}%`,
+        exp.consider_post_retirement ? `${exp.post_retirement_percent || 100}%` : 'N/A'
+      ]);
+    });
+    data.push(['TOTAL ANNUAL EXPENSES', formatCurrencyINR(totalExp), '', '']);
+    data.push([]);
+    
+    // SECTION 4: GOALS SUMMARY
+    data.push(['SECTION 4: FINANCIAL GOALS']);
+    data.push(['Goal', 'Current Value', 'Target Year', 'Inflation %', 'Future Value']);
+    let totalGoalsFV = 0;
+    goalDetails.forEach(goal => {
+      const base = parseFloat(goal.goal_amount) || 0;
+      const infl = parseFloat(goal.inflation_percent) || 0;
+      const yr = goal.goal_years?.[0] || goal.goal_year || currentYear;
+      const fv = base * Math.pow(1 + infl / 100, Math.max(0, parseInt(yr) - currentYear));
+      totalGoalsFV += fv;
+      data.push([goal.name || goal.goal_name || goal.category, formatCurrencyINR(base), yr, `${infl}%`, formatCurrencyINR(Math.round(fv))]);
+    });
+    data.push(['TOTAL', '', '', '', formatCurrencyINR(Math.round(totalGoalsFV))]);
+    data.push([]);
+    
+    // SECTION 5: ASSETS SUMMARY
+    data.push(['SECTION 5: EXISTING ASSETS']);
+    data.push(['Asset Type', 'Current Value', 'Maturity Year', 'Maturity Value']);
+    let totalAssets = 0;
+    incomeDetails.forEach(inc => {
+      const d = inc.details || {};
+      const currentVal = parseFloat(d.market_value) || parseFloat(d.current_value) || parseFloat(d.investment_value) || parseFloat(d.bank_balance) || 0;
+      const maturityVal = parseFloat(d.maturity_value) || parseFloat(d.maturity_amount) || parseFloat(d.maturity_corpus) || 0;
+      if (currentVal > 0) {
+        totalAssets += currentVal;
+        data.push([getCategoryLabel(inc.category), formatCurrencyINR(currentVal), d.maturity_date || d.maturity_year || '-', maturityVal > 0 ? formatCurrencyINR(maturityVal) : '-']);
+      }
+    });
+    data.push(['TOTAL ASSETS', formatCurrencyINR(totalAssets), '', '']);
+    data.push([]);
+    
+    // SECTION 6: ASSUMPTIONS
+    data.push(['SECTION 6: INVESTMENT ASSUMPTIONS']);
+    data.push(['Parameter', 'Value']);
+    data.push(['Equity Allocation', '80%']);
+    data.push(['Debt Allocation', '20%']);
+    data.push(['Equity Return', '12%']);
+    data.push(['Debt Return', '7%']);
+    data.push(['Weighted Average Return', '11%']);
+    data.push([]);
+    
+    data.push([separator]);
+    data.push(['YEAR-WISE CASH FLOW PROJECTION']);
+    data.push([separator]);
+    
+    // Year-wise projection header
+    data.push(['Year', ...projectionYears]);
+    data.push(['Age', ...projectionYears.map(y => primaryAge + (y - currentYear))]);
+    data.push([thinSeparator]);
+    
+    // INCOME PROJECTION
+    data.push(['▶ CASH INFLOWS (INCOME)']);
+    members.forEach(m => {
+      const row = [`  ${m.name}${m.is_primary ? '*' : ''}`];
+      projectionYears.forEach(year => {
+        const yearIncome = getProjectedMemberIncome(m.id, year.toString());
+        row.push(yearIncome > 0 ? formatCurrencyINR(Math.round(yearIncome)) : '-');
+      });
+      data.push(row);
+    });
+    
+    // Maturities row
+    const matRow = ['  Maturities (FD/PPF/EPF/Bonds)'];
+    projectionYears.forEach(year => {
+      const yearMat = maturitiesByYear[year]?.total || 0;
+      matRow.push(yearMat > 0 ? formatCurrencyINR(Math.round(yearMat)) : '-');
+    });
+    data.push(matRow);
+    
+    // Total Income
+    const totIncRow = ['TOTAL INCOME (A)'];
+    projectionYears.forEach(year => {
+      const yrInc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
+      totIncRow.push(formatCurrencyINR(Math.round(yrInc)));
+    });
+    data.push(totIncRow);
+    data.push([thinSeparator]);
+    
+    // EXPENSES PROJECTION
+    data.push(['▶ CASH OUTFLOWS (EXPENSES)']);
+    const expTypes = [...new Set(expenseDetails.map(e => e.expense_type))];
+    expTypes.forEach(expType => {
+      const catExps = expenseDetails.filter(e => e.expense_type === expType);
+      const row = [`  ${getCategoryLabel(expType)}`];
+      projectionYears.forEach(year => {
+        let yearExp = 0;
+        catExps.forEach(exp => {
+          const baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
+          const inflRate = parseFloat(exp.inflation_percent) ?? 5;
+          const uptoYr = parseInt(exp.upto_year) || endYear;
+          
+          if (year <= uptoYr) {
+            const yearsFromNow = year - currentYear;
+            let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+            
+            // Apply post-retirement reduction
+            if (exp.consider_post_retirement) {
+              const memberRetYr = members.find(m => exp.member_ids?.includes(m.id))?.retirement_year;
+              if (memberRetYr && year >= parseInt(memberRetYr)) {
+                amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
+              }
+            }
+            yearExp += amount;
+          }
+        });
+        row.push(yearExp > 0 ? formatCurrencyINR(Math.round(yearExp)) : '-');
+      });
+      data.push(row);
+    });
+    
+    // Total Expenses
+    const totExpRow = ['TOTAL EXPENSES (B)'];
+    projectionYears.forEach(year => {
+      const yrExp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
+      totExpRow.push(formatCurrencyINR(Math.round(yrExp)));
+    });
+    data.push(totExpRow);
+    data.push([thinSeparator]);
+    
+    // GOALS PROJECTION
+    data.push(['▶ FINANCIAL GOALS']);
+    goalDetails.forEach(goal => {
+      const row = [`  ${goal.name || goal.goal_name || goal.category}`];
+      const goalYrs = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
+      const base = parseFloat(goal.goal_amount) || 0;
+      const infl = parseFloat(goal.inflation_percent) || 0;
+      projectionYears.forEach(year => {
+        if (goalYrs.includes(year.toString()) || goalYrs.includes(year)) {
+          const fv = base * Math.pow(1 + infl / 100, year - currentYear);
+          row.push(formatCurrencyINR(Math.round(fv)));
+        } else {
+          row.push('-');
+        }
+      });
+      data.push(row);
+    });
+    
+    const totGoalRow = ['TOTAL GOALS (C)'];
+    projectionYears.forEach(year => {
+      const yrGoal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
+      totGoalRow.push(yrGoal > 0 ? formatCurrencyINR(Math.round(yrGoal)) : '-');
+    });
+    data.push(totGoalRow);
+    data.push([thinSeparator]);
+    
+    // NET SAVINGS
+    data.push(['▶ NET ANNUAL SAVINGS = (A) - (B) - (C)']);
+    const netSavRow = ['  Net Savings'];
+    projectionYears.forEach(year => {
+      const inc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
+      const exp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
+      const goal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
+      netSavRow.push(formatCurrencyINR(Math.round(inc - exp - goal)));
+    });
+    data.push(netSavRow);
+    data.push([thinSeparator]);
+    
+    // PORTFOLIO PROJECTION
+    data.push(['▶ PORTFOLIO VALUE (80% Equity @ 12%, 20% Debt @ 7%)']);
+    let portfolio = totalAssets;
+    const portfolioRow = ['  Total Portfolio'];
+    projectionYears.forEach(year => {
+      const inc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
+      const exp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
+      const goal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
+      const netSav = inc - exp - goal;
+      
+      const returns = portfolio * 0.8 * 0.12 + portfolio * 0.2 * 0.07;
+      portfolio = portfolio + netSav + returns;
+      portfolioRow.push(formatCurrencyINR(Math.round(portfolio)));
+    });
+    data.push(portfolioRow);
+    data.push([separator]);
+    
+    // Create Financial Plan Sheet
+    const fpSheet = XLSX.utils.aoa_to_sheet(data);
+    fpSheet['!cols'] = autoFitColumns(data);
+    fpSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
+    XLSX.utils.book_append_sheet(wb, fpSheet, "Financial Plan");
+
+    // Generate and download file
+    const familyName = family?.family_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Financial_Plan';
+    const fileName = `${familyName}_Financial_Plan.xlsx`;
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([wbout], { type: 'application/octet-stream' }), fileName);
+  };
     
     // Rental Income
     const rentalRow = ['Rental Income'];
