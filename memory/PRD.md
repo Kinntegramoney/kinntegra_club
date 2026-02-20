@@ -41,10 +41,16 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 - ✅ "Lasts till" message with life expectancy warning
 - ✅ Data persistence bug fixes (deleted items reappearing)
 
+### Bug Fixes (Feb 20, 2026)
+- ✅ **Assets Tab**: Added `mutual_fund` and `nps` categories to display MF/NPS from Income tab
+- ✅ **Surplus Tab**: Maturities (Insurance, FD, PPF, EPF, Bonds) now included in cash flow projection
+- ✅ **Excel Export**: Added maturity breakdown section showing year-wise maturity amounts
+- ✅ **Insurance Deduplication**: Reduced duplicate entries from 16 to 6 unique records
+
 ### Data Migration (Feb 20, 2026)
 - ✅ Migrated "Pradeep Dattatray Prabhu & Family" from old environment
 - Family ID: `869d412b-0cb8-4839-9459-d2a02b2860f1`
-- Includes: 3 members, 9 income items, 8 goals, 12 expenses, 16 insurance, 1 liability
+- Includes: 3 members, 9 income items, 8 goals, 12 expenses, 6 insurance (deduplicated), 1 liability
 
 ---
 
