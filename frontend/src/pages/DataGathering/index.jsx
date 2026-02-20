@@ -456,7 +456,7 @@ export default function DataGathering() {
             {members.map((member) => {
               const isForeignPassport = member.tax_status === "Foreign Passport" || member.tax_status === "NRI with Foreign Passport";
               return (
-              <div key={member.id} className="grid grid-cols-1 lg:grid-cols-10 gap-2 px-4 py-3 items-center">
+              <div key={member.id} className="grid grid-cols-1 lg:grid gap-2 px-4 py-3 items-center" style={{ gridTemplateColumns: '2fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.6fr 0.5fr' }}>
                 <div>
                   <Label className="lg:hidden text-xs text-gray-500 mb-1">Name</Label>
                   <Input
