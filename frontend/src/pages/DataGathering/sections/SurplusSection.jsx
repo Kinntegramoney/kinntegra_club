@@ -1093,16 +1093,18 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(totIncRow);
     data.push([thinSeparator]);
     
-    // EXPENSES PROJECTION
+    // EXPENSES PROJECTION (includes regular expenses + insurance premiums from insurance_premiums collection)
     data.push(['▶ CASH OUTFLOWS (EXPENSES)']);
-    const expTypes = [...new Set(expenseDetails.map(e => e.expense_type))];
-    expTypes.forEach(expType => {
+    
+    // Regular expenses (excluding insurance which comes from insurance_premiums)
+    const regularExpTypes = [...new Set(expenseDetails.filter(e => !['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type)).map(e => e.expense_type))];
+    regularExpTypes.forEach(expType => {
       const catExps = expenseDetails.filter(e => e.expense_type === expType);
       const row = [`  ${getCategoryLabel(expType)}`];
       projectionYears.forEach(year => {
         let yearExp = 0;
         catExps.forEach(exp => {
-          const baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
+          const baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || 0;
           const inflRate = parseFloat(exp.inflation_percent) ?? 5;
           const uptoYr = parseInt(exp.upto_year) || endYear;
           
@@ -1117,17 +1119,59 @@ export default function SurplusSection({ family, isReadOnly }) {
             return;
           }
           
-          // Insurance premiums don't inflate
-          if (['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(exp.expense_type)) {
-            if (year <= uptoYr) {
-              yearExp += baseAnn;
-            }
-            return;
-          }
-          
           if (year <= uptoYr) {
             const yearsFromNow = year - currentYear;
             let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+            
+            // Apply post-retirement reduction
+            const memberIds = exp.member_ids || [];
+            const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+            
+            if (isFamilyExpense) {
+              const primaryMember = members.find(m => m.is_primary);
+              const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
+              if (year >= primaryRetYear && exp.consider_post_retirement) {
+                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+                amount = amount * postRetPct / 100;
+              }
+            } else {
+              const memberRetYear = memberIds.map(mid => {
+                const m = members.find(mem => mem.id === mid);
+                return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
+              }).reduce((min, yr) => Math.min(min, yr), endYear);
+              
+              if (year >= memberRetYear && exp.consider_post_retirement) {
+                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+                amount = amount * postRetPct / 100;
+              }
+            }
+            
+            yearExp += amount;
+          }
+        });
+        row.push(yearExp > 0 ? formatCurrencyINR(Math.round(yearExp)) : '-');
+      });
+      data.push(row);
+    });
+    
+    // Insurance Premiums from insurance_premiums collection (grouped by type)
+    const insuranceTypes = [...new Set(insurancePremiumsData.map(ins => ins.insurance_type || ins.category || ins.type || 'Insurance'))];
+    insuranceTypes.forEach(insType => {
+      const typeIns = insurancePremiumsData.filter(ins => (ins.insurance_type || ins.category || ins.type || 'Insurance') === insType);
+      const row = [`  ${getCategoryLabel(insType)} (Insurance)`];
+      projectionYears.forEach(year => {
+        let yearIns = 0;
+        typeIns.forEach(ins => {
+          const premium = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+          const uptoYr = parseInt(ins.upto_year) || parseInt(ins.premium_end_year) || endYear;
+          if (year <= uptoYr) {
+            yearIns += premium;
+          }
+        });
+        row.push(yearIns > 0 ? formatCurrencyINR(Math.round(yearIns)) : '-');
+      });
+      data.push(row);
+    });
             
             // Apply post-retirement reduction
             // Check if ANY member associated with this expense has retired
