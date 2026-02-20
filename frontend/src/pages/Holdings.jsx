@@ -236,12 +236,33 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   const apartmentArea = totalSqft - balconyArea;
   
   return {
-    investmentAmount, expectedSalePrice, schedule, investorCurrency,
-    expectedSaleDate, projectedAedToInrAtSale, handoverDate, isSellingBeforeCompletion,
+    // Investment values
+    investmentAmount, // Unit price only (for payment schedule calculations)
+    totalCostAed, // Total cost including DLD + Admin fees (for display)
+    totalInvestmentInr, // Total investment in INR at current rate
+    totalInvestmentAed,
+    unitPriceAed, dldFeeAed, adminFeeAed,
+    
+    // Sale values
+    expectedSalePrice, saleProceedsInr,
+    
+    // Payment schedule breakdown
     paidAmountInr, payableAmountInr, paidAmountAed, payableAmountAed,
-    paymentsAfterSaleAed, totalInvestmentInr, netSaleProceedsAed, netSaleProceedsInr,
-    profitFromSaleAed, totalProfitInr, saleProceedsInr, netCurrencyImpact,
-    netSaleValueForXirr, expectedXirr, actualXirr, totalSqft, balconyArea, apartmentArea,
+    paidFromScheduleInr, payableFromScheduleInr,
+    
+    // Profit calculations
+    profitFromSaleAed, // Pure property gain in AED
+    profitFromSaleInrNoForex, // Property gain in INR without forex impact (Sale - displayed in Profit column)
+    forexImpactOnSale, // Forex impact (displayed in Profit column)
+    totalProfitInr, // Total profit = profitFromSaleInrNoForex + forexImpactOnSale
+    
+    // Other values
+    schedule, investorCurrency,
+    expectedSaleDate, projectedAedToInrAtSale, handoverDate, isSellingBeforeCompletion,
+    paymentsAfterSaleAed, netSaleProceedsAed, netSaleProceedsInr,
+    netCurrencyImpact: forexImpactOnSale, // Use forex impact for display
+    netSaleValueForXirr, expectedXirr, actualXirr, 
+    totalSqft, balconyArea, apartmentArea,
     currentRate: CURRENCY_RATES[investorCurrency] || 1,
     currencySymbol: CURRENCY_SYMBOLS[investorCurrency] || investorCurrency
   };
