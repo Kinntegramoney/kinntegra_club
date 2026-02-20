@@ -2341,6 +2341,34 @@ function AllocationSimulator({
     cashFlowData.push([]);
     cashFlowData.push(['  TOTAL INCOME (A)', ...yearlyData.map(d => formatCurrency(d.totalIncome))]);
     cashFlowData.push([]);
+    
+    // ═══════════════ MATURITIES SECTION ═══════════════
+    // Check if there are any maturities
+    const hasMaturities = yearlyData.some(d => d.maturityAmount > 0);
+    if (hasMaturities) {
+      cashFlowData.push(['▶ MATURITIES (Insurance, FD, PPF, EPF, Bonds, etc.)']);
+      cashFlowData.push([]);
+      
+      // Group by maturity type
+      const maturityTypes = new Set();
+      yearlyData.forEach(d => {
+        (d.maturityDetails || []).forEach(md => maturityTypes.add(md.type));
+      });
+      
+      maturityTypes.forEach(type => {
+        cashFlowData.push([`  ${type}`, ...yearlyData.map(d => {
+          const typeTotal = (d.maturityDetails || [])
+            .filter(md => md.type === type)
+            .reduce((sum, md) => sum + (md.value || 0), 0);
+          return formatCurrency(typeTotal);
+        })]);
+      });
+      
+      cashFlowData.push([]);
+      cashFlowData.push(['  TOTAL MATURITIES (B)', ...yearlyData.map(d => formatCurrency(d.maturityAmount))]);
+      cashFlowData.push([]);
+    }
+    
     cashFlowData.push(['────────────────────────────────────────────────────────────────────────────────────────────────────────────────────']);
 
     // ═══════════════ EXPENSES SECTION ═══════════════
