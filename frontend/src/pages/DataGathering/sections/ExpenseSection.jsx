@@ -193,13 +193,11 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     setItems(itemsByCategory);
     setAddedCategories(added);
     
-    if (!initialLoadDone) {
-      const expanded = {};
-      added.forEach(cat => { expanded[cat] = true; });
-      setExpandedCategories(expanded);
-      setInitialLoadDone(true);
-    }
-  }, [family?.id, initialLoadDone]);
+    const expanded = {};
+    added.forEach(cat => { expanded[cat] = true; });
+    setExpandedCategories(expanded);
+    setInitialLoadDone(true);
+  }, [family?.id]);
 
   const getCategoryConfig = (val) => EXPENSE_CATEGORIES.find(c => c.value === val);
 
