@@ -2704,7 +2704,7 @@ export default function Holdings() {
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
                                                   const amt = (milestone.percentage / 100) * investmentAmount;
-                                                  const rate = getProjectedRateForDate(milestone.date);
+                                                  const rate = getRateForDate(milestone.date);
                                                   const milestoneDate = new Date(milestone.date);
                                                   const isExcluded = isSellingBeforeCompletion && milestoneDate > expectedSaleDate;
                                                   return (
