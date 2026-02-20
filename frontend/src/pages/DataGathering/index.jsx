@@ -69,7 +69,7 @@ export default function DataGathering() {
   const [familyName, setFamilyName] = useState("");
   const [proceedOption, setProceedOption] = useState("");
   const [members, setMembers] = useState([
-    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }
+    { id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", retirement_year: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }
   ]);
   const [saving, setSaving] = useState(false);
   const [showWhyModal, setShowWhyModal] = useState(false);
