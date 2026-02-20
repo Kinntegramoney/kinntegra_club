@@ -839,7 +839,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     
     const expensesSheet = XLSX.utils.aoa_to_sheet(expensesData);
-    expensesSheet['!cols'] = [{ wch: 35 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }];
+    expensesSheet['!cols'] = autoFitColumns(expensesData);
     expensesSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, expensesSheet, "3. Expenses");
 
