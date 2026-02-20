@@ -718,13 +718,27 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     dataSheetData.push([]);
 
-    // --- INVESTMENTS ---
-    dataSheetData.push(['Investments']);
-    const investmentCategories = ['PPF', 'RD', 'MF', 'Equity', 'Gold', 'Other'];
-    investmentCategories.forEach(cat => {
-      const catInvestments = investmentDetails.filter(inv => inv.category?.toLowerCase().includes(cat.toLowerCase()));
-      const total = catInvestments.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-      dataSheetData.push([cat, total > 0 ? total : '']);
+    // --- INVESTMENTS (from combined list) ---
+    dataSheetData.push(['INVESTMENT DETAILS']);
+    dataSheetData.push(['Member', 'Category', 'Annual Amount', 'Up to Year', 'Source']);
+    combinedInvestments.forEach(inv => {
+      const memberName = members.find(m => m.id === inv.member_id)?.name || '';
+      const categoryLabel = getCategoryLabel(inv.category) || inv.category || 'Other';
+      const source = inv.isFromIncome ? 'From Income' : 'Direct Investment';
+      dataSheetData.push([memberName, categoryLabel, Math.round(inv.annual_amount || 0), inv.upto_year || '', source]);
+    });
+    dataSheetData.push([]);
+    
+    // --- INVESTMENT SUMMARY ---
+    dataSheetData.push(['INVESTMENT SUMMARY BY CATEGORY']);
+    const investmentByCategory = {};
+    combinedInvestments.forEach(inv => {
+      const cat = getCategoryLabel(inv.category) || 'Other';
+      if (!investmentByCategory[cat]) investmentByCategory[cat] = 0;
+      investmentByCategory[cat] += parseFloat(inv.annual_amount) || 0;
+    });
+    Object.entries(investmentByCategory).forEach(([cat, total]) => {
+      dataSheetData.push([cat, Math.round(total)]);
     });
 
     const dataSheet = XLSX.utils.aoa_to_sheet(dataSheetData);
