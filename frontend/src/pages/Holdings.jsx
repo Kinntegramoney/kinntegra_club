@@ -968,7 +968,7 @@ export default function Holdings() {
 
   const handleClientSelect = (client) => {
     setSelectedClient(client);
-    setMainTab("holdings"); // Reset to holdings tab when selecting new client
+    // Don't reset tab - preserve the current tab selection when selecting new client
     fetchClientHoldings(client.id);
   };
 
