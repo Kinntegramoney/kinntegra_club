@@ -668,12 +668,33 @@ export default function SurplusSection({ family, isReadOnly }) {
     dataSheetData.push([]);
 
     // --- EXPENSES ---
-    dataSheetData.push(['Expenses', 'Till Retirement', 'After Retirement']);
+    dataSheetData.push(['EXPENSE DETAILS']);
+    dataSheetData.push(['Member', 'Expense Category', 'Monthly Amount', 'Annual Amount', 'Inflation %', 'Up to Year', 'Post Retirement', 'Post Ret. %']);
+    expenseDetails.forEach(exp => {
+      const memberIds = exp.member_ids || [];
+      const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+      const memberNames = isFamilyExpense ? 'Family' : memberIds.map(mid => members.find(m => m.id === mid)?.name || '').join(', ');
+      
+      const monthlyAmt = parseFloat(exp.monthly_amount) || 0;
+      const annualAmt = parseFloat(exp.annual_amount) || monthlyAmt * 12;
+      const inflationPct = exp.inflation_percent ?? 5;
+      const uptoYear = exp.upto_year || '';
+      const postRet = exp.consider_post_retirement ? 'Yes' : 'No';
+      const postRetPct = exp.post_retirement_percent ?? 100;
+      
+      const categoryLabel = (exp.expense_type || 'other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      dataSheetData.push([memberNames, categoryLabel, Math.round(monthlyAmt), Math.round(annualAmt), `${inflationPct}%`, uptoYear, postRet, `${postRetPct}%`]);
+    });
+    dataSheetData.push([]);
+    
+    // --- EXPENSE SUMMARY ---
+    dataSheetData.push(['EXPENSE SUMMARY', 'Annual Amount']);
     const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
     expenseCategories.forEach(cat => {
       const categoryExpenses = expenseDetails.filter(e => e.expense_type === cat);
-      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount || e.monthly_amount * 12 || 0) || 0), 0);
-      dataSheetData.push([cat.replace(/_/g, ' '), totalAmount, '']);
+      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount) || (parseFloat(e.monthly_amount) * 12) || 0), 0);
+      const categoryLabel = cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      dataSheetData.push([categoryLabel, Math.round(totalAmount)]);
     });
     dataSheetData.push([]);
 
