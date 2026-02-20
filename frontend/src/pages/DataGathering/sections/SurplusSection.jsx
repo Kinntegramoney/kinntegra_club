@@ -157,7 +157,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     let total = 0;
     
     incomeDetails
-      .filter(inc => inc.member_id === memberId)
+      .filter(inc => inc.member_ids?.includes(memberId))
       .forEach(inc => {
         // Use upto_year if filled, otherwise default to member's retirement year
         const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
@@ -197,7 +197,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     // From income_details (EPF, PPF, MF, Shares) with upto_year check
     incomeDetails
-      .filter(inc => inc.member_id === memberId)
+      .filter(inc => inc.member_ids?.includes(memberId))
       .forEach(inc => {
         // Use upto_year if filled, otherwise default to member's retirement year
         const uptoYear = inc.upto_year ? parseInt(inc.upto_year) : memberRetirementYear;
