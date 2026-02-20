@@ -15,6 +15,7 @@ const INSURANCE_CATEGORIES = [
 export default function InsuranceSection({ family }) {
   const members = family?.members || [];
   const existingInsurance = family?.insurance_details || [];
+  const insurancePremiums = family?.insurance_premiums || [];
   const incomeDetails = family?.income_details || [];
 
   // Get annual income for a member from income_details
