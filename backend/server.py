@@ -26039,6 +26039,7 @@ class FamilyMemberCreate(BaseModel):
     date_of_birth: str
     relation: str  # "Primary", "Spouse", "Child", "Parent", etc.
     life_expectancy: int
+    retirement_year: Optional[int] = None
     tax_regime: Optional[str] = "New Regime"  # "Old Regime", "New Regime", "NA"
     tax_status: Optional[str] = "Resident"  # "Resident", "NRI with Indian Passport", "NRI with Foreign Passport", "Foreign Passport"
     tax_slab: str
