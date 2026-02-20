@@ -90,6 +90,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
             amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
             frequency: 'yearly',
             annual_amount: parseFloat(inc.details.annual_contribution),
+            upto_year: inc.details?.upto_year || '',
             description: 'EPF Annual Contribution (from Income)',
             isFromIncome: true,
             isReadOnly: true
@@ -105,6 +106,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
             amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
             frequency: 'yearly',
             annual_amount: parseFloat(inc.details.annual_contribution),
+            upto_year: inc.details?.upto_year || '',
             description: 'PPF Annual Contribution (from Income)',
             isFromIncome: true,
             isReadOnly: true
@@ -121,6 +123,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
             amount: sipAmount,
             frequency: 'monthly',
             annual_amount: sipAmount * 12,
+            upto_year: inc.details?.upto_year || '',
             description: inc.details?.description || inc.description || 'MF SIP (from Income)',
             isFromIncome: true,
             isReadOnly: true
@@ -136,6 +139,7 @@ export default function InvestmentSection({ family, onUpdate, isReadOnly, onRefr
             amount: parseFloat(inc.details.annual_contribution) / 12, // Monthly equivalent
             frequency: 'yearly',
             annual_amount: parseFloat(inc.details.annual_contribution),
+            upto_year: inc.details?.upto_year || '',
             description: 'Shares/PMS Annual Contribution (from Income)',
             isFromIncome: true,
             isReadOnly: true
