@@ -234,7 +234,8 @@ const INCOME_CATEGORIES = [
     icon: TrendingUp,
     color: "orange",
     fields: [
-      { key: "market_value", label: "Market Value", type: "number" }
+      { key: "market_value", label: "Market Value", type: "number" },
+      { key: "annual_contribution", label: "Annual Contribution", type: "number" }
     ]
   },
   { 
