@@ -802,6 +802,37 @@ export default function RealEstateDetails() {
     return '/broker/opportunities';
   };
 
+  // When coming from holdings with a specific client, filter to show only that client's data
+  // For clients, always filter to their own data
+  const getTargetClientId = () => {
+    if (user?.role === 'client') {
+      return user.id || user.client_id;
+    }
+    if (isFromHoldings && holdingsClientId) {
+      return holdingsClientId;
+    }
+    return null; // No filtering - show all investors
+  };
+  
+  const targetClientId = getTargetClientId();
+  
+  // Filtered investors list - when viewing from holdings or as client, only show the specific client
+  const visibleInvestors = useMemo(() => {
+    if (!opportunity?.investors) return [];
+    if (targetClientId) {
+      return opportunity.investors.filter(inv => inv.client_id === targetClientId);
+    }
+    return opportunity.investors;
+  }, [opportunity?.investors, targetClientId]);
+  
+  // Get the specific client's investor data when viewing from holdings
+  const holdingsClientInvestor = useMemo(() => {
+    if (targetClientId && opportunity?.investors) {
+      return opportunity.investors.find(inv => inv.client_id === targetClientId);
+    }
+    return null;
+  }, [opportunity?.investors, targetClientId]);
+
   if (loading) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -831,37 +862,6 @@ export default function RealEstateDetails() {
   const availableClients = clients.filter(c => !opp.investors?.some(inv => inv.client_id === c.id));
   const remainingPercentage = opp.remaining_percentage ?? (100 - (opp.invested_percentage || 0));
   const remainingAmount = opp.total_cost * remainingPercentage / 100;
-
-  // When coming from holdings with a specific client, filter to show only that client's data
-  // For clients, always filter to their own data
-  const getTargetClientId = () => {
-    if (user?.role === 'client') {
-      return user.id || user.client_id;
-    }
-    if (isFromHoldings && holdingsClientId) {
-      return holdingsClientId;
-    }
-    return null; // No filtering - show all investors
-  };
-  
-  const targetClientId = getTargetClientId();
-  
-  // Filtered investors list - when viewing from holdings or as client, only show the specific client
-  const visibleInvestors = useMemo(() => {
-    if (!opp?.investors) return [];
-    if (targetClientId) {
-      return opp.investors.filter(inv => inv.client_id === targetClientId);
-    }
-    return opp.investors;
-  }, [opp?.investors, targetClientId]);
-  
-  // Get the specific client's investor data when viewing from holdings
-  const holdingsClientInvestor = useMemo(() => {
-    if (targetClientId && opp?.investors) {
-      return opp.investors.find(inv => inv.client_id === targetClientId);
-    }
-    return null;
-  }, [opp?.investors, targetClientId]);
 
   return (
     <div className="flex h-screen bg-gray-50">
