@@ -911,6 +911,14 @@ export default function Holdings() {
     fetchClientHoldings(client.id);
   };
 
+  // Auto-fetch INR projected rates when real estate data is loaded
+  useEffect(() => {
+    if (clientRealEstate && clientRealEstate.length > 0 && !reProjectedRates) {
+      // Automatically fetch INR projected rates for accurate calculations
+      fetchRECurrencyRates('INR');
+    }
+  }, [clientRealEstate]);
+
   const handleMarkRepaid = async (cashflowId, isRepaid) => {
     try {
       const token = localStorage.getItem("token");
