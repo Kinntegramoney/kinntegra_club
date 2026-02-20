@@ -1674,9 +1674,14 @@ function AllocationSimulator({
 
   // Run simulation for an entity (family or individual member)
   const runSimulation = (entityId) => {
+    console.log('runSimulation called for:', entityId);
     const isFamily = entityId === 'family';
     const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
-    if (!allocation) return;
+    console.log('allocation:', allocation);
+    if (!allocation) {
+      console.log('No allocation found, returning');
+      return;
+    }
 
     const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
     const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
