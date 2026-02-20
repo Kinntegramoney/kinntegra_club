@@ -1282,6 +1282,23 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                       </SelectContent>
                                     </Select>
                                   </div>
+                                ) : field.type === "year" ? (
+                                  <Select 
+                                    value={item.details[field.key]?.toString() || ""} 
+                                    onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} 
+                                    disabled={isReadOnly}
+                                  >
+                                    <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200">
+                                      <SelectValue placeholder="Select Year" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                      {/* Years from current year to +50 years */}
+                                      {Array.from({length: 51}, (_, i) => {
+                                        const year = new Date().getFullYear() + i;
+                                        return <SelectItem key={year} value={year.toString()} className="text-xs">{year}</SelectItem>;
+                                      })}
+                                    </SelectContent>
+                                  </Select>
                                 ) : field.type === "date" ? (
                                   <Input
                                     type="date"
