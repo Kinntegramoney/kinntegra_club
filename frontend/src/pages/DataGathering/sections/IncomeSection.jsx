@@ -287,20 +287,42 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
     const marketValueDateStr = details.market_value_date;
     
     if (investmentAmount > 0 && marketValue > 0 && investmentDateStr && marketValueDateStr) {
+      // Parse date - supports MM/YY, MM/YYYY formats
       const parseMMYY = (mmyy) => {
-        const [month, year] = mmyy.split('/');
-        let fullYear;
-        if (year.length === 4) {
-          fullYear = parseInt(year);
-        } else {
-          fullYear = parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+        if (!mmyy || typeof mmyy !== 'string') return null;
+        
+        // Handle MM/YY or MM/YYYY format
+        if (mmyy.includes('/')) {
+          const parts = mmyy.split('/');
+          if (parts.length !== 2) return null;
+          const [month, year] = parts;
+          let fullYear;
+          if (year.length === 4) {
+            fullYear = parseInt(year);
+          } else {
+            fullYear = parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year);
+          }
+          return new Date(fullYear, parseInt(month) - 1, 1);
         }
-        return new Date(fullYear, parseInt(month) - 1, 1);
+        
+        // Try ISO format (YYYY-MM-DD)
+        if (mmyy.includes('-') && mmyy.length === 10) {
+          const d = new Date(mmyy);
+          if (!isNaN(d.getTime())) return d;
+        }
+        
+        return null;
       };
       
       try {
         const investDate = parseMMYY(investmentDateStr);
         const marketDate = parseMMYY(marketValueDateStr);
+        
+        if (!investDate || !marketDate) {
+          console.log('Failed to parse dates:', investmentDateStr, marketValueDateStr);
+          return details.xirr_return;
+        }
+        
         const days = Math.max(1, (marketDate - investDate) / (1000 * 60 * 60 * 24));
         const years = days / 365;
         
