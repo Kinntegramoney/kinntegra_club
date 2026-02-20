@@ -438,7 +438,7 @@ export default function DataGathering() {
 
         <div className="border rounded-lg overflow-hidden">
           {/* Table Header */}
-          <div className="hidden lg:grid lg:grid-cols-10 gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b">
+          <div className="hidden lg:grid gap-2 px-4 py-3 bg-gray-50 text-xs font-medium text-gray-500 border-b" style={{ gridTemplateColumns: '2fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr 0.8fr 0.6fr 0.5fr' }}>
             <span>Name</span>
             <span>DOB</span>
             <span>Relation</span>
