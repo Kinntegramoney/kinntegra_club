@@ -1361,8 +1361,16 @@ function AllocationSimulator({
       
       if (isDebtCategory && hasMaturityDate) return;
       
-      const mktValue = parseFloat(details.market_value) || parseFloat(details.current_value) || 
-                       parseFloat(details.investment_value) || 0;
+      // Check for different value fields based on category
+      let mktValue = 0;
+      if (inc.category === 'cash') {
+        // Cash In Hand uses bank_balance
+        mktValue = parseFloat(details.bank_balance) || 0;
+      } else {
+        mktValue = parseFloat(details.market_value) || parseFloat(details.current_value) || 
+                   parseFloat(details.investment_value) || parseFloat(details.balance) || 0;
+      }
+      
       if (mktValue > 0) {
         const memberIds = inc.member_ids || [];
         // For family, include all assets; for individual, include only their assets
