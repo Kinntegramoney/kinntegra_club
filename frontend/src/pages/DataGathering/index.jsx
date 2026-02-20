@@ -210,6 +210,7 @@ export default function DataGathering() {
           date_of_birth: primaryMember.dob,
           relation: "Primary",
           life_expectancy: parseInt(primaryMember.life_expectancy) || 85,
+          retirement_year: parseInt(primaryMember.retirement_year) || null,
           tax_regime: primaryMember.tax_regime,
           tax_status: primaryMember.tax_status,
           tax_slab: primaryMember.tax_slab
@@ -217,6 +218,7 @@ export default function DataGathering() {
         members: members.filter(m => !m.isPrimary).map(m => ({
           name: m.name, date_of_birth: m.dob, relation: m.relation,
           life_expectancy: parseInt(m.life_expectancy) || 85, 
+          retirement_year: parseInt(m.retirement_year) || null,
           tax_regime: m.tax_regime, tax_status: m.tax_status, tax_slab: m.tax_slab
         }))
       };
