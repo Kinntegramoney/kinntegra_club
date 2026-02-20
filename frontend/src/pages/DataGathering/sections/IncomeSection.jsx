@@ -1011,6 +1011,22 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                 }
               }
             }
+            
+            // PPF, EPF, Shares/PMS: Auto-calculate monthly from annual contribution
+            if (["ppf", "epf", "shares_pms"].includes(category)) {
+              if (field === "annual_contribution") {
+                const annualAmount = parseFloat(value || 0);
+                newDetails.monthly_contribution = annualAmount > 0 ? Math.round(annualAmount / 12 * 100) / 100 : 0;
+              }
+            }
+            
+            // Mutual Fund: Auto-calculate annual from monthly SIP amount
+            if (category === "mutual_fund") {
+              if (field === "sip_amount") {
+                const monthlyAmount = parseFloat(value || 0);
+                newDetails.annual_sip_amount = monthlyAmount > 0 ? Math.round(monthlyAmount * 12) : 0;
+              }
+            }
           }
           
           return { ...item, memberId: newMemberId, details: newDetails, isModified: !item.isNew };
