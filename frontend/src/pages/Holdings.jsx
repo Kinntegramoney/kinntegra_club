@@ -2589,7 +2589,7 @@ export default function Holdings() {
                                                 {schedule.map((milestone, i) => {
                                                   const amt = (milestone.percentage / 100) * investmentAmount;
                                                   const isPaid = i < (property.payments_completed || 0);
-                                                  const rate = getProjectedRateForDate(milestone.date);
+                                                  const rate = getRateForDate(milestone.date);
                                                   return (
                                                     <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''}`}>
                                                       <td className="py-1.5">{new Date(milestone.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
