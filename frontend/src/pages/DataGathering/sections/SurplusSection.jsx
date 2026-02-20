@@ -387,6 +387,71 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   const goalsByYear = getGoalsByYear();
 
+  // Get maturities by year from income details (Insurance, FD, PPF, EPF, Bonds, etc.)
+  const getMaturitiesByYear = () => {
+    const maturities = {};
+    // Initialize all years
+    for (let y = currentYear; y <= endYear; y++) {
+      maturities[y] = { total: 0, details: [] };
+    }
+    
+    incomeDetails.forEach(inc => {
+      const details = inc.details || {};
+      let maturityYear = null;
+      let maturityValue = 0;
+      let maturityType = '';
+      
+      // Parse maturity date
+      if (details.maturity_date) {
+        const dateStr = details.maturity_date;
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          const year = parts[1] || parts[0];
+          maturityYear = year.length === 4 ? parseInt(year) : (parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year));
+        } else if (dateStr.includes('-')) {
+          maturityYear = new Date(dateStr).getFullYear();
+        }
+      } else if (details.maturity_year) {
+        maturityYear = parseInt(details.maturity_year);
+      }
+      
+      // Get maturity value
+      maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 
+                     parseFloat(details.expected_maturity) || parseFloat(details.maturity_corpus) || 0;
+      
+      // Calculate maturity value if not provided
+      if (maturityYear && maturityValue === 0) {
+        const investmentVal = parseFloat(details.investment_value) || parseFloat(details.investment_amount) || 0;
+        const interestRate = parseFloat(details.interest_rate) || parseFloat(details.expected_return) || 0;
+        const tenureYears = maturityYear - currentYear;
+        if (investmentVal > 0 && tenureYears > 0) {
+          maturityValue = investmentVal * Math.pow(1 + interestRate / 100, tenureYears);
+        }
+      }
+      
+      // Add to maturities if valid
+      if (maturityYear && maturityValue > 0 && maturities[maturityYear]) {
+        maturityType = inc.category === 'fd' ? 'FD' : inc.category === 'bond' ? 'Bond' :
+                      inc.category === 'ppf' ? 'PPF' : inc.category === 'rd_pis' ? 'RD' :
+                      inc.category === 'insurance_income' ? 'Insurance' : inc.category === 'nps' ? 'NPS' :
+                      inc.category === 'epf' ? 'EPF' : inc.category === 'gratuity' ? 'Gratuity' :
+                      inc.category === 'mutual_fund' ? 'MF' : 'Other';
+        
+        maturities[maturityYear].total += maturityValue;
+        maturities[maturityYear].details.push({ 
+          type: maturityType, 
+          category: inc.category, 
+          value: maturityValue, 
+          memberIds: inc.member_ids || [], 
+          description: details.description || '' 
+        });
+      }
+    });
+    return maturities;
+  };
+
+  const maturitiesByYear = getMaturitiesByYear();
+
   // Calculate projected member income for a year
   const getProjectedMemberIncome = (memberId, year) => {
     const info = getMemberIncomeInfo(memberId);
