@@ -142,42 +142,114 @@ export default function SurplusSection({ family, isReadOnly }) {
     return memberExpenses;
   };
 
-  // Get member investments from investment_details
+  // Build combined investments list (same logic as InvestmentSection)
+  const getCombinedInvestments = () => {
+    const allInvestments = [];
+    
+    // Add dedicated investments from investment_details
+    if (investmentDetails && investmentDetails.length > 0) {
+      investmentDetails.forEach(inv => {
+        allInvestments.push({
+          id: inv.id,
+          category: inv.category,
+          member_id: inv.member_id,
+          amount: inv.amount || 0,
+          frequency: inv.frequency || "monthly",
+          annual_amount: inv.annual_amount || 0,
+          upto_year: inv.upto_year || "",
+          isFromIncome: false
+        });
+      });
+    }
+    
+    // Extract investments from Income section (EPF, PPF, MF, Shares)
+    if (incomeDetails && incomeDetails.length > 0) {
+      incomeDetails.forEach(inc => {
+        const memberId = inc.member_ids?.[0] || inc.member_id;
+        const details = inc.details || {};
+        
+        // EPF - Annual Contribution
+        if (inc.category === 'epf' && details.annual_contribution > 0) {
+          allInvestments.push({
+            id: `income_epf_${inc.id}`,
+            category: 'epf',
+            member_id: memberId,
+            annual_amount: parseFloat(details.annual_contribution),
+            upto_year: details.upto_year || '',
+            isFromIncome: true
+          });
+        }
+        
+        // PPF - Annual Contribution
+        if (inc.category === 'ppf' && details.annual_contribution > 0) {
+          allInvestments.push({
+            id: `income_ppf_${inc.id}`,
+            category: 'ppf',
+            member_id: memberId,
+            annual_amount: parseFloat(details.annual_contribution),
+            upto_year: details.upto_year || '',
+            isFromIncome: true
+          });
+        }
+        
+        // Mutual Fund - SIP Amount
+        if (inc.category === 'mutual_fund' && (details.sip_amount > 0 || details.annual_amount > 0)) {
+          const sipAmount = parseFloat(details.sip_amount || 0);
+          const annualAmt = parseFloat(details.annual_amount) || (sipAmount * 12);
+          allInvestments.push({
+            id: `income_sip_${inc.id}`,
+            category: 'mutual_fund_equity',
+            member_id: memberId,
+            annual_amount: annualAmt,
+            upto_year: details.upto_year || '',
+            isFromIncome: true
+          });
+        }
+        
+        // Shares / PMS - Annual Contribution
+        if (inc.category === 'shares_pms' && details.annual_contribution > 0) {
+          allInvestments.push({
+            id: `income_shares_${inc.id}`,
+            category: 'stocks',
+            member_id: memberId,
+            annual_amount: parseFloat(details.annual_contribution),
+            upto_year: details.upto_year || '',
+            isFromIncome: true
+          });
+        }
+      });
+    }
+    
+    return allInvestments;
+  };
+  
+  const combinedInvestments = getCombinedInvestments();
+
+  // Get member investments from combined list
   const getMemberBaseInvestments = (memberId) => {
-    return investmentDetails
+    return combinedInvestments
       .filter(inv => inv.member_id === memberId)
       .reduce((sum, inv) => sum + (parseFloat(inv.annual_amount) || 0), 0);
   };
 
-  // Get member contribution investments from income_details (EPF, PPF, MF, Shares)
+  // Get member contribution investments considering upto_year
   const getMemberContributionInvestments = (memberId, year) => {
     const targetYear = parseInt(year);
     const memberInfo = getMemberIncomeInfo(memberId);
     const memberRetirementYear = memberInfo.retirementYear;
-    let total = 0;
     
-    incomeDetails
-      .filter(inc => inc.member_ids?.includes(memberId))
-      .forEach(inc => {
-        const details = inc.details || {};
+    return combinedInvestments
+      .filter(inv => inv.member_id === memberId)
+      .reduce((sum, inv) => {
         // Use upto_year if filled, otherwise default to member's retirement year
-        const uptoYear = details.upto_year ? parseInt(details.upto_year) : memberRetirementYear;
+        const uptoYear = inv.upto_year ? parseInt(inv.upto_year) : memberRetirementYear;
         
         // Only include if year is within upto_year
         if (targetYear <= uptoYear) {
-          if (inc.category === 'epf') {
-            total += parseFloat(details.annual_contribution) || 0;
-          } else if (inc.category === 'ppf') {
-            total += parseFloat(details.annual_contribution) || 0;
-          } else if (inc.category === 'mutual_fund') {
-            total += parseFloat(details.annual_amount) || (parseFloat(details.sip_amount) * 12) || 0;
-          } else if (inc.category === 'shares_pms') {
-            total += parseFloat(details.annual_contribution) || 0;
-          }
+          return sum + (parseFloat(inv.annual_amount) || 0);
         }
-      });
-    
-    return total;
+        return sum;
+      }, 0);
   };
 
   // Get member investment breakdown by category
@@ -187,37 +259,16 @@ export default function SurplusSection({ family, isReadOnly }) {
     const memberInfo = getMemberIncomeInfo(memberId);
     const memberRetirementYear = memberInfo.retirementYear;
     
-    // From investment_details
-    investmentDetails
+    combinedInvestments
       .filter(inv => inv.member_id === memberId)
       .forEach(inv => {
-        const cat = inv.category || 'Other';
-        if (!breakdown[cat]) breakdown[cat] = 0;
-        breakdown[cat] += parseFloat(inv.annual_amount) || 0;
-      });
-    
-    // From income_details (EPF, PPF, MF, Shares) with upto_year check
-    incomeDetails
-      .filter(inc => inc.member_ids?.includes(memberId))
-      .forEach(inc => {
-        const details = inc.details || {};
         // Use upto_year if filled, otherwise default to member's retirement year
-        const uptoYear = details.upto_year ? parseInt(details.upto_year) : memberRetirementYear;
+        const uptoYear = inv.upto_year ? parseInt(inv.upto_year) : memberRetirementYear;
         
         if (targetYear <= uptoYear) {
-          if (inc.category === 'epf') {
-            if (!breakdown['EPF']) breakdown['EPF'] = 0;
-            breakdown['EPF'] += parseFloat(details.annual_contribution) || 0;
-          } else if (inc.category === 'ppf') {
-            if (!breakdown['PPF']) breakdown['PPF'] = 0;
-            breakdown['PPF'] += parseFloat(details.annual_contribution) || 0;
-          } else if (inc.category === 'mutual_fund') {
-            if (!breakdown['MF SIP']) breakdown['MF SIP'] = 0;
-            breakdown['MF SIP'] += parseFloat(details.annual_amount) || (parseFloat(details.sip_amount) * 12) || 0;
-          } else if (inc.category === 'shares_pms') {
-            if (!breakdown['Shares/PMS']) breakdown['Shares/PMS'] = 0;
-            breakdown['Shares/PMS'] += parseFloat(details.annual_contribution) || 0;
-          }
+          const cat = inv.category || 'Other';
+          if (!breakdown[cat]) breakdown[cat] = 0;
+          breakdown[cat] += parseFloat(inv.annual_amount) || 0;
         }
       });
     
