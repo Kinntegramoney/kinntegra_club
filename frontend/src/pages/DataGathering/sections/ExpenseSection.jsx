@@ -537,14 +537,15 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                       onChange={e => {
                                         const monthly = e.target.value;
                                         updateItem(cat.value, item.id, "monthly_amount", monthly);
+                                        updateItem(cat.value, item.id, "amount_source", monthly && parseFloat(monthly) > 0 ? "monthly" : null);
                                         if (monthly && parseFloat(monthly) > 0) {
                                           updateItem(cat.value, item.id, "annual_amount", (parseFloat(monthly) * 12).toString());
                                         } else {
                                           updateItem(cat.value, item.id, "annual_amount", "");
                                         }
                                       }} 
-                                      className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.annual_amount && parseFloat(item.details.annual_amount) > 0 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
-                                      disabled={isReadOnly || (item.details.annual_amount && parseFloat(item.details.annual_amount) > 0)} 
+                                      className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.amount_source === 'annual' ? 'bg-gray-100' : 'bg-white'}`}
+                                      disabled={isReadOnly || item.details.amount_source === 'annual'} 
                                     />
                                   </div>
                                 </div>
@@ -558,14 +559,15 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                       onChange={e => {
                                         const annual = e.target.value;
                                         updateItem(cat.value, item.id, "annual_amount", annual);
+                                        updateItem(cat.value, item.id, "amount_source", annual && parseFloat(annual) > 0 ? "annual" : null);
                                         if (annual && parseFloat(annual) > 0) {
                                           updateItem(cat.value, item.id, "monthly_amount", (parseFloat(annual) / 12).toFixed(0));
                                         } else {
                                           updateItem(cat.value, item.id, "monthly_amount", "");
                                         }
                                       }} 
-                                      className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.monthly_amount && parseFloat(item.details.monthly_amount) > 0 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
-                                      disabled={isReadOnly || (item.details.monthly_amount && parseFloat(item.details.monthly_amount) > 0)} 
+                                      className={`h-8 w-full text-xs border-gray-200 pl-5 ${item.details.amount_source === 'monthly' ? 'bg-gray-100' : 'bg-white'}`}
+                                      disabled={isReadOnly || item.details.amount_source === 'monthly'} 
                                     />
                                   </div>
                                 </div>
