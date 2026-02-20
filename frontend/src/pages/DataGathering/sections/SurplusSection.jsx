@@ -494,12 +494,37 @@ export default function SurplusSection({ family, isReadOnly }) {
         
         // Check for maturity dates/years in different income types
         if (details.maturity_date) {
-          maturityYear = new Date(details.maturity_date).getFullYear();
+          // Handle different date formats
+          const dateStr = details.maturity_date;
+          if (dateStr.includes('/')) {
+            // MM/YY or MM/YYYY format
+            const parts = dateStr.split('/');
+            const year = parts[1];
+            maturityYear = year.length === 4 ? parseInt(year) : (parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year));
+          } else {
+            maturityYear = new Date(dateStr).getFullYear();
+          }
         } else if (details.maturity_year) {
           maturityYear = parseInt(details.maturity_year);
         }
         
-        maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 0;
+        // Get maturity value from various field names
+        maturityValue = parseFloat(details.maturity_value) || 
+                       parseFloat(details.maturity_amount) || 
+                       parseFloat(details.expected_maturity) ||
+                       parseFloat(details.maturity_corpus) || 0;
+        
+        // For categories without explicit maturity value, calculate from investment
+        if (maturityYear && maturityValue === 0) {
+          // Try to calculate maturity value from investment + interest
+          const investmentVal = parseFloat(details.investment_value) || parseFloat(details.investment_amount) || 0;
+          const interestRate = parseFloat(details.interest_rate) || parseFloat(details.expected_return) || 0;
+          const tenureYears = maturityYear - currentYear;
+          
+          if (investmentVal > 0 && tenureYears > 0) {
+            maturityValue = investmentVal * Math.pow(1 + interestRate / 100, tenureYears);
+          }
+        }
         
         if (maturityYear && maturityValue > 0 && maturities[maturityYear]) {
           maturityType = inc.category === 'fd' ? 'FD Maturity' :
@@ -508,6 +533,9 @@ export default function SurplusSection({ family, isReadOnly }) {
                         inc.category === 'rd_pis' ? 'RD Maturity' :
                         inc.category === 'insurance_income' ? 'Insurance Maturity' :
                         inc.category === 'nps' ? 'NPS Maturity' :
+                        inc.category === 'epf' ? 'EPF Maturity' :
+                        inc.category === 'gratuity' ? 'Gratuity' :
+                        inc.category === 'mutual_fund' ? 'MF Maturity' :
                         'Other Maturity';
           
           maturities[maturityYear].total += maturityValue;
@@ -515,7 +543,8 @@ export default function SurplusSection({ family, isReadOnly }) {
             type: maturityType,
             category: inc.category,
             value: maturityValue,
-            memberIds: inc.member_ids || []
+            memberIds: inc.member_ids || [],
+            description: details.description || ''
           });
         }
       });
