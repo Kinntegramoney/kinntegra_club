@@ -291,7 +291,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     const business = info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
     const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, yearsFromNow);
     
-    return salary + business + rental + info.basePension;
+    return salary + business + rental + info.basePension + (info.baseMutualFund || 0);
   };
 
   // Calculate projected member expenses for a year
