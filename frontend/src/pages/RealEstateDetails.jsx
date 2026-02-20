@@ -46,6 +46,7 @@ export default function RealEstateDetails() {
   const [searchParams] = useSearchParams();
   const isFromHoldings = searchParams.get('from') === 'holdings';
   const holdingsClientId = searchParams.get('client_id'); // Client ID when coming from holdings
+  const holdingsTab = searchParams.get('tab'); // Tab to return to (real-estate or bonds)
   const [user, setUser] = useState(null);
   const [opportunity, setOpportunity] = useState(null);
   const [clients, setClients] = useState([]);
