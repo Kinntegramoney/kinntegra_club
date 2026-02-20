@@ -682,7 +682,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     membersData.push(['Proceed Option:', family?.proceed_option || '']);
     
     const membersSheet = XLSX.utils.aoa_to_sheet(membersData);
-    membersSheet['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }];
+    membersSheet['!cols'] = autoFitColumns(membersData);
     membersSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
     XLSX.utils.book_append_sheet(wb, membersSheet, "1. Members");
 
