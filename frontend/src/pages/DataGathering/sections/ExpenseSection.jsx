@@ -204,7 +204,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     added.forEach(cat => { expanded[cat] = true; });
     setExpandedCategories(expanded);
     setInitialLoadDone(true);
-  }, [family?.id]);
+  }, [family?.id, lastFamilyId, initialLoadDone, existingExpenses, existingLiabilities, existingInsurance]);
 
   const getCategoryConfig = (val) => EXPENSE_CATEGORIES.find(c => c.value === val);
 
