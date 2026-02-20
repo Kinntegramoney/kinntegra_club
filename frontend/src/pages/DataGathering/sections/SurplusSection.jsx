@@ -1171,33 +1171,6 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     // MATURITIES Section
     cashFlowData.push(['=== MATURITIES / CASH INFLOWS ===']);
-    // Group maturities by type
-    const maturityTypes = {};
-    Object.values(maturitiesByYear).forEach(yearData => {
-      yearData.details.forEach(d => {
-        if (!maturityTypes[d.type]) maturityTypes[d.type] = {};
-      });
-    });
-    Object.keys(maturityTypes).forEach(type => {
-      cashFlowData.push([type, '', ...allYears.map(y => {
-        const yearMaturities = maturitiesByYear[y]?.details || [];
-        return Math.round(yearMaturities.filter(d => d.type === type).reduce((sum, d) => sum + d.value, 0));
-      })]);
-    });
-    cashFlowData.push(['TOTAL MATURITIES', '', ...allYears.map(y => Math.round(maturitiesByYear[y]?.total || 0))]);
-    cashFlowData.push([]);
-    
-    // NET SAVINGS
-    cashFlowData.push(['=== SUMMARY ===']);
-    cashFlowData.push(['NET SAVINGS (Income - Expenses - Goals)', '', ...allYears.map(y => {
-      const totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, y.toString()), 0);
-      const totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, y.toString()), 0);
-      const totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, y.toString()), 0);
-    })]);
-    cashFlowData.push([]);
-    
-    // MATURITIES Section
-    cashFlowData.push(['=== MATURITIES / CASH INFLOWS ===']);
     const maturityTypes = {};
     Object.values(maturitiesByYear).forEach(yearData => {
       yearData.details.forEach(d => {
