@@ -398,7 +398,7 @@ export default function UntaggedTrades() {
                         <thead className="bg-gray-50 border-b">
                           <tr>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client</th>
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Bond</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">NCD</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
                             <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Units</th>
                             <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
@@ -460,7 +460,7 @@ export default function UntaggedTrades() {
                         <thead className="bg-gray-50 border-b">
                           <tr>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Client</th>
-                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Bond</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">NCD</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
                             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">UCC / Portfolio</th>
                             <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
@@ -541,7 +541,7 @@ export default function UntaggedTrades() {
                   <span className="font-medium">{taggingTrade.client_name}</span>
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-500">Bond:</span>
+                  <span className="text-gray-500">NCD:</span>
                   <span className="font-medium">{taggingTrade.bond_name}</span>
                 </div>
                 <div className="flex justify-between mb-1">

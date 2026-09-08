@@ -40,7 +40,7 @@ const ReinvestmentTradesView = ({ logs, groupByCashflow, formatCurrency, getStat
       <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-purple-600" />
-          <span className="font-medium text-gray-800">Reinvestment Trades</span>
+          <span className="font-medium text-gray-800">Reinv Logs</span>
           <span className="text-xs text-gray-500">({logs.length} entries)</span>
         </div>
       </div>
@@ -61,7 +61,7 @@ const ReinvestmentTradesView = ({ logs, groupByCashflow, formatCurrency, getStat
             </tr>
             <tr className="bg-gray-50">
               <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date</th>
-              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+              <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">NCD Name</th>
               <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
               <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Inv. Date</th>
               <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
@@ -199,7 +199,7 @@ const OtherTradesView = ({ logs, formatCurrency, getTagLabel, getStatusBadge, fo
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Bond</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">NCD</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">Maturity Date</th>
               <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">Amount</th>
               <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">Tag</th>
@@ -326,7 +326,7 @@ const InvestmentLogsView = ({ logs, formatCurrency, getStatusBadge }) => {
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-600 w-12">Sr No</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">NCD Name</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">UCC</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
@@ -543,7 +543,7 @@ export default function ClientLogs() {
                     }`}
                   >
                     <TrendingUp className="h-4 w-4" />
-                    Reinvestment Trades
+                    Reinv Logs
                     <Badge className={`${tradeSubTab === "reinvestment" ? "bg-purple-200 text-purple-800" : "bg-gray-200 text-gray-600"} text-xs`}>
                       {filteredTradeLogs.filter(l => l.cashflow_id).length}
                     </Badge>

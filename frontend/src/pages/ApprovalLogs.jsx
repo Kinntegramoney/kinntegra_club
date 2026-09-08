@@ -27,7 +27,7 @@ const ACTION_CONFIG = {
   submitted: { icon: Send, color: "text-blue-600", bg: "bg-blue-50", label: "Submitted" },
   broker_approved: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", label: "Broker Approved" },
   broker_rejected: { icon: XCircle, color: "text-red-600", bg: "bg-red-50", label: "Broker Rejected" },
-  client_approved: { icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", label: "Client Approved" },
+  client_approved: { icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50", label: "Investor Approved" },
   client_rejected: { icon: XCircle, color: "text-orange-600", bg: "bg-orange-50", label: "Client Rejected" },
   kinntegra_prepared: { icon: Building2, color: "text-purple-600", bg: "bg-purple-50", label: "API Prepared" },
   kinntegra_submitted: { icon: CheckCircle, color: "text-etihad-maroon-600", bg: "bg-indigo-50", label: "API Submitted" },

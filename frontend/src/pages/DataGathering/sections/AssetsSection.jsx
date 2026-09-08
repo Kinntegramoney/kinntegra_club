@@ -12,7 +12,7 @@ const ASSET_CATEGORIES = [
   { value: "gratuity", label: "Gratuity", icon: Wallet, investmentKey: null, marketKey: "market_value" },
   { value: "fd", label: "Fixed Deposits", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
   { value: "rd_pis", label: "RD / PIS", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_value" },
-  { value: "bond", label: "Bonds", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
+  { value: "bond", label: "NCD", icon: Landmark, investmentKey: "investment_value", marketKey: "maturity_amount" },
   { value: "insurance_income", label: "Insurance", icon: Building, investmentKey: "total_paid", marketKey: "maturity_amount" },
   { value: "commodities", label: "Commodities", icon: Gem, investmentKey: null, marketKey: ["market_value", "current_value"] },
   { value: "shares_pms", label: "Shares / PMS", icon: TrendingUp, investmentKey: null, marketKey: "market_value" },

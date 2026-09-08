@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { X, Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import { X, Upload, FileText, Trash2, Loader2, Image, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,12 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
   const [presentations, setPresentations] = useState([]);
   const [uploadingPresentations, setUploadingPresentations] = useState(false);
   const [deletingPresentation, setDeletingPresentation] = useState(null);
+  
+  // Image upload state
+  const [images, setImages] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(null);
+  const [imagePreviewIndex, setImagePreviewIndex] = useState(0);
 
   // Prefill form with bond data
   useEffect(() => {
@@ -55,8 +61,84 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
         calculator_file: null
       });
       setPresentations(bond.presentations || []);
+      setImages(bond.images || []);
     }
   }, [bond]);
+
+  // Upload images
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    
+    const validFiles = Array.from(files).filter(f => allowedTypes.includes(f.type));
+    
+    if (validFiles.length === 0) {
+      toast.error("Please upload JPEG, PNG, WebP, or GIF images only");
+      return;
+    }
+    
+    if (images.length + validFiles.length > 20) {
+      toast.error(`Maximum 20 images allowed. Currently have ${images.length}`);
+      return;
+    }
+    
+    setUploadingImages(true);
+    try {
+      const token = localStorage.getItem("token");
+      const formDataUpload = new FormData();
+      validFiles.forEach(file => formDataUpload.append('files', file));
+      
+      const response = await axios.post(`${API}/bonds/${bond.id}/images`, formDataUpload, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Fetch updated bond to get new images with data
+      const bondResponse = await axios.get(`${API}/bonds/${bond.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setImages(bondResponse.data.images || []);
+      toast.success(`Uploaded ${response.data.image_ids.length} image(s)`);
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast.error(error.response?.data?.detail || "Failed to upload images");
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  // Delete image
+  const handleDeleteImage = async (imageId) => {
+    setDeletingImage(imageId);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/bonds/${bond.id}/images/${imageId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setImages(images.filter(img => img.id !== imageId));
+      if (imagePreviewIndex >= images.length - 1) {
+        setImagePreviewIndex(Math.max(0, images.length - 2));
+      }
+      toast.success("Image deleted");
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete image");
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
+  // Get image source (handles base64 format)
+  const getImageSrc = (img) => {
+    if (!img) return '';
+    if (img.data) return `data:${img.content_type || 'image/jpeg'};base64,${img.data}`;
+    if (img.url) return `${BACKEND_URL}${img.url}`;
+    return '';
+  };
 
   // Upload presentations
   const handlePresentationUpload = async (files) => {
@@ -231,7 +313,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
             <h3 className="font-medium text-gray-700 border-b pb-2">Basic Information</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="name">Bond Name *</Label>
+                <Label htmlFor="name">NCD Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -241,7 +323,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                 />
               </div>
               <div>
-                <Label htmlFor="bond_code">Bond Code</Label>
+                <Label htmlFor="bond_code">NCD Code</Label>
                 <Input
                   id="bond_code"
                   value={formData.bond_code}
@@ -535,6 +617,131 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* Images Upload Section */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-700 border-b pb-2">NCD Images</h3>
+            <div className="space-y-3">
+              {/* Image Preview Carousel */}
+              {images.length > 0 && (
+                <div className="relative">
+                  <div className="relative h-48 bg-gray-100 rounded-lg overflow-hidden">
+                    <img 
+                      src={getImageSrc(images[imagePreviewIndex])}
+                      alt={`Bond image ${imagePreviewIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Navigation Arrows */}
+                    {images.length > 1 && (
+                      <>
+                        <button 
+                          type="button"
+                          onClick={() => setImagePreviewIndex((prev) => (prev - 1 + images.length) % images.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setImagePreviewIndex((prev) => (prev + 1) % images.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                      </>
+                    )}
+                    {/* Image Counter */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                      {imagePreviewIndex + 1} / {images.length}
+                    </div>
+                    {/* Delete Current Image */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteImage(images[imagePreviewIndex].id)}
+                      disabled={deletingImage === images[imagePreviewIndex].id}
+                      className="absolute top-2 right-2 h-8 w-8 p-0"
+                    >
+                      {deletingImage === images[imagePreviewIndex].id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Image Thumbnails */}
+                  {images.length > 1 && (
+                    <div className="flex gap-2 mt-2 overflow-x-auto pb-2">
+                      {images.map((img, idx) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          onClick={() => setImagePreviewIndex(idx)}
+                          className={`relative flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${
+                            idx === imagePreviewIndex ? 'border-etihad-gold-500' : 'border-transparent hover:border-gray-300'
+                          }`}
+                        >
+                          <img 
+                            src={getImageSrc(img)}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Upload New Images */}
+              <div>
+                <Label htmlFor="image_files">
+                  {images.length > 0 ? 'Add More Images' : 'Upload Images'}
+                  <span className="text-gray-400 font-normal ml-2">
+                    ({images.length}/20)
+                  </span>
+                </Label>
+                <div className="mt-1">
+                  <input
+                    id="image_files"
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                    className="hidden"
+                    data-testid="bond-image-upload-input"
+                  />
+                  <label 
+                    htmlFor="image_files"
+                    className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                      uploadingImages 
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
+                        : 'border-gray-300 hover:border-teal-400 hover:bg-teal-50'
+                    }`}
+                  >
+                    {uploadingImages ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Image className="h-5 w-5 text-gray-400" />
+                        <span className="text-sm text-gray-600">
+                          Click to upload images (JPEG, PNG, WebP, GIF)
+                        </span>
+                      </>
+                    )}
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Max 20 images. Supported: JPEG, PNG, WebP, GIF
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Description */}
           <div className="space-y-4">
             <h3 className="font-medium text-gray-700 border-b pb-2">Additional Info</h3>
@@ -545,7 +752,7 @@ export default function EditBondModal({ bond, onClose, onSuccess }) {
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 rows={3}
-                placeholder="Enter bond description or notes..."
+                placeholder="Enter NCD description or notes..."
               />
             </div>
           </div>

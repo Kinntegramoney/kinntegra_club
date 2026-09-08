@@ -22,6 +22,9 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     // Basic Info
     building_name: opportunity?.building_name || "",
     unit_no: opportunity?.unit_no || "",
+    deal_id: opportunity?.deal_id || "",
+    dealIdTouched: !!opportunity?.deal_id,
+    property_type: opportunity?.property_type || "off_plan",
     
     // Pricing (AED)
     unit_price: opportunity?.unit_price || "",
@@ -103,8 +106,28 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     return paymentSchedule.reduce((sum, p) => sum + (parseFloat(p.percentage) || 0), 0);
   };
 
+  const deriveDealId = (bn, un) => {
+    const firstWord = String(bn || "").trim().split(/\s+/)[0] || "";
+    const base = firstWord.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 4) || "RE";
+    const unit = String(un || "").trim().replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "NA";
+    return `${base}-${unit}`;
+  };
+
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      // Auto-populate Deal ID from building_name + unit_no unless user has edited it.
+      if (!prev.dealIdTouched && (field === "building_name" || field === "unit_no")) {
+        next.deal_id = deriveDealId(
+          field === "building_name" ? value : prev.building_name,
+          field === "unit_no" ? value : prev.unit_no,
+        );
+      }
+      if (field === "deal_id") {
+        next.dealIdTouched = true;
+      }
+      return next;
+    });
   };
 
   // Payment Schedule handlers
@@ -175,7 +198,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
     
     // Validation
     if (!formData.building_name || !formData.unit_no || !formData.unit_price || 
-        !formData.total_area || !formData.carpet_area || !formData.floor) {
+        !formData.total_area || !formData.carpet_area || !formData.floor ||
+        !formData.developer_name) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -204,6 +228,8 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
       const payload = {
         building_name: formData.building_name,
         unit_no: formData.unit_no,
+        deal_id: (formData.deal_id || "").trim() || undefined,
+        property_type: formData.property_type || "off_plan",
         unit_price: parseFloat(formData.unit_price),
         dld_fee_percentage: parseFloat(formData.dld_fee_percentage) || 4,  // DLD as percentage
         admin_fee: parseFloat(formData.admin_fee) || 0,  // Admin as absolute
@@ -318,7 +344,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-800">
-                {isEditing ? "Edit Property" : "Add Off-Plan Property"}
+                {isEditing ? "Edit Property" : "Add Property"}
               </h2>
               <p className="text-sm text-gray-500">Fill in the property details</p>
             </div>
@@ -374,6 +400,42 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="deal_id">Deal ID{isEditing ? "" : " (auto-generated, editable)"}</Label>
+                  <Input
+                    id="deal_id"
+                    data-testid="deal-id-input"
+                    value={formData.deal_id}
+                    onChange={(e) => handleChange("deal_id", e.target.value.toUpperCase())}
+                    placeholder="e.g., HYDE-1802"
+                    readOnly={isEditing}
+                    className={isEditing ? "bg-gray-100" : ""}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used with PAN to match bulk invoice / payment / receipt uploads.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="property_type">Property Type *</Label>
+                  <Select
+                    value={formData.property_type}
+                    onValueChange={(v) => handleChange("property_type", v)}
+                  >
+                    <SelectTrigger data-testid="property-type-select"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off_plan">Off-Plan</SelectItem>
+                      <SelectItem value="ready">Ready</SelectItem>
+                      <SelectItem value="secondary">Secondary</SelectItem>
+                      <SelectItem value="rental">Rental</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="unit_type">Unit Type *</Label>
@@ -417,7 +479,7 @@ export default function CreateRealEstateModal({ opportunity, onClose, onSuccess 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="developer_name">Developer</Label>
+                  <Label htmlFor="developer_name">Developer *</Label>
                   <Input
                     id="developer_name"
                     value={formData.developer_name}

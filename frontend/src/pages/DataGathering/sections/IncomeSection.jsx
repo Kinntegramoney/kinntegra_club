@@ -154,7 +154,7 @@ const INCOME_CATEGORIES = [
   },
   { 
     value: "bond", 
-    label: "Bond", 
+    label: "NCD", 
     icon: Landmark,
     color: "violet",
     fields: [

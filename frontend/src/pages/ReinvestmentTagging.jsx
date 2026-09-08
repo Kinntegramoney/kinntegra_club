@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { format, addMonths, startOfMonth, endOfMonth, subDays, addDays, isBefore } from "date-fns";
 import { 
   Tag, RefreshCw, ChevronDown, ChevronUp, Mail, Save, 
-  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar, Eye, Ban, MoreVertical, Search
+  Clock, CheckCircle, History, ArrowRight, Check, X, Plus, Minus, Pencil, Lock, Calendar, Eye, Ban, MoreVertical, Search, Trash2, Wrench, Database, FileText
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -53,7 +53,7 @@ const PORTFOLIO_OPTIONS = [
   { value: 'tax', label: 'Tax' },
   { value: 'short_term', label: 'Short Term' },
   { value: 'commodities', label: 'Commodities' },
-  { value: 'bonds', label: 'Bonds', minAmount: 1000000 }, // > 10 lakhs
+  { value: 'bonds', label: 'NCD', minAmount: 1000000 }, // > 10 lakhs
   { value: 'real_estate', label: 'Real Estate', minAmount: 2500000 }, // > 25 lakhs
   { value: 'none', label: 'None' }
 ];
@@ -94,11 +94,26 @@ export default function ReinvestmentTagging() {
   const [viewMode, setViewMode] = useState("month"); // "month" or "client"
   const [monthSubTab, setMonthSubTab] = useState("untagged"); // "untagged" or "tagged"
   
+  // Clear all tags state
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [clearingTags, setClearingTags] = useState(false);
+  
+  // Sync to logs state
+  const [syncingToLogs, setSyncingToLogs] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+  
+  // Fix data state
+  const [fixingData, setFixingData] = useState(false);
+  const [fixResult, setFixResult] = useState(null);
+  
   // Data grouped by client
   const [untaggedPast, setUntaggedPast] = useState([]);
   const [untaggedUpcoming, setUntaggedUpcoming] = useState([]);
   const [taggedPast, setTaggedPast] = useState([]);
   const [taggedUpcoming, setTaggedUpcoming] = useState([]);
+  // Historical entries (already cited in Ncd_Repayments) — read-only, shown
+  // in a muted colour for context. No tagging UI on these rows.
+  const [historicalEntries, setHistoricalEntries] = useState([]);
   
   // Expanded clients
   const [expandedClients, setExpandedClients] = useState({});
@@ -228,7 +243,7 @@ export default function ReinvestmentTagging() {
           if (!byMonth[monthKey]) {
             byMonth[monthKey] = {
               untagged: [],
-              tagged: []
+              tagged: [],
             };
           }
           
@@ -250,9 +265,46 @@ export default function ReinvestmentTagging() {
         }
       });
     });
+
+    // Merge historical (already-cited in Ncd_Repayments) into the same
+    // untagged/tagged buckets so they remain taggable. The is_historical
+    // flag drives a muted slate row colour in the renderers.
+    historicalEntries.forEach(clientGroup => {
+      if (!clientGroup.entries) return;
+      clientGroup.entries.forEach(entry => {
+        const dateField = entry.expected_date || entry.date;
+        if (!dateField) return;
+        try {
+          const d = new Date(dateField);
+          if (isNaN(d.getTime())) return;
+          const monthKey = format(d, 'yyyy-MM');
+          if (!byMonth[monthKey]) {
+            byMonth[monthKey] = { untagged: [], tagged: [] };
+          }
+          // Historical rows arrive with reinvestment_tag='historical' from
+          // the API. That keeps them separate from already-tagged user input
+          // — treat them as untagged so they appear in the regular flow.
+          const enriched = {
+            ...entry,
+            client_name: clientGroup.client_name,
+            client_id: clientGroup.client_id,
+            date: dateField,
+            is_historical: true,
+            // Reset to not_tagged so the existing "Tagged" filter logic works.
+            reinvestment_tag: entry.reinvestment_tag === 'historical' ? 'not_tagged' : entry.reinvestment_tag,
+          };
+          const isTagged = enriched.reinvestment_tag && enriched.reinvestment_tag !== 'not_tagged';
+          if (isTagged) {
+            byMonth[monthKey].tagged.push(enriched);
+          } else {
+            byMonth[monthKey].untagged.push(enriched);
+          }
+        } catch (e) { /* ignore */ }
+      });
+    });
     
     return byMonth;
-  }, [untaggedPast, untaggedUpcoming, taggedPast, taggedUpcoming]);
+  }, [untaggedPast, untaggedUpcoming, taggedPast, taggedUpcoming, historicalEntries]);
 
   // Get counts for each month
   const getMonthCounts = useMemo(() => {
@@ -369,12 +421,273 @@ export default function ReinvestmentTagging() {
       setUntaggedUpcoming(groupByClient(untaggedUpcomingItems));
       setTaggedPast(groupByClient(taggedPastItems));
       setTaggedUpcoming(groupByClient(taggedUpcomingItems));
+
+      // Historical = already-confirmed receipts from Ncd_Repayments. Group
+      // them by client just like the other buckets so the same UI render
+      // pattern applies.
+      const historicalItems = (data.historical || []).map(item => ({
+        ...item,
+        id: item.id || `hist_${item.client_id}_${item.expected_date}`,
+        is_historical: true,
+        reinvestment_tag: 'historical',
+        ucc_list: item.client_ucc_list || item.ucc_list || [],
+      }));
+      setHistoricalEntries(groupByClient(historicalItems));
       
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load reinvestment data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handler to clear all reinvestment tags
+  const handleClearAllTags = async () => {
+    setClearingTags(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.delete(`${API}/reinvestment/clear-all-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Cleared ${response.data.logs_deleted} reinvestment logs successfully`);
+      setShowClearAllDialog(false);
+      
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      console.error("Error clearing tags:", error);
+      toast.error(error.response?.data?.detail || "Failed to clear reinvestment tags");
+    } finally {
+      setClearingTags(false);
+    }
+  };
+
+  // Sync tagged entries to reinvestment_logs (moves them from untagged to tagged in logs)
+  const handleSyncToLogs = async () => {
+    if (!window.confirm("This will sync all tagged entries to the Logs page. Continue?")) {
+      return;
+    }
+    
+    setSyncingToLogs(true);
+    setSyncResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/sync-missing-logs`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setSyncResult(response.data);
+      toast.success(`Synced ${response.data.created_count} entries to Logs`);
+      
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      console.error("Error syncing to logs:", error);
+      toast.error(error.response?.data?.detail || "Failed to sync to logs");
+    } finally {
+      setSyncingToLogs(false);
+    }
+  };
+
+  // Fix data inconsistencies for Aninha's entries
+  const handleFixDataIssues = async () => {
+    if (!window.confirm("This will fix data inconsistencies for entries that were submitted to Kinntegra but showing incorrect status. Continue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    setFixResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/fix-aninha-entries`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setFixResult(response.data);
+      toast.success(`Fixed ${response.data.fixes?.length || 0} entries`);
+      
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      console.error("Error fixing data:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix data");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Comprehensive fix - sync ALL entries from Kinntegra API logs
+  const handleFixAllFromApiLogs = async () => {
+    if (!window.confirm("This will sync ALL entries from Kinntegra API logs:\n\n• Fix 'approved' → 'submitted' for entries sent to API\n• Create missing logs for entries in Kinntegra but not in local DB\n• Update untagged entries that were actually submitted\n\nThis may take a moment. Continue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    setFixResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/fix-all-from-api-logs`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setFixResult(response.data);
+      toast.success(`Synced: ${response.data.logs_created} logs created, ${response.data.cashflows_updated} cashflows updated, ${response.data.status_fixed_from_approved} status fixed`);
+      
+      // Refresh the data
+      fetchData();
+    } catch (error) {
+      console.error("Error syncing from API logs:", error);
+      toast.error(error.response?.data?.detail || "Failed to sync from API logs");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Cleanup junk entries from logs
+  const handleCleanupJunk = async () => {
+    if (!window.confirm("This will permanently DELETE junk entries (N/A client name, ₹0 amount) from the logs. Continue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/cleanup-junk-entries`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Deleted ${response.data.deleted_count} junk entries`);
+      fetchData();
+    } catch (error) {
+      console.error("Error cleaning up junk:", error);
+      toast.error(error.response?.data?.detail || "Failed to cleanup junk entries");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Fix Aninha's specific entries
+  const handleFixAninha = async () => {
+    if (!window.confirm("This will fix Aninha's entries:\n• Restore correct portfolio/UCC from Kinntegra API\n• Reset 'None' portfolio entries to pending for client approval\n\nContinue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/fix-aninha-entries`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Fixed ${response.data.fixes?.length || 0} entries for Aninha`);
+      console.log("Fix result:", response.data);
+      fetchData();
+    } catch (error) {
+      console.error("Error fixing Aninha:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix Aninha entries");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Fix entries with invalid investment dates (investment date before repayment date)
+  const handleFixInvalidInvDates = async () => {
+    if (!window.confirm("This will find and reset entries where investment date is BEFORE repayment date.\n\nThese invalid entries will be moved back to the pending section for re-tagging.\n\nContinue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/fix-invalid-investment-dates`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Fixed ${response.data.fixed_count || 0} entries with invalid investment dates`);
+      console.log("Fix result:", response.data);
+      fetchData();
+    } catch (error) {
+      console.error("Error fixing invalid dates:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix invalid investment dates");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Fix historical entries stuck in pending_reapproval - should be auto-approved
+  const handleFixHistoricalPending = async () => {
+    if (!window.confirm("This will auto-approve all historical (past-dated) entries that are stuck in 'pending_reapproval' status.\n\nContinue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/fix-pending-reapproval-historical`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Fixed ${response.data.fixed_count || 0} historical entries to approved`);
+      console.log("Fix result:", response.data);
+      fetchData();
+    } catch (error) {
+      console.error("Error fixing historical pending:", error);
+      toast.error(error.response?.data?.detail || "Failed to fix historical entries");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Delete Saidutt's March 2026 orphan entry
+  const handleDeleteSaiduttEntry = async () => {
+    if (!window.confirm("This will delete Saidutt Rajaram Kuvelkar's March 2026 entry and reset it to untagged.\n\nContinue?")) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/reinvestment/delete-saidutt-march-entry`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(`Deleted ${response.data.deleted_logs} logs and reset ${response.data.reset_cashflows} cashflows`);
+      console.log("Delete result:", response.data);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting Saidutt entry:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete entry");
+    } finally {
+      setFixingData(false);
+    }
+  };
+
+  // Delete entries by bond code and date
+  const handleDeleteByBondDate = async (bondCode, date) => {
+    const confirmMsg = `This will delete ALL entries for:\n\nBond: ${bondCode}\nDate: ${date}\n\nAre you sure?`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+    
+    setFixingData(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API}/admin/delete-cashflows-by-bond-date?bond_code=${encodeURIComponent(bondCode)}&date=${encodeURIComponent(date)}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success(response.data.message);
+      console.log("Delete result:", response.data);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting entries:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete entries");
+    } finally {
+      setFixingData(false);
     }
   };
 
@@ -518,7 +831,10 @@ export default function ReinvestmentTagging() {
         ? entry.ucc_list[0] 
         : (existing.target_ucc || entry.target_ucc || '');
       
-      // Start with one allocation using existing values or defaults
+      // Start with ONE allocation. The broker can press "+ Add Portfolio
+      // Allocation" to split further. The auto-tag-to-None rule (when the
+      // amount is < ₹1000) keeps working because `initialPortfolio` was
+      // already set to 'none' above for that case.
       initialData[entry.id] = {
         entry: entry,
         amounts: amounts,
@@ -632,9 +948,10 @@ export default function ReinvestmentTagging() {
       if (field === 'portfolio') {
         newPortfolio = value;
         // Round the current amount to nearest 100 when portfolio is selected
+        // But preserve sub-₹1000 remainders as-is (don't round down to 0)
         if (newAmount !== '' && newAmount > 0) {
           const flooredAmount = Math.floor(newAmount);
-          newAmount = roundToHundred(flooredAmount);
+          newAmount = flooredAmount < 1000 ? flooredAmount : roundToHundred(flooredAmount);
         }
         // IMPORTANT: Explicitly preserve UCC - ensure it's not reset when portfolio changes
         // Use the current UCC value from the allocation
@@ -685,8 +1002,9 @@ export default function ReinvestmentTagging() {
       
       if (currentAmount !== '' && currentAmount !== 0) {
         // Floor first to avoid decimals, then round to nearest 100
+        // But preserve sub-₹1000 remainders as-is (don't round down to 0)
         const flooredAmount = Math.floor(currentAmount);
-        const roundedAmount = roundToHundred(flooredAmount);
+        const roundedAmount = flooredAmount < 1000 ? flooredAmount : roundToHundred(flooredAmount);
         let newPortfolio = newAllocations[allocIndex].portfolio;
         
         // Auto-set to "none" if amount < 1000
@@ -1272,6 +1590,34 @@ export default function ReinvestmentTagging() {
     return <SubBrokerSidebar user={user} />;
   };
 
+  // Soft-delete a tag that is still pending broker approval. Same endpoint the
+  // broker uses to reject (`/reinvestment-logs/{id}/cancel`) — we mark it
+  // cancelled so it disappears from the broker's queue and the underlying
+  // cashflow returns to the Untagged bucket. No hard-delete.
+  const softDeletePendingTag = async (entry) => {
+    if (!entry?.id) return;
+    if (!window.confirm(`Delete this pending tag for ${entry.bond_name || 'this entry'}? The cashflow will return to Untagged.`)) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API}/reinvestment/cancel/${entry.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason: "Deleted by partner before broker approval" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to delete tag");
+      }
+      toast.success("Pending tag deleted — entry returned to Untagged");
+      await fetchData();
+    } catch (e) {
+      toast.error(e.message || "Could not delete the pending tag");
+    }
+  };
+
   // Get all unique UCCs from all client groups for mass selection
   const getAllUccs = () => {
     const uccs = new Set();
@@ -1431,7 +1777,7 @@ export default function ReinvestmentTagging() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500">Clients</p>
+                <p className="text-xs text-gray-500">Investors</p>
                 <p className="font-semibold text-gray-800">{untaggedClientGroups.length + taggedClientGroups.length}</p>
               </div>
             </div>
@@ -1648,7 +1994,7 @@ export default function ReinvestmentTagging() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   {canTag && <th className="w-10 px-3 py-2"></th>}
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">NCD</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600">Principal</th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600">Interest</th>
@@ -1668,9 +2014,23 @@ export default function ReinvestmentTagging() {
                   const currentPortfolio = splitValues?.portfolio || changes.portfolio_category || entry.portfolio_category || '';
                   const currentTag = splitValues?.tag || changes.reinvestment_tag || entry.reinvestment_tag || '';
                   const isTagged = currentTag && currentTag !== 'not_tagged';
+                  // Pending broker approval = MFD/RIA submitted but broker hasn't yet
+                  // approved. Show in grey with Edit/Delete still available. Once
+                  // broker approves (state becomes "submitted"/"approved"/"broker_approved"
+                  // or `client_approved`) the row turns green and Edit/Delete are hidden.
+                  const isPendingBroker = entry.approval_status === 'pending_broker_approval';
+                  const isSubmitted = isTagged && (
+                    entry.client_approved
+                    || entry.approval_status === 'approved'
+                    || entry.approval_status === 'submitted'
+                    || entry.approval_status === 'broker_approved'
+                  );
+                  const rowTone = isPendingBroker
+                    ? 'bg-yellow-50 text-yellow-900'
+                    : (isSubmitted ? 'bg-green-50/40' : (isSplit ? 'bg-green-50' : (isTagged ? 'bg-green-50/30' : 'bg-blue-50/40')));
                   
                   return (
-                    <tr key={entry.id} className={`hover:bg-gray-50 ${isSplit ? 'bg-green-50' : isTagged ? 'bg-green-50/30' : ''}`}>
+                    <tr key={entry.id} className={`hover:bg-gray-50 ${entry.is_historical ? 'bg-slate-100/70 text-slate-600' : rowTone}`} data-testid={entry.is_historical ? `reinv-row-historical-${entry.id}` : `reinv-row-${entry.id}`}>
                       {canTag && (
                         <td className="px-3 py-2">
                           {!isSplit ? (
@@ -1684,7 +2044,14 @@ export default function ReinvestmentTagging() {
                         </td>
                       )}
                       <td className="px-3 py-2">
-                        <div className="font-medium">{entry.bond_name}</div>
+                        <div className="font-medium flex items-center gap-1.5">
+                          {entry.bond_name}
+                          {entry.is_historical && (
+                            <Badge variant="outline" className="bg-slate-200 text-slate-700 border-slate-300 text-[9px] py-0 px-1.5 font-normal">
+                              Historical
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">{entry.bond_code}</div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
@@ -1720,13 +2087,22 @@ export default function ReinvestmentTagging() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {/* Tag - Display only, edit via modal */}
+                        {/* Tag — colour reflects approval state.
+                            Grey  = MFD/RIA submitted, awaiting broker approval (editable / deletable)
+                            Green = broker has approved (read-only)
+                            Amber = not tagged yet */}
                         {isTagged ? (
-                          <Badge className="bg-green-100 text-green-700 text-xs capitalize">
-                            {currentTag}
-                          </Badge>
+                          isPendingBroker ? (
+                            <Badge className="bg-gray-200 text-gray-700 text-xs capitalize" data-testid={`reinv-tag-pending-${entry.id}`}>
+                              {currentTag} • Pending Approval
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-700 text-xs capitalize" data-testid={`reinv-tag-submitted-${entry.id}`}>
+                              {currentTag}{isSubmitted ? ' • Submitted' : ''}
+                            </Badge>
+                          )
                         ) : (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                             Not Tagged
                           </Badge>
                         )}
@@ -1734,19 +2110,38 @@ export default function ReinvestmentTagging() {
                       {canTag && (
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
-                            {isSplit && (
+                            {/* Edit button — visible only while the tag is
+                                pending broker approval. Once the broker
+                                approves, the entry is locked. */}
+                            {isSplit && isPendingBroker && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => editSplitEntry(entry, clientGroup)}
                                 className="h-7 w-7 p-0"
                                 title="Edit split allocations"
+                                data-testid={`reinv-edit-pending-${entry.id}`}
                               >
                                 <Pencil className="h-3 w-3" />
                               </Button>
                             )}
-                            {/* Show action menu for tagged items that have been processed */}
-                            {isTagged && (entry.client_approved || entry.approval_status === 'approved' || entry.approval_status === 'submitted') && (
+                            {/* Soft-delete — also visible only while pending. */}
+                            {isTagged && isPendingBroker && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => softDeletePendingTag(entry)}
+                                className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete pending tag"
+                                data-testid={`reinv-delete-pending-${entry.id}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {/* Once approved, only the broker-side Edit/Cancel
+                                menu is shown (existing flow). MFD/RIA users
+                                see no edit/delete in this branch. */}
+                            {isTagged && isSubmitted && user?.role === 'broker' && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -1875,7 +2270,7 @@ export default function ReinvestmentTagging() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="w-10 px-3 py-2"></th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Bond</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">NCD</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Date</th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600">Amount</th>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">UCC</th>
@@ -1894,7 +2289,7 @@ export default function ReinvestmentTagging() {
                   const currentTag = splitValues?.tag || changes.reinvestment_tag || entry.reinvestment_tag || '';
                   
                   return (
-                    <tr key={entry.id} className={`hover:bg-gray-50 ${isSplit ? 'bg-green-50' : ''}`}>
+                    <tr key={entry.id} className={`hover:bg-gray-50 ${entry.is_historical ? 'bg-slate-100/70 text-slate-600' : isSplit ? 'bg-green-50' : ''}`}>
                       <td className="px-3 py-2">
                         {!isSplit && (
                           <Checkbox
@@ -1907,7 +2302,14 @@ export default function ReinvestmentTagging() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <div className="font-medium">{entry.bond_name}</div>
+                        <div className="font-medium flex items-center gap-1.5">
+                          {entry.bond_name}
+                          {entry.is_historical && (
+                            <Badge variant="outline" className="bg-slate-200 text-slate-700 border-slate-300 text-[9px] py-0 px-1.5 font-normal">
+                              Historical
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">{entry.bond_code}</div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
@@ -1943,7 +2345,7 @@ export default function ReinvestmentTagging() {
                             {TAG_OPTIONS.find(t => t.value === currentTag)?.label || currentTag}
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
                             Not Tagged
                           </Badge>
                         )}
@@ -2036,7 +2438,13 @@ export default function ReinvestmentTagging() {
       if (splits && splits.length > 0) {
         // Multiple allocations - add each as a separate row
         splits.forEach(split => {
-          const splitNetAmount = split.amount || split.net_amount || 0;
+          // Prefer backend-computed `net_amount` (includes decimal residuals
+          // parked on the "None" row) so Broker + Client views stay unified.
+          // Fall back to `amount` (the rounded investment amount) only when
+          // net_amount is absent (e.g. locally-applied changes not yet saved).
+          const splitNetAmount = (split.net_amount !== undefined && split.net_amount !== null)
+            ? split.net_amount
+            : (split.amount || 0);
           const splitRoundDown = roundToHundred(splitNetAmount);
           const splitUcc = split.ucc || baseAllocation.ucc;
           const splitPortfolio = split.portfolio || split.portfolio_name || baseAllocation.portfolio;
@@ -2378,10 +2786,12 @@ export default function ReinvestmentTagging() {
                 </h1>
                 <p className="text-sm text-gray-500">Tag client cashflows month-wise (next 3 months active)</p>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={fetchData}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -2662,7 +3072,7 @@ export default function ReinvestmentTagging() {
               <div className="py-4 space-y-4">
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Bond</span>
+                    <span className="text-gray-500">NCD</span>
                     <span className="font-medium">{selectedEntryForAction.bond_name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -2796,6 +3206,56 @@ export default function ReinvestmentTagging() {
                   <Pencil className="h-4 w-4 mr-2" />
                 )}
                 {selectedEntryForAction?.client_approved ? "Request Edit" : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Clear All Tags Confirmation Dialog */}
+        <Dialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600 flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Clear All Reinvestment Tags
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                This action will:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Delete all reinvestment logs</li>
+                  <li>Reset all cashflow tags to "Not Tagged"</li>
+                  <li>Clear all client approvals</li>
+                </ul>
+                <p className="mt-3 font-medium text-red-600">
+                  This action cannot be undone. Are you sure?
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowClearAllDialog(false)}
+                disabled={clearingTags}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleClearAllTags}
+                disabled={clearingTags}
+                data-testid="confirm-clear-all-btn"
+              >
+                {clearingTags ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Clearing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Yes, Clear All Tags
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

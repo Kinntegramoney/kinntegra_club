@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
-import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, Eye, Calendar, User, MapPin, Building2, CreditCard, UserCheck, ClipboardList, FileImage, Upload, AlertCircle, CheckCircle, Clock, XCircle, Send, ArrowRight, IndianRupee, RefreshCw, Calculator, ExternalLink, ChevronDown } from "lucide-react";
+import { Search, Download, Mail, Check, X, FileText, Users, TrendingUp, DollarSign, MoreVertical, Eye, Calendar, User, MapPin, Building2, CreditCard, UserCheck, ClipboardList, FileImage, Upload, AlertCircle, CheckCircle, Clock, XCircle, Send, ArrowRight, IndianRupee, RefreshCw, Calculator, ExternalLink, ChevronDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,10 @@ import HorizontalPaymentTimeline from "@/components/HorizontalPaymentTimeline";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import React from "react";
+import * as XLSX from "xlsx";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TradeLogsWithBifurcation, STATUS_CONFIG } from "@/pages/TradeLogs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -25,6 +29,37 @@ const roundToHundred = (amount) => {
 
 // Format currency for Indian Rupees
 const formatCurrency = (amount) => amount?.toLocaleString('en-IN') || '0';
+
+// XIRR (Newton-Raphson). Accepts [{date:'YYYY-MM-DD', amount:Number}, ...]
+// Returns percentage (e.g. 11.50) or null if not solvable.
+const computeXirr = (cfs, guess = 0.1) => {
+  if (!cfs || cfs.length < 2) return null;
+  const hasPos = cfs.some(c => c.amount > 0);
+  const hasNeg = cfs.some(c => c.amount < 0);
+  if (!hasPos || !hasNeg) return null;
+  const sorted = [...cfs].sort((a, b) => a.date.localeCompare(b.date));
+  const t0 = new Date(sorted[0].date);
+  const years = sorted.map(c => (new Date(c.date) - t0) / (1000 * 60 * 60 * 24 * 365));
+  let r = guess;
+  for (let iter = 0; iter < 100; iter++) {
+    let f = 0, df = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      const v = sorted[i].amount;
+      const t = years[i];
+      const denom = Math.pow(1 + r, t);
+      if (!isFinite(denom) || denom === 0) return null;
+      f += v / denom;
+      df -= (t * v) / (denom * (1 + r));
+    }
+    if (Math.abs(f) < 1e-4) return r * 100;
+    if (df === 0) return null;
+    const rNew = r - f / df;
+    if (!isFinite(rNew)) return null;
+    if (Math.abs(rNew - r) < 1e-7) return rNew * 100;
+    r = rNew;
+  }
+  return null;
+};
 
 // XIRR Calculation - moved outside component for performance
 const calculateXIRR = (cashflows, guess = 0.1) => {
@@ -95,21 +130,31 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   // Apply share_percentage to get client's portion of the property
   const sharePercentage = (property.share_percentage || 100) / 100;
   
-  // Full property values (100% ownership)
-  const fullUnitPrice = property.investment_amount || property.unit_price || 0;
-  const fullDldFee = property.dld_fee || 0;
+  // Full property values (100% ownership). unit_price is the base cost;
+  // DLD + Admin (+ Broker/Other) fees are upfront add-ons charged on Day-0.
+  // NOTE: do NOT source fullUnitPrice from `investment_amount` — that field
+  // holds the investor's already-share-adjusted slice of `total_cost` and
+  // would cause double-adjustment here.
+  const fullUnitPrice = property.unit_price || 0;
+  const fullDldFee = property.dld_fee || (fullUnitPrice * (property.dld_fee_percentage || 0) / 100) || 0;
   const fullAdminFee = property.admin_fee || 0;
-  const fullTotalCost = fullUnitPrice + fullDldFee + fullAdminFee;
+  const fullBrokerFee = property.broker_fee || 0;
+  const fullOtherFees = property.other_fees || 0;
+  const fullTotalCost = fullUnitPrice + fullDldFee + fullAdminFee + fullBrokerFee + fullOtherFees;
   const fullExpectedSalePrice = property.expected_sale_value || (fullUnitPrice * 1.4);
   
   // Client's actual amounts based on their share
   const unitPriceAed = fullUnitPrice * sharePercentage;
   const dldFeeAed = fullDldFee * sharePercentage;
   const adminFeeAed = fullAdminFee * sharePercentage;
-  const totalCostAed = fullTotalCost * sharePercentage; // This is the total investment amount
+  const brokerFeeAed = fullBrokerFee * sharePercentage;
+  const otherFeesAed = fullOtherFees * sharePercentage;
+  const upfrontFeesAed = dldFeeAed + adminFeeAed + brokerFeeAed + otherFeesAed;
+  const totalCostAed = fullTotalCost * sharePercentage; // Total investment including fees
   const expectedSalePrice = fullExpectedSalePrice * sharePercentage;
   
-  // For backward compatibility, keep investmentAmount as unit price (used in payment schedule calculations)
+  // Payment schedule percentages are applied to unit_price (base cost),
+  // not to total_cost — fees sit outside the schedule as Day-0 upfront.
   const investmentAmount = unitPriceAed;
   
   const schedule = property.payment_schedule || [];
@@ -142,7 +187,10 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   let paymentsAfterSaleAed = 0;
   
   schedule.forEach((milestone, i) => {
-    const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+    // Milestone % applies to unit_price. Day-0 milestone (i===0) also
+    // carries the upfront DLD + Admin + Broker + Other fees.
+    const baseMilestoneAed = (milestone.percentage / 100) * investmentAmount;
+    const milestoneAmountAed = baseMilestoneAed + (i === 0 ? upfrontFeesAed : 0);
     const isPaid = i < (property.payments_completed || 0);
     const milestoneDate = new Date(milestone.date);
     const rateAtMilestone = getProjectedRateForDate(milestone.date, projectedRates, currentRate, today);
@@ -202,7 +250,8 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
   
   schedule.forEach((milestone, i) => {
     const milestoneDate = new Date(milestone.date);
-    const milestoneAmountAed = (milestone.percentage / 100) * investmentAmount;
+    const baseMilestoneAed = (milestone.percentage / 100) * investmentAmount;
+    const milestoneAmountAed = baseMilestoneAed + (i === 0 ? upfrontFeesAed : 0);
     const isPaid = i < (property.payments_completed || 0);
     
     // Expected cashflows
@@ -241,7 +290,7 @@ const computePropertyFinancials = (property, clientResidency, projectedRates = n
     totalCostAed, // Total cost including DLD + Admin fees (for display)
     totalInvestmentInr, // Total investment in INR at current rate
     totalInvestmentAed,
-    unitPriceAed, dldFeeAed, adminFeeAed,
+    unitPriceAed, dldFeeAed, adminFeeAed, brokerFeeAed, otherFeesAed, upfrontFeesAed,
     
     // Sale values
     expectedSalePrice, saleProceedsInr,
@@ -282,6 +331,7 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
         cashflowGroups[cfId] = {
           cashflow_id: cfId,
           bond_name: trade.bond_name,
+          bond_code: trade.bond_code || trade.ucc || trade.target_ucc,
           date: trade.expected_date || trade.investment_date,
           allocations: [],
           total_amount: 0,
@@ -343,7 +393,7 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
           <div className="px-4 py-3 bg-purple-50/50 border-b border-purple-100">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-purple-600" />
-              <span className="font-medium text-gray-800">Reinvestment Trades</span>
+              <span className="font-medium text-gray-800">Reinv Logs</span>
               <span className="text-xs text-gray-500">({reinvTrades.length} entries)</span>
             </div>
           </div>
@@ -364,7 +414,7 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
                 </tr>
                 <tr className="bg-gray-50">
                   <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date</th>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">NCD Name</th>
                   <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
                   <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Inv. Date</th>
                   <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
@@ -410,6 +460,9 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
                                 rowSpan={hasMultiple ? rowCount : 1}
                               >
                                 <div className="font-medium text-gray-800">{cfGroup.bond_name || 'N/A'}</div>
+                                {cfGroup.bond_code && cfGroup.bond_code !== cfGroup.bond_name && (
+                                  <div className="text-xs text-gray-500 font-mono">{cfGroup.bond_code}</div>
+                                )}
                               </td>
                             )}
                             
@@ -495,73 +548,611 @@ const BifurcatedTradesTable = ({ trades, selectedClient, formatINR, showOnlyRein
   );
 };
 
-// Trades Tab Content with Sub-tabs (Reinvestment Trades / Investment)
-const TradesTabContent = ({ trades, selectedClient, formatINR }) => {
-  const [activeSubTab, setActiveSubTab] = React.useState("reinvestment");
-  
-  // Separate reinvestment trades (from reinvestment logs) and blocked unit trades
-  const reinvestmentTrades = trades.filter(t => t.is_reinvestment_log);
-  const blockedUnitTrades = trades.filter(t => !t.is_reinvestment_log);
-  
+// Trades Tab Content with Sub-tabs (Historical Repayments / Expected Repayments / Investment)
+//
+// Helpers used by the per-tab "Download" buttons. Builds a small .xlsx with
+// one sheet and a Total row, mirroring the totals shown in the UI footer so
+// the spreadsheet matches what the user sees on screen.
+const _safeName = (s) => (s || 'client').toString().replace(/[^a-z0-9_]+/gi, '_').slice(0, 40);
+const _ts = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+};
+const _fmtDate = (d) => {
+  if (!d) return '';
+  try { return format(new Date(d), 'dd-MMM-yy'); } catch { return ''; }
+};
+
+const downloadRepaymentsExcel = (rows, selectedClient) => {
+  if (!rows?.length) return;
+  const sheetRows = rows.map((r, i) => ({
+    'Sr No':          i + 1,
+    'Repayment Date': _fmtDate(r.repayment_date),
+    'NCD Name':       r.bond_name || '',
+    'Bond Code':      r.bond_code || '',
+    'Principal':      Number(r.principal || 0),
+    'Interest':       Number(r.interest || 0),
+    'Gross':          Number(r.gross_amount || 0),
+    'TDS':            Number(r.tds || 0),
+    'Net':            Number(r.net_amount || 0),
+  }));
+  const totals = rows.reduce((acc, r) => ({
+    principal: acc.principal + Number(r.principal || 0),
+    interest:  acc.interest  + Number(r.interest  || 0),
+    gross:     acc.gross     + Number(r.gross_amount || 0),
+    tds:       acc.tds       + Number(r.tds || 0),
+    net:       acc.net       + Number(r.net_amount || 0),
+  }), { principal: 0, interest: 0, gross: 0, tds: 0, net: 0 });
+  sheetRows.push({
+    'Sr No': '', 'Repayment Date': 'Total', 'NCD Name': '', 'Bond Code': '',
+    'Principal': totals.principal, 'Interest': totals.interest,
+    'Gross': totals.gross, 'TDS': totals.tds, 'Net': totals.net,
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetRows), 'Historical Repayments');
+  XLSX.writeFile(wb, `historical_repayments_${_safeName(selectedClient?.name || selectedClient?.client_name)}_${_ts()}.xlsx`);
+};
+
+const downloadExpectedExcel = (rows, selectedClient) => {
+  if (!rows?.length) return;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const sheetRows = rows.map((r, i) => {
+    const dt = r.expected_date ? new Date(r.expected_date) : null;
+    return {
+      'Sr No':         i + 1,
+      'Expected Date': _fmtDate(r.expected_date),
+      'Overdue?':      (dt && dt.getTime() < today.getTime()) ? 'Yes' : '',
+      'NCD Name':      r.bond_name || '',
+      'Bond Code':     r.bond_code || '',
+      'Type':          r.type || 'repayment',
+      'Principal':     Number(r.principal_component || 0),
+      'Interest':      Number(r.interest_component || 0),
+      'Gross':         Number(r.gross_amount || 0),
+      'TDS':           Number(r.tds_amount || 0),
+      'Net':           Number(r.net_amount || 0),
+    };
+  });
+  const totals = rows.reduce((acc, r) => ({
+    principal: acc.principal + Number(r.principal_component || 0),
+    interest:  acc.interest  + Number(r.interest_component  || 0),
+    gross:     acc.gross     + Number(r.gross_amount || 0),
+    tds:       acc.tds       + Number(r.tds_amount || 0),
+    net:       acc.net       + Number(r.net_amount || 0),
+  }), { principal: 0, interest: 0, gross: 0, tds: 0, net: 0 });
+  sheetRows.push({
+    'Sr No': '', 'Expected Date': 'Total', 'Overdue?': '', 'NCD Name': '',
+    'Bond Code': '', 'Type': '',
+    'Principal': totals.principal, 'Interest': totals.interest,
+    'Gross': totals.gross, 'TDS': totals.tds, 'Net': totals.net,
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheetRows), 'Expected Repayments');
+  XLSX.writeFile(wb, `expected_repayments_${_safeName(selectedClient?.name || selectedClient?.client_name)}_${_ts()}.xlsx`);
+};
+
+const TradesTabContent = ({ trades, selectedClient, formatINR, controlledTab = null, onTabChange = null, hideNav = false }) => {
+  // When `controlledTab` is provided the parent owns the active-tab state
+  // (e.g. when NCD's outer 5-button nav is driving the selection). We still
+  // keep an internal fallback so the component works standalone.
+  const [internalSubTab, setInternalSubTab] = React.useState("investment");
+  const activeSubTab = controlledTab ?? internalSubTab;
+  const setActiveSubTab = (v) => {
+    if (onTabChange) onTabChange(v);
+    if (controlledTab === null) setInternalSubTab(v);
+  };
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [emailSyncing, setEmailSyncing] = React.useState(false);
+
+  // Blocked unit trades (Investment sub-tab)
+  const blockedUnitTrades = trades.filter(t => !t.is_reinvestment_log && t.source !== 'reinvestment');
+
+  // Historical Repayments sub-tab data (fetched from Ncd_Repayments)
+  const [repayments, setRepayments] = React.useState([]);
+  const [repaymentsLoading, setRepaymentsLoading] = React.useState(false);
+  // Expected Repayments sub-tab data (fetched from Ncd_Expected_Repayments)
+  const [expected, setExpected] = React.useState([]);
+  const [expectedLoading, setExpectedLoading] = React.useState(false);
+  // Reinv Logs sub-tab data (fetched from reinvestment_logs, client-filtered)
+  const [reinvLogsData, setReinvLogsData] = React.useState([]);
+  const [reinvLogsLoading, setReinvLogsLoading] = React.useState(false);
+
+  const fetchRepayments = React.useCallback(async () => {
+    if (!selectedClient?.id) { setRepayments([]); return; }
+    try {
+      setRepaymentsLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/ncd-repayments`, {
+        params: { client_id: selectedClient.id, limit: 2000 },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRepayments(res.data?.rows || []);
+    } catch (e) {
+      setRepayments([]);
+    } finally {
+      setRepaymentsLoading(false);
+    }
+  }, [selectedClient?.id]);
+
+  const fetchExpected = React.useCallback(async () => {
+    if (!selectedClient?.id) { setExpected([]); return; }
+    try {
+      setExpectedLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/ncd-expected-repayments`, {
+        params: { client_id: selectedClient.id, limit: 2000 },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setExpected(res.data?.rows || []);
+    } catch (e) {
+      setExpected([]);
+    } finally {
+      setExpectedLoading(false);
+    }
+  }, [selectedClient?.id]);
+
+  React.useEffect(() => { fetchRepayments(); fetchExpected(); }, [fetchRepayments, fetchExpected]);
+
+  // Reinv Logs — client-filtered view of `reinvestment_logs` (same data that
+  // powers Logs → Reinv Logs), so the broker/client can audit every split
+  // allocation created for this client directly inside Holdings → Trades.
+  const fetchReinvLogs = React.useCallback(async () => {
+    if (!selectedClient?.id) { setReinvLogsData([]); return; }
+    try {
+      setReinvLogsLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API}/reinvestment-logs`, {
+        params: { client_id: selectedClient.id },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setReinvLogsData(Array.isArray(res.data) ? res.data : (res.data?.rows || []));
+    } catch (e) {
+      setReinvLogsData([]);
+    } finally {
+      setReinvLogsLoading(false);
+    }
+  }, [selectedClient?.id]);
+
+  React.useEffect(() => {
+    if (activeSubTab === 'reinv-logs') fetchReinvLogs();
+  }, [activeSubTab, fetchReinvLogs]);
+
+  const handleEmailReader = async () => {
+    if (emailSyncing) return;
+    setEmailSyncing(true);
+    const toastId = toast.loading("Reading repayment emails…");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`${API}/ncd-repayments/sync-from-email`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const r = res.data || {};
+      const created = r.created ?? r.inserted ?? 0;
+      const matched = r.matched ?? r.processed ?? 0;
+      toast.success(`Email sync done — ${created} new, ${matched} matched`, { id: toastId });
+      await Promise.all([fetchRepayments(), fetchExpected()]);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Email sync failed", { id: toastId });
+    } finally {
+      setEmailSyncing(false);
+    }
+  };
+
+  // Filter rows based on search term (case-insensitive, across useful fields)
+  const q = searchTerm.trim().toLowerCase();
+  const matches = (val) => (val || '').toString().toLowerCase().includes(q);
+  const filteredRepayments = !q ? repayments : repayments.filter(r =>
+    matches(r.bond_name) || matches(r.bond_code) || matches(r.opportunity_id) ||
+    matches(r.repayment_date) || matches(r.client_name)
+  );
+  const filteredExpected = !q ? expected : expected.filter(r =>
+    matches(r.bond_name) || matches(r.bond_code) || matches(r.expected_date) || matches(r.type)
+  );
+  const filteredBlockedUnits = !q ? blockedUnitTrades : blockedUnitTrades.filter(t =>
+    matches(t.bond_name) || matches(t.bond_code) || matches(t.ucc) ||
+    matches(t.investment_date) || matches(t.payment_reference) || matches(t.status)
+  );
+
   return (
     <div className="space-y-4">
-      {/* Sub-tabs */}
-      <div className="flex gap-2 border-b border-gray-200 pb-2">
-        <button
-          onClick={() => setActiveSubTab("reinvestment")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeSubTab === "reinvestment"
-              ? "bg-purple-100 text-purple-700 border-b-2 border-purple-600"
-              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Reinvestment Trades
-            <span className="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs rounded-full">
-              {reinvestmentTrades.length}
-            </span>
+      {/* Sub-tabs + Search Bar + Email Reader.
+          When `hideNav` is true (controlled mode) the parent renders the
+          5-button NCD nav; we still keep the search/email-reader inline so
+          they stay close to the table they affect. */}
+      <div className={`flex items-center justify-${hideNav ? 'end' : 'between'} gap-3 ${hideNav ? '' : 'border-b border-gray-200 pb-2'} flex-wrap`}>
+        {!hideNav && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveSubTab("investment")}
+            data-testid="trades-subtab-investment"
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeSubTab === "investment"
+                ? "bg-green-100 text-green-700 border-b-2 border-green-600"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Investment
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveSubTab("reinv-logs")}
+            data-testid="trades-subtab-reinv-logs"
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeSubTab === "reinv-logs"
+                ? "bg-purple-100 text-purple-700 border-b-2 border-purple-600"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Reinv Tag
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveSubTab("repayments")}
+            data-testid="trades-subtab-repayments"
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeSubTab === "repayments"
+                ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-4 w-4" />
+              Historical Repayments
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveSubTab("expected")}
+            data-testid="trades-subtab-expected"
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeSubTab === "expected"
+                ? "bg-amber-100 text-amber-800 border-b-2 border-amber-600"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Expected Repayments
+            </div>
+          </button>
+        </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <div className="relative w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Input
+              type="text"
+              placeholder={activeSubTab === "investment"
+                ? "Search by NCD name, bond code, UTR, status…"
+                : "Search by NCD name, bond code, date…"}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 h-9 text-sm"
+              data-testid="trades-search-input"
+            />
           </div>
-        </button>
-        <button
-          onClick={() => setActiveSubTab("investment")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeSubTab === "investment"
-              ? "bg-green-100 text-green-700 border-b-2 border-green-600"
-              : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
-            Investment
-            <span className="px-2 py-0.5 bg-green-200 text-green-800 text-xs rounded-full">
-              {blockedUnitTrades.length}
-            </span>
-          </div>
-        </button>
+          {(activeSubTab === "repayments" || activeSubTab === "expected") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEmailReader}
+              disabled={emailSyncing}
+              className="border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700"
+              data-testid="trades-email-reader-btn"
+              title="Read repayment emails now (in addition to the 10:00 / 18:00 IST scheduled runs)"
+            >
+              {emailSyncing ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+              {emailSyncing ? 'Reading…' : 'Email Reader'}
+            </Button>
+          )}
+          {activeSubTab === "repayments" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadRepaymentsExcel(filteredRepayments, selectedClient)}
+              disabled={!filteredRepayments?.length}
+              className="border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700"
+              data-testid="repayments-download-btn"
+              title="Download visible Historical Repayments as Excel"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Download
+            </Button>
+          )}
+          {activeSubTab === "expected" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadExpectedExcel(filteredExpected, selectedClient)}
+              disabled={!filteredExpected?.length}
+              className="border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700"
+              data-testid="expected-download-btn"
+              title="Download visible Expected Repayments as Excel"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Download
+            </Button>
+          )}
+        </div>
       </div>
-      
-      {/* Reinvestment Trades Sub-tab Content */}
-      {activeSubTab === "reinvestment" && (
-        <BifurcatedTradesTable 
-          trades={reinvestmentTrades}
-          selectedClient={selectedClient}
+
+      {/* Historical Repayments Sub-tab Content */}
+      {activeSubTab === "repayments" && (
+        <RepaymentsTable
+          rows={filteredRepayments}
+          loading={repaymentsLoading}
           formatINR={formatINR}
-          showOnlyReinvestment={true}
         />
       )}
-      
+
+      {/* Expected Repayments Sub-tab Content */}
+      {activeSubTab === "expected" && (
+        <ExpectedRepaymentsTable
+          rows={filteredExpected}
+          loading={expectedLoading}
+          formatINR={formatINR}
+        />
+      )}
+
       {/* Investment (Blocked Units) Sub-tab Content */}
       {activeSubTab === "investment" && (
-        <InvestmentTradesTable 
-          trades={blockedUnitTrades}
+        <InvestmentTradesTable
+          trades={filteredBlockedUnits}
           selectedClient={selectedClient}
           formatINR={formatINR}
         />
+      )}
+
+      {/* Reinv Logs Sub-tab Content — mirrors Logs → Reinv Logs but filtered
+          to the selected client. Reuses the same `TradeLogsWithBifurcation`
+          component so the table layout stays identical. */}
+      {activeSubTab === "reinv-logs" && (
+        reinvLogsLoading ? (
+          <div className="text-center py-12 bg-white rounded-lg border" data-testid="reinv-logs-loading">
+            <RefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-3 animate-spin" />
+            <p className="text-gray-500">Loading reinvestment logs…</p>
+          </div>
+        ) : (!reinvLogsData || reinvLogsData.length === 0) ? (
+          <div className="text-center py-12 bg-white rounded-lg border" data-testid="reinv-logs-empty">
+            <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No reinvestment logs found for this client</p>
+            <p className="text-gray-400 text-sm mt-1">Tagged entries approved or submitted will appear here</p>
+          </div>
+        ) : (
+          <TradeLogsWithBifurcation
+            logs={(q ? reinvLogsData.filter(l =>
+              (l.bond_name || '').toLowerCase().includes(q) ||
+              (l.ucc || l.target_ucc || '').toLowerCase().includes(q) ||
+              (l.portfolio || l.portfolio_category || '').toLowerCase().includes(q) ||
+              (l.approval_status || '').toLowerCase().includes(q)
+            ) : reinvLogsData)}
+            formatDate={(date) => date ? format(new Date(date), "dd MMM yyyy") : "-"}
+            formatCurrency={(amount) => amount?.toLocaleString('en-IN') || '0'}
+            getStatusBadge={(status) => {
+              const cfg = STATUS_CONFIG[status] || { label: status || '-', color: 'bg-gray-100 text-gray-800' };
+              return (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>
+                  {cfg.label}
+                </span>
+              );
+            }}
+          />
+        )
       )}
     </div>
   );
 };
+
+// Repayments Table — sourced from Ncd_Repayments (email-synced)
+const RepaymentsTable = ({ rows, loading, formatINR }) => {
+  if (loading) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border" data-testid="repayments-loading">
+        <RefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-3 animate-spin" />
+        <p className="text-gray-500">Loading repayments…</p>
+      </div>
+    );
+  }
+
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border" data-testid="repayments-empty">
+        <IndianRupee className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No repayments found</p>
+        <p className="text-gray-400 text-sm mt-1">Email-synced repayments for this client will appear here</p>
+      </div>
+    );
+  }
+
+  const totalGross = rows.reduce((s, r) => s + (r.gross_amount || 0), 0);
+  const totalPrincipal = rows.reduce((s, r) => s + (r.principal || 0), 0);
+  const totalInterest = rows.reduce((s, r) => s + (r.interest || 0), 0);
+  const totalTds = rows.reduce((s, r) => s + (r.tds || 0), 0);
+  const totalNet = rows.reduce((s, r) => s + (r.net_amount || 0), 0);
+
+  return (
+    <div className="bg-white rounded-lg border border-blue-200 overflow-hidden" data-testid="repayments-table">
+      <div className="px-4 py-3 bg-blue-50/50 border-b border-blue-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <IndianRupee className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-blue-800">Historical Repayments (from emails)</span>
+          <Badge className="bg-blue-100 text-blue-700">{rows.length}</Badge>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Gross</p>
+            <p className="font-semibold text-blue-700">{formatINR(totalGross)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Net</p>
+            <p className="font-semibold text-green-700">{formatINR(totalNet)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Repayment Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">NCD Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Code</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Principal</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Interest</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Gross</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">TDS</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => (
+              <tr key={r.id || idx} className="border-b hover:bg-gray-50" data-testid={`repayment-row-${idx}`}>
+                <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                <td className="px-4 py-3">
+                  {r.repayment_date ? format(new Date(r.repayment_date), "dd-MMM-yy") : 'NA'}
+                </td>
+                <td className="px-4 py-3 font-medium text-gray-800">{r.bond_name || 'N/A'}</td>
+                <td className="px-4 py-3 font-mono text-gray-600">{r.bond_code || 'N/A'}</td>
+                <td className="px-4 py-3 text-right font-mono text-blue-700">{formatINR(r.principal || 0)}</td>
+                <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(r.interest || 0)}</td>
+                <td className="px-4 py-3 text-right font-mono font-semibold text-gray-800">{formatINR(r.gross_amount || 0)}</td>
+                <td className="px-4 py-3 text-right font-mono text-amber-700">{formatINR(r.tds || 0)}</td>
+                <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">{formatINR(r.net_amount || 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+            <tr className="font-semibold">
+              <td colSpan={4} className="px-4 py-3 text-gray-700">Total</td>
+              <td className="px-4 py-3 text-right font-mono text-blue-700">{formatINR(totalPrincipal)}</td>
+              <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(totalInterest)}</td>
+              <td className="px-4 py-3 text-right font-mono text-gray-800">{formatINR(totalGross)}</td>
+              <td className="px-4 py-3 text-right font-mono text-amber-700">{formatINR(totalTds)}</td>
+              <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(totalNet)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Expected Repayments Table — sourced from Ncd_Expected_Repayments
+const ExpectedRepaymentsTable = ({ rows, loading, formatINR }) => {
+  // Drop rows that are already matched in Historical Repayments — the
+  // backend flips `is_repaid=True` once a matching `Ncd_Repayments` row
+  // (email-synced actual receipt) exists for the same (bond_code, date).
+  // This keeps the Expected tab strictly to entries genuinely still due,
+  // so past-dated maturities don't linger here marked "(overdue)" after
+  // their email has already landed in the Historical tab.
+  const filteredRows = (rows || []).filter(r => !r.is_repaid);
+  if (loading) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border" data-testid="expected-loading">
+        <RefreshCw className="h-8 w-8 text-gray-300 mx-auto mb-3 animate-spin" />
+        <p className="text-gray-500">Loading expected repayments…</p>
+      </div>
+    );
+  }
+  if (!filteredRows || filteredRows.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-lg border" data-testid="expected-empty">
+        <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No expected repayments</p>
+        <p className="text-gray-400 text-sm mt-1">All scheduled repayments have been matched in Historical Repayments</p>
+      </div>
+    );
+  }
+
+  const totalGross = filteredRows.reduce((s, r) => s + (r.gross_amount || 0), 0);
+  const totalPrincipal = filteredRows.reduce((s, r) => s + (r.principal_component || 0), 0);
+  const totalInterest = filteredRows.reduce((s, r) => s + (r.interest_component || 0), 0);
+  const totalTds = filteredRows.reduce((s, r) => s + (r.tds_amount || 0), 0);
+  const totalNet = filteredRows.reduce((s, r) => s + (r.net_amount || 0), 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  return (
+    <div className="bg-white rounded-lg border border-amber-200 overflow-hidden" data-testid="expected-table">
+      <div className="px-4 py-3 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-amber-600" />
+          <span className="font-medium text-amber-800">Expected Repayments (scheduled)</span>
+          <Badge className="bg-amber-100 text-amber-700">{filteredRows.length}</Badge>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Gross</p>
+            <p className="font-semibold text-amber-700">{formatINR(totalGross)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Total Net</p>
+            <p className="font-semibold text-green-700">{formatINR(totalNet)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Expected Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">NCD Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Code</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Principal</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Interest</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Gross</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">TDS</th>
+              <th className="text-right px-4 py-3 font-medium text-gray-600">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.map((r, idx) => {
+              const dt = r.expected_date ? new Date(r.expected_date) : null;
+              const isOverdue = dt && dt.getTime() < today.getTime();
+              return (
+                <tr key={r.id || idx} className={`border-b hover:bg-gray-50 ${isOverdue ? 'bg-rose-50/40' : ''}`} data-testid={`expected-row-${idx}`}>
+                  <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={isOverdue ? 'text-rose-700 font-medium' : ''}>
+                      {dt ? format(dt, "dd-MMM-yy") : 'NA'}
+                    </span>
+                    {isOverdue && <span className="ml-1 text-[10px] text-rose-600">(overdue)</span>}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{r.bond_name || 'N/A'}</td>
+                  <td className="px-4 py-3 font-mono text-gray-600">{r.bond_code || 'N/A'}</td>
+                  <td className="px-4 py-3"><Badge variant="outline" className="text-[10px] capitalize">{r.type || 'repayment'}</Badge></td>
+                  <td className="px-4 py-3 text-right font-mono text-blue-700">{formatINR(r.principal_component || 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(r.interest_component || 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-gray-800">{formatINR(r.gross_amount || 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-amber-700">{formatINR(r.tds_amount || 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-green-700">{formatINR(r.net_amount || 0)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+            <tr className="font-semibold">
+              <td colSpan={5} className="px-4 py-3 text-gray-700">Total</td>
+              <td className="px-4 py-3 text-right font-mono text-blue-700">{formatINR(totalPrincipal)}</td>
+              <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(totalInterest)}</td>
+              <td className="px-4 py-3 text-right font-mono text-gray-800">{formatINR(totalGross)}</td>
+              <td className="px-4 py-3 text-right font-mono text-amber-700">{formatINR(totalTds)}</td>
+              <td className="px-4 py-3 text-right font-mono text-green-700">{formatINR(totalNet)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 
 // Investment Trades Table (Blocked Units)
 const InvestmentTradesTable = ({ trades, selectedClient, formatINR }) => {
@@ -603,7 +1194,7 @@ const InvestmentTradesTable = ({ trades, selectedClient, formatINR }) => {
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Sr No</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Bond Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">NCD Name</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Investment Date</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Deal ID</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600">Units</th>
@@ -681,7 +1272,7 @@ const OtherTradesTable = ({ trades, selectedClient, formatINR }) => {
           <thead>
             <tr className="bg-gray-50 border-b text-[10px] font-medium text-gray-500 uppercase tracking-wider">
               <th className="px-3 py-3 text-left">Client Name</th>
-              <th className="px-3 py-3 text-left">Bond/UCC</th>
+              <th className="px-3 py-3 text-left">NCD/UCC</th>
               <th className="px-3 py-3 text-left">Date</th>
               <th className="px-3 py-3 text-left">Type</th>
               <th className="px-3 py-3 text-right">Amount</th>
@@ -744,7 +1335,11 @@ export default function Holdings() {
   const [loading, setLoading] = useState(true);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
+  // NCD sub-tab — Holdings | Investment | Reinv Tag | Historical Repayments | Expected Repayments.
+  // "holdings" shows the bond holdings table; the other four delegate to
+  // TradesTabContent in controlled mode (it skips its own nav row).
+  const [ncdSubTab, setNcdSubTab] = useState("holdings");
   const [clientTypeFilter, setClientTypeFilter] = useState("all"); // "all", "bonds", "real_estate"
   const [openMenu, setOpenMenu] = useState(null);
   const [openTradeMenu, setOpenTradeMenu] = useState(null); // For trades tab three-dot menu
@@ -767,6 +1362,15 @@ export default function Holdings() {
 
   // Currency state for Real Estate payment timeline
   const [reSelectedCurrency, setReSelectedCurrency] = useState("AED");
+
+  // Default the Real-Estate currency radio to the client's home currency once
+  // their residency loads. User can still flip to AED via the radio button.
+  useEffect(() => {
+    const residency = clientDetails?.country_of_residency;
+    if (!residency) return;
+    const homeCode = residency === 'India' ? 'INR' : 'AED';
+    setReSelectedCurrency(homeCode);
+  }, [clientDetails?.country_of_residency]);
   const [reCurrencyRates, setReCurrencyRates] = useState({ 
     AED: 1, INR: 24.72, USD: 0.27, EUR: 0.25, GBP: 0.21, SGD: 0.36,
     CNY: 1.97, JPY: 40.5, CHF: 0.24, CAD: 0.37, AUD: 0.42, HKD: 2.12,
@@ -774,6 +1378,10 @@ export default function Holdings() {
   });
   const [reProjectedRates, setReProjectedRates] = useState(null); // Stores {year: rate} mapping
   const [reLoadingRates, setReLoadingRates] = useState(false);
+  
+  // CAS Analysis state
+  const [clientAnalyses, setClientAnalyses] = useState([]);
+  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
 
   // Fetch currency rates for Real Estate - now includes projected rates by year
   const fetchRECurrencyRates = async (currency) => {
@@ -828,19 +1436,22 @@ export default function Holdings() {
   // Memoized real estate financials - prevents expensive recalculations on every render
   const computedRealEstateData = useMemo(() => {
     if (!clientRealEstate || clientRealEstate.length === 0) return [];
-    const clientResidency = clientDetails?.country_of_residency;
+    // Radio-button override: "AED" forces AED display regardless of residency;
+    // "home" respects the client's country_of_residency (INR for India, else AED).
+    const residency = clientDetails?.country_of_residency;
+    const effectiveResidency = reSelectedCurrency === 'AED' ? 'Abroad' : residency;
     // Use projected rates from API if available, otherwise fall back to default
     const currentRate = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
     try {
       return clientRealEstate.map(property => ({
         property,
-        financials: computePropertyFinancials(property, clientResidency, reProjectedRates, currentRate)
+        financials: computePropertyFinancials(property, effectiveResidency, reProjectedRates, currentRate)
       }));
     } catch (error) {
       console.error('Error computing real estate financials:', error);
       return [];
     }
-  }, [clientRealEstate, clientDetails?.country_of_residency, reProjectedRates, reCurrencyRates?.INR]);
+  }, [clientRealEstate, clientDetails?.country_of_residency, reProjectedRates, reCurrencyRates?.INR, reSelectedCurrency]);
 
   // Set page title
   useEffect(() => {
@@ -853,8 +1464,29 @@ export default function Holdings() {
       navigate("/login");
       return;
     }
-    setUser(JSON.parse(userData));
-    fetchClients();
+    const parsed = JSON.parse(userData);
+    setUser(parsed);
+    // Clients see their own holdings only — bypass the broker/sub-broker
+    // investor loader and auto-select themselves so all the tabs render
+    // immediately with the full Holdings parity UI.
+    if (parsed?.role === 'client') {
+      const clientId = parsed.client_id || parsed.id;
+      const selfClient = {
+        id: clientId,
+        name: parsed.name || '',
+        pan: parsed.pan || parsed.login_id || '',
+        email: parsed.email || '',
+      };
+      setClients([selfClient]);
+      setSelectedClient(selfClient);
+      setLoading(false);
+      // Trigger the same data loads handleClientSelect would have fired so
+      // the page is populated immediately without a manual Refresh click.
+      fetchClientHoldings(clientId);
+      fetchClientAnalyses(clientId);
+    } else {
+      fetchClients();
+    }
   }, [navigate]);
 
   useEffect(() => {
@@ -873,7 +1505,7 @@ export default function Holdings() {
   const fetchClients = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/holdings/clients`, {
+      const response = await axios.get(`${API}/holdings/private-investors`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClients(response.data);
@@ -893,7 +1525,7 @@ export default function Holdings() {
         axios.get(`${API}/holdings/client/${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get(`${API}/clients/${clientId}`, {
+        axios.get(`${API}/private-investors/${clientId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API}/trades?client_id=${clientId}`, {
@@ -966,10 +1598,28 @@ export default function Holdings() {
     }
   };
 
+  // Fetch CAS Analyses for a client
+  const fetchClientAnalyses = async (clientId) => {
+    try {
+      setLoadingAnalyses(true);
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/analysis/client/${clientId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setClientAnalyses(response.data || []);
+    } catch (error) {
+      console.error("Error fetching client analyses:", error);
+      setClientAnalyses([]);
+    } finally {
+      setLoadingAnalyses(false);
+    }
+  };
+
   const handleClientSelect = (client) => {
     setSelectedClient(client);
     // Don't reset tab - preserve the current tab selection when selecting new client
     fetchClientHoldings(client.id);
+    fetchClientAnalyses(client.id);
   };
 
   // Auto-fetch INR projected rates when real estate data is loaded
@@ -1498,6 +2148,7 @@ export default function Holdings() {
         consolidated[bondId] = {
           bond_id: bondId,
           bond_name: holding.bond_name,
+          bond_code: holding.bond_code,  // preserve bond code (→ Deal ID) across the merge
           total_units: 0,
           invested_amount: 0,
           total_principal: 0,
@@ -1514,6 +2165,7 @@ export default function Holdings() {
           prepaid_amount: 0,
           xirr: null,
           actual_xirr: null,
+          repaid_rows: [],  // Accumulated per-date email repayments (merged from all groups of this bond)
           trades: []  // Will contain separate entries for each investment date
         };
       }
@@ -1533,6 +2185,14 @@ export default function Holdings() {
       consolidated[bondId].upcoming_expected += holding.upcoming_expected;
       consolidated[bondId].prepaid_count += holding.prepaid_count || 0;
       consolidated[bondId].prepaid_amount += holding.prepaid_amount || 0;
+
+      // Accumulate per-date email repayments from every trade group of this bond.
+      // Server apportions each row by invested-ratio, so summing across groups
+      // reconstructs the full NCD_Repayments total for that date at the
+      // consolidated bond level.
+      (holding.repaid_rows || []).forEach(r => {
+        consolidated[bondId].repaid_rows.push(r);
+      });
       
       // For XIRR in summary, use weighted average or the bond's expected rate
       // Since different tranches may have different actual XIRRs, we'll show the bond's expected XIRR
@@ -1557,19 +2217,46 @@ export default function Holdings() {
         units: holding.units,
         investment_date: holding.investment_date,
         invested_amount: holding.invested_amount,
+        maturity_date: holding.maturity_date,
         prepaid_count: holding.prepaid_count || 0,
         prepaid_amount: holding.prepaid_amount || 0,
         xirr: holding.xirr,
         actual_xirr: holding.actual_xirr,
         cashflows: (holding.cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date)),
         expected_cashflows: holding.expected_cashflows || [],
-        actual_cashflows: holding.actual_cashflows || []
+        actual_cashflows: holding.actual_cashflows || [],
+        // Per-trade repaid_rows from the API (already principal-matched per
+        // (bond, investment_date) group on the backend) so the View Details
+        // modal can render this trade's actual transaction history without
+        // re-apportioning the bond-level totals.
+        repaid_rows: holding.repaid_rows || []
       });
+      // Copy bond-level maturity (same across trade groups) once
+      if (!consolidated[bondId].maturity_date && holding.maturity_date) {
+        consolidated[bondId].maturity_date = holding.maturity_date;
+      }
     });
     
     Object.values(consolidated).forEach(bond => {
       bond.trades.sort((a, b) => new Date(a.investment_date) - new Date(b.investment_date));
       bond.status = bond.upcoming_expected > 0 ? 'active' : 'fully_repaid';
+
+      // Merge repaid_rows by date (same dates are summed; count is the max
+      // across groups, since every trade group carries the same email-level
+      // count per date — summing would double-count).
+      if (bond.repaid_rows && bond.repaid_rows.length) {
+        const byDate = {};
+        for (const r of bond.repaid_rows) {
+          const key = r.date;
+          if (!byDate[key]) byDate[key] = { date: key, principal: 0, interest: 0, gross: 0, tds: 0, count: 0 };
+          byDate[key].principal += r.principal || 0;
+          byDate[key].interest  += r.interest  || 0;
+          byDate[key].gross     += r.gross     || 0;
+          byDate[key].tds       += r.tds       || 0;
+          byDate[key].count      = Math.max(byDate[key].count, r.count || 0);
+        }
+        bond.repaid_rows = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+      }
     });
     
     return Object.values(consolidated);
@@ -1593,9 +2280,22 @@ export default function Holdings() {
   });
 
   const consolidatedHoldings = getConsolidatedHoldings();
-  const filteredHoldings = consolidatedHoldings.filter(h => 
-    statusFilter === 'all' || h.status === statusFilter
-  );
+  // Filter by maturity-based status (same rule as the Status pill):
+  //   Active    → maturity_date > today (or unknown)
+  //   Completed → maturity_date <= today
+  const filteredHoldings = consolidatedHoldings.filter(h => {
+    if (statusFilter === 'all') return true;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const matStr = (h.maturity_date || '').slice(0, 10) || (
+      (h.trades || [])
+        .map(t => (t.maturity_date || '').slice(0, 10))
+        .filter(Boolean)
+        .sort()
+        .pop() || ''
+    );
+    const isMatured = !!matStr && matStr <= todayStr;
+    return statusFilter === 'completed' ? isMatured : !isMatured;
+  });
 
   const formatINR = (amount) => {
     if (!amount || amount === 0) return '₹ 0';
@@ -1630,23 +2330,27 @@ export default function Holdings() {
     return isNegative ? `-${formatted}` : formatted;
   };
 
-  // Get client display value based on filter type
-  // AED to INR conversion rate (approximate - will be updated to use live rate)
-  const AED_TO_INR_RATE = 22.75;
-  
+  // Get client display value based on filter type.
+  // When "All Investors" is selected we intentionally DO NOT sum bonds +
+  // real-estate into a single figure — bonds are priced in INR and real
+  // estate in AED, so any combined total is misleading. Instead we show the
+  // two amounts side by side (or just one when the other is zero).
   const getClientDisplayValue = (client) => {
     if (clientTypeFilter === 'bonds') {
-      // Show only bond investment in INR
       return formatINR(client.bond_investment || 0);
-    } else if (clientTypeFilter === 'real_estate') {
-      // Show only real estate investment in AED
-      return formatAED(client.real_estate_investment || 0);
-    } else {
-      // 'all' - show combined value in INR (convert AED to INR)
-      const bondINR = client.bond_investment || 0;
-      const realEstateINR = (client.real_estate_investment || 0) * AED_TO_INR_RATE;
-      return formatINR(bondINR + realEstateINR);
     }
+    if (clientTypeFilter === 'real_estate') {
+      return formatAED(client.real_estate_investment || 0);
+    }
+    // 'all'
+    const bondINR = client.bond_investment || 0;
+    const reAED = client.real_estate_investment || 0;
+    if (bondINR > 0 && reAED > 0) {
+      return `${formatINR(bondINR)} • ${formatAED(reAED)}`;
+    }
+    if (bondINR > 0) return formatINR(bondINR);
+    if (reAED > 0) return formatAED(reAED);
+    return '—';
   };
 
   // Format absolute amounts in Indian numbering (e.g., ₹12,34,567.00)
@@ -1667,6 +2371,20 @@ export default function Holdings() {
       if (!amt || amt === 0) return '₹0.00';
       return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
+
+    // Calculate payment status
+    const now = new Date();
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const prevMonthEndStr = prevMonthEnd.toISOString().slice(0, 10);
+    
+    // Check for prepayments in actual cashflows
+    const hasPrepayments = actualCashflows.some(cf => 
+      cf.type === 'prepayment' || 
+      (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+    ) || (holdingData.prepaid_count || 0) > 0 || (holdingData.prepaid_amount || 0) > 0;
+    
+    const paymentStatus = hasPrepayments ? 'Partly Prepaid' : 'On Time';
+    const statusColor = hasPrepayments ? '#d97706' : '#059669';
 
     // Calculate Expected totals
     const expInvestments = expectedCashflows.filter(cf => cf.type === 'investment');
@@ -1738,11 +2456,11 @@ export default function Holdings() {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
           <thead>
             <tr>
-              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Bond Name</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">NCD Name</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Units</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Total Investment</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Expected XIRR</th>
-              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Actual XIRR</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -1751,7 +2469,7 @@ export default function Holdings() {
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${holdingData.total_units || holdingData.units || '-'}</td>
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${formatAmount(expTotalInvestment)}</td>
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #059669;">${holdingData.xirr?.toFixed(2) || '-'}%</td>
-              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #7c3aed;">${holdingData.actual_xirr?.toFixed(2) || '-'}%</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: ${statusColor};">${paymentStatus}</td>
             </tr>
           </tbody>
         </table>
@@ -1879,6 +2597,14 @@ export default function Holdings() {
     try {
       toast.info("Generating Excel...");
       
+      // Calculate payment status
+      const hasPrepayments = actualCashflows.some(cf => 
+        cf.type === 'prepayment' || 
+        (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+      ) || (holdingData.prepaid_count || 0) > 0 || (holdingData.prepaid_amount || 0) > 0;
+      
+      const paymentStatus = hasPrepayments ? 'Partly Prepaid' : 'On Time';
+      
       // Calculate totals
       const expInvestments = expectedCashflows.filter(cf => cf.type === 'investment');
       const expInflows = expectedCashflows.filter(cf => cf.type !== 'investment');
@@ -1939,7 +2665,7 @@ export default function Holdings() {
       csv += `Expected Total Investment,${expTotalInvestment},,,,,,,,Actual Total Investment,${actTotalInvestment}\n`;
       csv += `Expected Total Returns,${expTotalGross},,,,,,,,Actual Total Returns,${actTotalGross}\n`;
       csv += `Expected Profit,${expProfit},,,,,,,,Actual Profit,${actProfit}\n`;
-      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%,,,,,,,,Actual XIRR,${holdingData.actual_xirr?.toFixed(2) || '-'}%\n`;
+      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%,,,,,,,,Status,${paymentStatus}\n`;
       
       // Create and download the file
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1971,28 +2697,30 @@ export default function Holdings() {
     <div className="flex min-h-screen bg-gray-50">
       <SidebarComponent user={user} />
       
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto">
         {/* Header with Client Selector - Like Data Gathering */}
         <div className="bg-white px-6 py-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Holdings</h1>
-                <p className="text-gray-500 text-sm mt-1">View client bond and real estate holdings</p>
+                <p className="text-gray-500 text-sm mt-1">View investor NCD and real estate holdings</p>
               </div>
               
-              {/* Client Selector - Inline with header */}
-              <div className="flex items-center gap-3 border-l pl-6">
-                {/* Client Selector Dropdown */}
-                <Select 
-                  value={selectedClient?.id || ""} 
-                  onValueChange={(value) => {
-                    const client = clients.find(c => c.id === value);
-                    if (client) handleClientSelect(client);
-                  }}
-                >
+              {/* Client Selector - Inline with header. Hidden for client
+                  role — their own profile is auto-selected. */}
+              {user.role !== 'client' ? (
+                <div className="flex items-center gap-3 border-l pl-6">
+                  {/* Client Selector Dropdown */}
+                  <Select 
+                    value={selectedClient?.id || ""} 
+                    onValueChange={(value) => {
+                      const client = clients.find(c => c.id === value);
+                      if (client) handleClientSelect(client);
+                    }}
+                  >
                   <SelectTrigger className="w-72 h-9">
-                    <SelectValue placeholder="Select a client">
+                    <SelectValue placeholder="Select an investor">
                       {selectedClient ? (
                         <span className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
@@ -2001,7 +2729,7 @@ export default function Holdings() {
                             : selectedClient.name}
                         </span>
                       ) : (
-                        <span className="text-gray-500">Select a client</span>
+                        <span className="text-gray-500">Select an investor</span>
                       )}
                     </SelectValue>
                   </SelectTrigger>
@@ -2011,7 +2739,7 @@ export default function Holdings() {
                       <div className="relative">
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Search clients..."
+                          placeholder="Search investors..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-8 h-8 text-sm"
@@ -2023,13 +2751,13 @@ export default function Holdings() {
                           <SelectValue placeholder="Filter by type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Clients</SelectItem>
-                          <SelectItem value="bonds">Bond Clients</SelectItem>
-                          <SelectItem value="real_estate">Real Estate Clients</SelectItem>
+                          <SelectItem value="all">All Investors</SelectItem>
+                          <SelectItem value="bonds">NCD Investors</SelectItem>
+                          <SelectItem value="real_estate">Real Estate Investors</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* Client list */}
+                    {/* Investor list */}
                     <div className="max-h-[350px] overflow-y-auto">
                       {loading ? (
                         <div className="px-2 py-4 text-sm text-gray-500 text-center">Loading...</div>
@@ -2050,19 +2778,32 @@ export default function Holdings() {
                         ))
                       ) : (
                         <div className="px-2 py-4 text-sm text-gray-500 text-center">
-                          {searchQuery ? `No clients matching "${searchQuery}"` : "No clients found"}
+                          {searchQuery ? `No investors matching "${searchQuery}"` : "No investors found"}
                         </div>
                       )}
                     </div>
                   </SelectContent>
                 </Select>
-              </div>
+                </div>
+              ) : (
+                /* Read-only identity strip for the logged-in client */
+                <div className="flex items-center gap-2 border-l pl-6 text-sm text-gray-600">
+                  <Users className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-gray-800">Viewing as:</span>
+                  <span>{selectedClient?.name}</span>
+                  {selectedClient?.pan && (
+                    <span className="text-xs text-gray-400">· PAN {selectedClient.pan}</span>
+                  )}
+                </div>
+              )}
             </div>
             
-            <Button variant="outline" size="sm" onClick={fetchClients} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={user.role === 'client' ? () => fetchClientHoldings(selectedClient?.id) : fetchClients} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -2072,8 +2813,8 @@ export default function Holdings() {
             <div className="h-[60vh] flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <Users className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">Select a client to view holdings</p>
-                <p className="text-sm text-gray-400 mt-1">Use the dropdown above to choose a client</p>
+                <p className="text-lg font-medium">Select an investor to view holdings</p>
+                <p className="text-sm text-gray-400 mt-1">Use the dropdown above to choose an investor</p>
               </div>
             </div>
           ) : loadingHoldings ? (
@@ -2093,19 +2834,7 @@ export default function Holdings() {
                   }`}
                   data-testid="tab-holdings"
                 >
-                  Bonds
-                </button>
-                <button 
-                  onClick={() => setMainTab("trades")}
-                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
-                    mainTab === "trades" 
-                      ? "border-etihad-gold-600 text-etihad-gold-700" 
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                  data-testid="tab-trades"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  Trades ({clientTrades.length})
+                  NCD
                 </button>
                 <button 
                   onClick={() => setMainTab("real-estate")}
@@ -2117,7 +2846,24 @@ export default function Holdings() {
                   data-testid="tab-real-estate"
                 >
                   <Building2 className="h-4 w-4" />
-                  Real Estate ({clientRealEstate.length})
+                  Real Estate
+                </button>
+                <button 
+                  onClick={() => {
+                    setMainTab("analysis");
+                    if (selectedClient && clientAnalyses.length === 0) {
+                      fetchClientAnalyses(selectedClient.id);
+                    }
+                  }}
+                  className={`pb-3 border-b-2 font-medium transition-colors flex items-center gap-2 ${
+                    mainTab === "analysis" 
+                      ? "border-etihad-gold-600 text-etihad-gold-700" 
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                  data-testid="tab-analysis"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  CAS Analysis
                 </button>
                 <button 
                   onClick={() => setMainTab("profile")}
@@ -2391,13 +3137,99 @@ export default function Holdings() {
                 </div>
               )}
               
-              {/* Trades Tab Content - With Sub-tabs */}
-              {mainTab === "trades" && (
-                <TradesTabContent 
-                  trades={clientTrades}
-                  selectedClient={selectedClient}
-                  formatINR={formatINR}
-                />
+              {/* CAS Analysis Tab Content */}
+              {mainTab === "analysis" && (
+                <div className="space-y-6">
+                  {loadingAnalyses ? (
+                    <div className="text-center py-12">
+                      <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                      <p className="mt-4 text-gray-500">Loading CAS analyses...</p>
+                    </div>
+                  ) : clientAnalyses.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <TrendingUp className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="font-medium">No CAS analyses found</p>
+                      <p className="text-sm mt-2">Upload a CAS PDF to analyze mutual fund holdings</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      {/* Table Header */}
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">File Name</th>
+                            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
+                            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientAnalyses.map((analysis, idx) => (
+                            <tr key={analysis.id} className={`border-b ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-gray-400" />
+                                  <span className="text-sm text-gray-800 truncate max-w-[300px]" title={analysis.filename}>
+                                    {analysis.filename || 'CAS Analysis'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-sm text-gray-600">
+                                  {analysis.created_at ? new Date(analysis.created_at).toLocaleDateString('en-IN', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric'
+                                  }) : '-'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(`/analysis/dashboard/${analysis.id}`, '_blank')}
+                                    className="text-blue-600 hover:bg-blue-50 h-8 px-2"
+                                    title="View Dashboard"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        const token = localStorage.getItem("token");
+                                        const response = await axios.get(`${API}/analysis/${analysis.id}/download`, {
+                                          headers: { Authorization: `Bearer ${token}` },
+                                          responseType: 'blob'
+                                        });
+                                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `GapSheet_${selectedClient?.pan_number || 'Report'}.zip`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        window.URL.revokeObjectURL(url);
+                                        a.remove();
+                                        toast.success("Reports downloaded!");
+                                      } catch (error) {
+                                        toast.error("Failed to download reports");
+                                      }
+                                    }}
+                                    className="text-green-600 hover:bg-green-50 h-8 px-2"
+                                    title="Download Reports"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               )}
               
               {/* Real Estate Tab Content */}
@@ -2412,7 +3244,9 @@ export default function Holdings() {
                     <>
                       {/* Summary Row - Real Estate specific layout */}
                       {(() => {
-                        // Calculate totals across all properties
+                        // Calculate totals across all properties using the
+                        // memoized financials so fees + share_percentage are
+                        // applied consistently with the Holding Report.
                         let totalInvestmentAmount = 0;
                         let totalPaidTillDate = 0;
                         let totalExpectedSale = 0;
@@ -2420,20 +3254,28 @@ export default function Holdings() {
                         let futurePayments = 0;
                         const today = new Date();
                         
-                        clientRealEstate.forEach(property => {
-                          const investmentAmount = property.investment_amount || 0;
-                          totalInvestmentAmount += investmentAmount;
-                          totalExpectedSale += property.expected_sale_value || (investmentAmount * 1.4);
+                        (computedRealEstateData || []).forEach(({ property, financials }) => {
+                          const fin = financials || {};
+                          totalInvestmentAmount += fin.totalCostAed || 0;
+                          totalPaidTillDate += fin.paidAmountAed || 0;
+                          totalExpectedSale += fin.expectedSalePrice || 0;
                           
                           const schedule = property.payment_schedule || [];
+                          const sharePct = (property.share_percentage || 100) / 100;
+                          const unitPriceShare = (property.unit_price || 0) * sharePct;
+                          const upfrontShare = (
+                            (property.dld_fee || (property.unit_price || 0) * (property.dld_fee_percentage || 0) / 100) +
+                            (property.admin_fee || 0) +
+                            (property.broker_fee || 0) +
+                            (property.other_fees || 0)
+                          ) * sharePct;
                           schedule.forEach((milestone, idx) => {
-                            const milestoneAmount = (milestone.percentage / 100) * investmentAmount;
+                            const base = (milestone.percentage / 100) * unitPriceShare;
+                            const milestoneAmount = base + (idx === 0 ? upfrontShare : 0);
                             const milestoneDate = new Date(milestone.date);
                             const isPaid = idx < (property.payments_completed || 0);
-                            
-                            if (isPaid) {
-                              totalPaidTillDate += milestoneAmount;
-                            } else if (milestoneDate < today) {
+                            if (isPaid) return; // already counted in paidAmountAed
+                            if (milestoneDate < today) {
                               paymentsDelayed += milestoneAmount;
                             } else {
                               futurePayments += milestoneAmount;
@@ -2449,7 +3291,14 @@ export default function Holdings() {
                         const paidPercent = totalInvestmentAmount > 0 ? (totalPaidTillDate / totalInvestmentAmount) * 100 : 0;
                         const pendingPercent = 100 - paidPercent;
                         
-                        const formatAmount = (amount) => {
+                        const isAedDisplay = reSelectedCurrency === 'AED';
+                        const AED_TO_INR = reCurrencyRates?.INR || AED_TO_INR_CURRENT;
+                        
+                        const formatAmount = (amountAed) => {
+                          if (isAedDisplay) {
+                            return `AED ${new Intl.NumberFormat('en-AE').format(Math.round(amountAed))}`;
+                          }
+                          const amount = amountAed * AED_TO_INR;
                           if (amount >= 10000000) {
                             return `₹ ${(amount / 10000000).toFixed(2)} Cr`;
                           } else if (amount >= 100000) {
@@ -2458,8 +3307,6 @@ export default function Holdings() {
                           return `₹ ${new Intl.NumberFormat('en-IN').format(Math.round(amount))}`;
                         };
                         
-                        const AED_TO_INR = 22.5;
-                        
                         return (
                           <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                             {/* Top Row: Summary Stats - matching bonds font size */}
@@ -2467,35 +3314,35 @@ export default function Holdings() {
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-500">Total Investment Amount:</span>
                                 <span className="font-mono font-semibold text-gray-800">
-                                  {formatAmount(totalInvestmentAmount * AED_TO_INR)}
+                                  {formatAmount(totalInvestmentAmount)}
                                 </span>
                               </div>
                               <div className="h-4 w-px bg-gray-200"></div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-500">Expected Sale Amount:</span>
                                 <span className="font-mono font-semibold text-blue-600">
-                                  {formatAmount(totalExpectedSale * AED_TO_INR)}
+                                  {formatAmount(totalExpectedSale)}
                                 </span>
                               </div>
                               <div className="h-4 w-px bg-gray-200"></div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-500">Expected Profit on Sale:</span>
                                 <span className="font-mono font-semibold text-green-600">
-                                  {formatAmount(expectedProfitOnSale * AED_TO_INR)}
+                                  {formatAmount(expectedProfitOnSale)}
                                 </span>
                               </div>
                               <div className="h-4 w-px bg-gray-200"></div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-500">Expected Profit/Loss from Currency:</span>
                                 <span className={`font-mono font-semibold ${currencyProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {currencyProfitLoss >= 0 ? '+' : ''}{formatAmount(currencyProfitLoss * AED_TO_INR)}
+                                  {currencyProfitLoss >= 0 ? '+' : ''}{formatAmount(currencyProfitLoss)}
                                 </span>
                               </div>
                               <div className="h-4 w-px bg-gray-200"></div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-500">Pending to Invest:</span>
                                 <span className="font-mono font-semibold text-red-600">
-                                  {formatAmount(pendingToInvest * AED_TO_INR)}
+                                  {formatAmount(pendingToInvest)}
                                 </span>
                               </div>
                             </div>
@@ -2522,16 +3369,16 @@ export default function Holdings() {
                                   <div className="flex items-center gap-1.5">
                                     <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                                     <span className="text-gray-600">Paid Till Date:</span>
-                                    <span className="font-mono font-semibold text-green-700">{formatAmount(totalPaidTillDate * AED_TO_INR)}</span>
+                                    <span className="font-mono font-semibold text-green-700">{formatAmount(totalPaidTillDate)}</span>
                                     <span className="text-gray-400">({paidPercent.toFixed(0)}%)</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
                                     <span className="text-gray-600">Pending:</span>
-                                    <span className="font-mono font-semibold text-blue-700">{formatAmount(pendingToInvest * AED_TO_INR)}</span>
+                                    <span className="font-mono font-semibold text-blue-700">{formatAmount(pendingToInvest)}</span>
                                     <span className="text-gray-400">({pendingPercent.toFixed(0)}%)</span>
                                   </div>
-                                  <span className="text-gray-500">Total: <span className="font-mono font-semibold">{formatAmount(totalInvestmentAmount * AED_TO_INR)}</span></span>
+                                  <span className="text-gray-500">Total: <span className="font-mono font-semibold">{formatAmount(totalInvestmentAmount)}</span></span>
                                 </div>
                               </div>
                             </div>
@@ -2542,20 +3389,55 @@ export default function Holdings() {
                       {/* Holding Report Table - Real Estate */}
                       <div className="bg-white rounded-lg border border-gray-200 overflow-visible">
                         {/* Table Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-5 w-5 text-amber-600" />
-                            <h3 className="text-lg font-semibold text-gray-800">Holding Report</h3>
-                          </div>
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-wrap gap-4">
                           <div className="flex items-center gap-4">
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Download className="h-4 w-4" />
-                              DOWNLOAD
-                            </Button>
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Mail className="h-4 w-4" />
-                              EMAIL
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-5 w-5 text-amber-600" />
+                              <h3 className="font-semibold text-gray-800">Holding Report</h3>
+                            </div>
+                            
+                            {/* Currency toggle — AED vs. client's home currency (matches NCD status filter style) */}
+                            {(() => {
+                              const residency = clientDetails?.country_of_residency;
+                              const homeCode = residency === 'India' ? 'INR' : 'AED';
+                              return (
+                                <div
+                                  className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200"
+                                  data-testid="re-holding-currency-toggle"
+                                >
+                                  <label className="flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="re-holding-currency"
+                                      value="AED"
+                                      checked={reSelectedCurrency === 'AED'}
+                                      onChange={() => setReSelectedCurrency('AED')}
+                                      className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500"
+                                      data-testid="re-currency-aed"
+                                    />
+                                    <span className="text-sm text-gray-600">AED</span>
+                                  </label>
+                                  <label className="flex items-center gap-1.5 cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="re-holding-currency"
+                                      value="home"
+                                      checked={reSelectedCurrency !== 'AED'}
+                                      onChange={() => setReSelectedCurrency(homeCode)}
+                                      className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500"
+                                      data-testid="re-currency-home"
+                                    />
+                                    <span className="text-sm text-gray-600">Home Currency ({homeCode})</span>
+                                  </label>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {/* Download / Email buttons intentionally hidden
+                                on the Real Estate tab — those flows are
+                                only meaningful for the NCD Holdings Excel
+                                report. */}
                           </div>
                         </div>
                         
@@ -2583,7 +3465,7 @@ export default function Holdings() {
                                   paymentsAfterSaleAed, totalInvestmentInr, netSaleProceedsAed, netSaleProceedsInr,
                                   profitFromSaleAed, profitFromSaleInrNoForex, forexImpactOnSale, totalProfitInr, 
                                   saleProceedsInr, netCurrencyImpact, totalCostAed, totalInvestmentAed,
-                                  paidFromScheduleInr, payableFromScheduleInr,
+                                  paidFromScheduleInr, payableFromScheduleInr, upfrontFeesAed, dldFeeAed, adminFeeAed,
                                   netSaleValueForXirr, expectedXirr, actualXirr, totalSqft, balconyArea, apartmentArea,
                                   currentRate, currencySymbol
                                 } = financials;
@@ -2611,32 +3493,48 @@ export default function Holdings() {
                                   return `AED ${new Intl.NumberFormat('en-AE').format(Math.round(amount))}`;
                                 };
                                 
+                                // Currency-aware money formatter — follows the AED|Home Currency toggle.
+                                const isAedDisplay = reSelectedCurrency === 'AED';
+                                const fmtMoneyAed = (aed) => isAedDisplay ? formatAED(aed) : formatINR(aed * currentInrRate);
+                                // Sale-dated values must use the projected rate at sale-date when INR is selected.
+                                const fmtMoneyAtSale = (aed) => isAedDisplay ? formatAED(aed) : formatINR(aed * projectedAedToInr);
+                                
                                 return (
                                   <tr key={idx} className="hover:bg-gray-50 overflow-visible">
                                     {/* Property Details - compact */}
                                     <td className="px-2 py-2 overflow-visible">
-                                      <p className="font-semibold text-gray-800 text-xs">{property.building_name || 'Property'}</p>
+                                      {(() => {
+                                        const rawName = property.building_name || 'Property';
+                                        const displayName = rawName
+                                          .replace(/Hyde Residences Dubai Hills/i, 'Hyde Residences')
+                                          .replace(/25\s*HOURS?\s*HEIMAT\s*DUBAI/i, '25H Heimat');
+                                        return (
+                                          <p className="font-semibold text-gray-800 text-xs whitespace-nowrap" title={rawName}>
+                                            {displayName}
+                                          </p>
+                                        );
+                                      })()}
                                       <p className="text-[10px] text-gray-400">
                                         {property.unit_number || property.apartment_no || 'Unit N/A'} • {property.share_percentage || 100}%
                                       </p>
                                     </td>
                                     
                                     {/* Investment Amount - Total cost including DLD + Admin fees */}
-                                    <td className="px-2 py-2 text-right overflow-visible">
+                                    <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group/inv relative">
-                                        <p className="font-mono font-semibold text-gray-800 text-xs">{formatINR(totalInvestmentInr)}</p>
+                                        <p className="font-mono font-semibold text-gray-800 text-xs">{fmtMoneyAed(totalCostAed)}</p>
                                         <p className="text-[10px]">
-                                          <span className="text-emerald-600">Paid: {formatINR(paidFromScheduleInr)}</span>
+                                          <span className="text-emerald-600">Paid: {fmtMoneyAed(paidAmountAed)}</span>
                                           <span className="mx-1 text-gray-400">|</span>
-                                          <span className="text-blue-600">Due: {formatINR(payableFromScheduleInr)}</span>
+                                          <span className="text-blue-600">Due: {fmtMoneyAed(payableAmountAed)}</span>
                                         </p>
-                                        {/* Payment Schedule Tooltip */}
-                                        <div className="absolute hidden group-hover/inv:block left-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '380px'}}>
+                                        {/* Payment Schedule Tooltip - appears on right side to avoid clipping */}
+                                        <div className="absolute hidden group-hover/inv:block left-full top-0 ml-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '400px', zIndex: 9999}}>
                                           <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
                                             <p className="font-bold text-amber-400">Investment Breakdown</p>
                                             <p className="text-gray-400 text-[9px]">Total: {formatAED(totalCostAed)} @ ₹{currentInrRate.toFixed(2)}/AED</p>
                                           </div>
-                                          <div className="p-3">
+                                          <div className="p-3 max-h-[350px] overflow-y-auto">
                                             <table className="w-full">
                                               <thead>
                                                 <tr className="text-gray-400 border-b border-gray-700">
@@ -2648,12 +3546,18 @@ export default function Holdings() {
                                               </thead>
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
-                                                  const amt = (milestone.percentage / 100) * investmentAmount;
+                                                  const baseAmt = (milestone.percentage / 100) * investmentAmount;
+                                                  const amt = baseAmt + (i === 0 ? (upfrontFeesAed || 0) : 0);
                                                   const isPaid = i < (property.payments_completed || 0);
                                                   const rate = getRateForDate(milestone.date);
+                                                  const feeNote = i === 0 && (upfrontFeesAed || 0) > 0
+                                                    ? ` (incl. ${formatAED(upfrontFeesAed)} DLD+Admin)` : '';
                                                   return (
                                                     <tr key={i} className={`border-b border-gray-800 ${isPaid ? 'bg-green-900/30' : ''}`}>
-                                                      <td className="py-1.5">{new Date(milestone.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}</td>
+                                                      <td className="py-1.5">
+                                                        {new Date(milestone.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'})}
+                                                        {feeNote && <span className="text-[8px] text-amber-300 ml-1">{feeNote}</span>}
+                                                      </td>
                                                       <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(amt))}</td>
                                                       <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(amt * rate))}</td>
                                                       <td className="text-center py-1.5">{isPaid ? <span className="text-green-400">✓ Paid</span> : <span className="text-gray-500">Pending</span>}</td>
@@ -2664,7 +3568,7 @@ export default function Holdings() {
                                               <tfoot>
                                                 <tr className="font-bold bg-gray-800">
                                                   <td className="py-1.5 text-amber-400">Total</td>
-                                                  <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(investmentAmount))}</td>
+                                                  <td className="text-right py-1.5">{new Intl.NumberFormat('en-IN').format(Math.round(totalCostAed))}</td>
                                                   <td className="text-right py-1.5 text-amber-400">{new Intl.NumberFormat('en-IN').format(Math.round(totalInvestmentInr))}</td>
                                                   <td className="text-center py-1.5 text-gray-400">{property.payments_completed || 0}/{schedule.length}</td>
                                                 </tr>
@@ -2684,14 +3588,16 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Expected Sale Amount */}
-                                    <td className="px-2 py-2 text-right overflow-visible">
+                                    <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group/sale relative">
-                                        <p className="font-mono font-semibold text-blue-600 text-xs">{formatINR(expectedSalePrice * projectedAedToInr)}</p>
+                                        <p className="font-mono font-semibold text-blue-600 text-xs">{fmtMoneyAtSale(expectedSalePrice)}</p>
                                         <p className="text-[10px] text-gray-500">
-                                          @₹{projectedAedToInr.toFixed(2)}/AED • {expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                                          {isAedDisplay
+                                            ? expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+                                            : `@₹${projectedAedToInr.toFixed(2)}/AED • ${expectedSaleDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`}
                                         </p>
-                                        {/* Sale Tooltip */}
-                                        <div className="absolute hidden group-hover/sale:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '220px'}}>
+                                        {/* Sale Tooltip - appears to right to avoid clipping */}
+                                        <div className="absolute hidden group-hover/sale:block left-full top-0 ml-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '220px', zIndex: 9999}}>
                                           <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
                                             <p className="font-bold text-amber-400">Sale Projection</p>
                                           </div>
@@ -2707,18 +3613,26 @@ export default function Holdings() {
                                     </td>
                                     
                                     {/* Total Profit - show Sale (without forex) | Forex */}
-                                    <td className="px-2 py-2 text-right overflow-visible">
+                                    <td className="px-2 py-2 text-right">
                                       <div className="cursor-help group relative">
-                                        <p className="font-mono font-semibold text-green-600 text-xs">{formatINR(totalProfitInr)}</p>
-                                        <p className="text-[10px]">
-                                          <span className="text-gray-500">Sale: {formatINR(profitFromSaleInrNoForex)}</span>
-                                          <span className="mx-1 text-gray-400">|</span>
-                                          <span className={forexImpactOnSale >= 0 ? 'text-amber-600' : 'text-red-500'}>
-                                            Forex: {forexImpactOnSale >= 0 ? '+' : ''}{formatINR(forexImpactOnSale)}
-                                          </span>
+                                        <p className="font-mono font-semibold text-green-600 text-xs">
+                                          {isAedDisplay ? formatAED(profitFromSaleAed) : formatINR(totalProfitInr)}
                                         </p>
-                                        {/* Tooltip with clear breakdown */}
-                                        <div className="absolute hidden group-hover:block right-0 top-full mt-1 z-50 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '240px'}}>
+                                        <p className="text-[10px]">
+                                          {isAedDisplay ? (
+                                            <span className="text-gray-500">Sale: {formatAED(profitFromSaleAed)}</span>
+                                          ) : (
+                                            <>
+                                              <span className="text-gray-500">Sale: {formatINR(profitFromSaleInrNoForex)}</span>
+                                              <span className="mx-1 text-gray-400">|</span>
+                                              <span className={forexImpactOnSale >= 0 ? 'text-amber-600' : 'text-red-500'}>
+                                                Forex: {forexImpactOnSale >= 0 ? '+' : ''}{formatINR(forexImpactOnSale)}
+                                              </span>
+                                            </>
+                                          )}
+                                        </p>
+                                        {/* Tooltip - appears to right to avoid clipping */}
+                                        <div className="absolute hidden group-hover:block left-full top-0 ml-2 bg-gray-900 text-white text-[11px] rounded-lg px-3 py-2 shadow-xl border border-gray-700" style={{minWidth: '240px', zIndex: 9999}}>
                                           <p className="font-bold text-amber-400 border-b border-gray-600 pb-1 mb-2">Profit Breakdown</p>
                                           <div className="space-y-1">
                                             <p><span className="text-gray-400">Expected Sale (AED):</span> <span className="float-right">{formatAED(expectedSalePrice)}</span></p>
@@ -2768,7 +3682,8 @@ export default function Holdings() {
                                               </thead>
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
-                                                  const amt = (milestone.percentage / 100) * investmentAmount;
+                                                  const baseAmt = (milestone.percentage / 100) * investmentAmount;
+                                                  const amt = baseAmt + (i === 0 ? (upfrontFeesAed || 0) : 0);
                                                   const rate = getRateForDate(milestone.date);
                                                   const milestoneDate = new Date(milestone.date);
                                                   const isExcluded = isSellingBeforeCompletion && milestoneDate > expectedSaleDate;
@@ -2835,7 +3750,8 @@ export default function Holdings() {
                                               </thead>
                                               <tbody>
                                                 {schedule.map((milestone, i) => {
-                                                  const amt = (milestone.percentage / 100) * investmentAmount;
+                                                  const baseAmt = (milestone.percentage / 100) * investmentAmount;
+                                                  const amt = baseAmt + (i === 0 ? (upfrontFeesAed || 0) : 0);
                                                   const isPaid = i < (property.payments_completed || 0);
                                                   const actualDate = isPaid ? (property.actual_payment_dates?.[i] || milestone.date) : milestone.date;
                                                   const rate = getRateForDate(actualDate);
@@ -2911,53 +3827,149 @@ export default function Holdings() {
               {/* Holdings Tab Content */}
               {mainTab === "holdings" && (
               <>
+              {/* NCD Sub-tab Navigation — Holdings | Investment | Reinv Tag | Historical Repayments | Expected Repayments */}
+              <div className="flex gap-2 flex-wrap border-b border-gray-200 mb-4 pb-2" data-testid="ncd-sub-tabs">
+                {[
+                  { key: 'holdings',   label: 'Holdings',             color: 'amber',  icon: TrendingUp },
+                  { key: 'investment', label: 'Investment',           color: 'green',  icon: CheckCircle },
+                  { key: 'reinv-logs', label: 'Reinv Tag',            color: 'purple', icon: TrendingUp },
+                  { key: 'repayments', label: 'Historical Repayments', color: 'blue',   icon: IndianRupee },
+                  { key: 'expected',   label: 'Expected Repayments',  color: 'amber',  icon: Clock },
+                ].map(({ key, label, color, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setNcdSubTab(key)}
+                    data-testid={`ncd-subtab-${key}`}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                      ncdSubTab === key
+                        ? `bg-${color}-100 text-${color}-700 border-b-2 border-${color}-600`
+                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              
+              {ncdSubTab !== 'holdings' && (
+                <TradesTabContent
+                  trades={clientTrades}
+                  selectedClient={selectedClient}
+                  formatINR={formatINR}
+                  controlledTab={ncdSubTab}
+                  onTabChange={setNcdSubTab}
+                  hideNav
+                />
+              )}
+              
+              {ncdSubTab === 'holdings' && (<>
               {/* Summary Section with Repayment Status Chart */}
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                {/* Top Row: Summary Stats */}
-                <div className="flex items-center gap-4 text-xs mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">Total Investment:</span>
-                    <span className="font-mono font-semibold text-gray-800">{formatINR(clientHoldings.summary.total_investment)}</span>
-                  </div>
-                  <div className="h-4 w-px bg-gray-200"></div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">Total Gross Expected:</span>
-                    <span className="font-mono font-semibold text-emerald-600">{formatINR(clientHoldings.summary.total_expected)}</span>
-                  </div>
-                  <div className="h-4 w-px bg-gray-200"></div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">Total Gross Profit:</span>
-                    <span className={`font-mono font-semibold ${clientHoldings.summary.total_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatINR(clientHoldings.summary.total_profit)}
-                    </span>
-                  </div>
-                  <div className="h-4 w-px bg-gray-200"></div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500">Total O/S Principal:</span>
-                    <span className="font-mono font-semibold text-blue-600">{formatINR(
-                      filteredHoldings.reduce((sum, h) => sum + (h.total_principal - h.repaid_principal), 0)
-                    )}</span>
-                  </div>
-                </div>
+                {/* Top Row: Summary Stats — wired to the new canonical NCD DB
+                    via the same per-holding fields the Excel Summary tab uses
+                    (`expected_cashflows` for P/I split + `repaid_*` from the
+                    principal-matched per-trade attribution). */}
+                {(() => {
+                  let sumInvestment = 0;
+                  let sumGrossExpected = 0;
+                  let sumRepaid = 0;       // P + I (gross of TDS)
+                  let sumTds = 0;
+
+                  filteredHoldings.forEach(holding => {
+                    sumInvestment += holding.invested_amount || 0;
+
+                    // Gross Expected = lifetime sum of P + I from expected_cashflows
+                    // (mirrors `_compute_summary_row_values` on the backend).
+                    const allExpectedCashflows = holding.trades?.length > 0
+                      ? (holding.trades || []).flatMap(trade => trade.expected_cashflows || [])
+                      : (holding.expected_cashflows || []);
+                    const expectedGross = allExpectedCashflows
+                      .filter(cf => cf.type !== 'investment')
+                      .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                    sumGrossExpected += expectedGross;
+
+                    // Gross Repaid = principal + interest (post-attribution per
+                    // trade group on the backend — single source of truth).
+                    sumRepaid += (holding.repaid_principal || 0) + (holding.repaid_interest || 0);
+                    sumTds   += holding.repaid_tds || 0;
+                  });
+
+                  // Profit is derived from the totals — matches Excel Summary's
+                  // Profit column = Gross Expected − Investment.
+                  const sumProfit = sumGrossExpected - sumInvestment;
+                  
+                  return (
+                    <div className="flex items-center gap-4 text-xs mb-3 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-500">Total Investment:</span>
+                        <span className="font-mono font-semibold text-gray-800">{formatINR(sumInvestment)}</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-500">Total Gross Expected:</span>
+                        <span className="font-mono font-semibold text-emerald-600">{formatINR(sumGrossExpected)}</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-500">Total Gross Profit:</span>
+                        <span className={`font-mono font-semibold ${sumProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatINR(sumProfit)}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-1.5" data-testid="summary-total-repaid">
+                        <span className="text-gray-500">Total Repaid:</span>
+                        <span className="font-mono font-semibold text-blue-700">{formatINR(sumRepaid)}</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200"></div>
+                      <div className="flex items-center gap-1.5" data-testid="summary-total-tds">
+                        <span className="text-gray-500">Total TDS Deducted:</span>
+                        <span className="font-mono font-semibold text-amber-700">{formatINR(sumTds)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 
                 {/* Repayment Status Chart */}
                 {filteredHoldings.length > 0 && (
                 <div className="pt-3 border-t border-gray-100">
                   {(() => {
-                    // Use GROSS values for consistency (principal + interest, before TDS)
-                    // gross_repaid = repaid_principal + repaid_interest (what was actually received gross)
-                    // gross_upcoming = upcoming future principal + interest (what's still due gross)
-                    const totalReceived = filteredHoldings.reduce((sum, h) => {
-                      // Use gross_repaid if available, otherwise calculate from components
-                      const grossRepaid = h.gross_repaid || ((h.repaid_principal || 0) + (h.repaid_interest || 0));
-                      return sum + grossRepaid;
-                    }, 0);
-                    const totalOutstanding = filteredHoldings.reduce((sum, h) => {
-                      // Use gross_upcoming if available, otherwise use upcoming_expected
-                      return sum + (h.gross_upcoming || h.upcoming_expected || 0);
-                    }, 0);
-                    const grandTotal = totalReceived + totalOutstanding;
+                    // Total Gross Expected = lifetime sum of P + I from
+                    // expected_cashflows. Same logic the stats cards above use,
+                    // and matches the Excel Summary tab's Gross Expected column.
+                    let totalGrossExpected = 0;
+                    filteredHoldings.forEach(holding => {
+                      const allExpectedCashflows = holding.trades?.length > 0
+                        ? (holding.trades || []).flatMap(trade => trade.expected_cashflows || [])
+                        : (holding.expected_cashflows || []);
+                      const expectedGross = allExpectedCashflows
+                        .filter(cf => cf.type !== 'investment')
+                        .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                      totalGrossExpected += expectedGross;
+                    });
+
+                    // Total Received = principal + interest received so far
+                    // (post-attribution per trade group on the backend).
+                    const totalReceived = filteredHoldings.reduce((sum, h) =>
+                      sum + (h.repaid_principal || 0) + (h.repaid_interest || 0), 0);
+                    
+                    // Outstanding = Total Gross Expected - Received
+                    const totalOutstanding = Math.max(0, totalGrossExpected - totalReceived);
+
+                    // Hide "Outstanding" when viewing Completed bonds only —
+                    // a completed bond has no future outstanding; the chart
+                    // should reflect 100% received.
+                    const hideOutstanding = statusFilter === 'completed';
+
+                    // Grand Total is the Total Gross Expected, except when we
+                    // are viewing only Completed bonds — then the chart is
+                    // based on the actually-received amount so it shows 100%.
+                    const grandTotal = hideOutstanding ? totalReceived : totalGrossExpected;
                     const receivedPercent = grandTotal > 0 ? (totalReceived / grandTotal) * 100 : 0;
+                    const outstandingPercent = hideOutstanding
+                      ? 0
+                      : (grandTotal > 0 ? (totalOutstanding / grandTotal) * 100 : 0);
                     
                     return (
                       <div className="flex items-center gap-4">
@@ -2969,10 +3981,12 @@ export default function Holdings() {
                             className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
                             style={{ width: `${receivedPercent}%` }}
                           />
-                          <div 
-                            className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
-                            style={{ left: `${receivedPercent}%`, width: `${100 - receivedPercent}%` }}
-                          />
+                          {!hideOutstanding && (
+                            <div 
+                              className="absolute top-0 h-full bg-blue-500 transition-all duration-500"
+                              style={{ left: `${receivedPercent}%`, width: `${outstandingPercent}%` }}
+                            />
+                          )}
                         </div>
                         
                         {/* Inline Legend */}
@@ -2983,12 +3997,14 @@ export default function Holdings() {
                             <span className="font-mono font-semibold text-green-700">{formatINR(totalReceived)}</span>
                             <span className="text-gray-400">({receivedPercent.toFixed(0)}%)</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                            <span className="text-gray-600">Outstanding:</span>
-                            <span className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</span>
-                            <span className="text-gray-400">({(100 - receivedPercent).toFixed(0)}%)</span>
-                          </div>
+                          {!hideOutstanding && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                              <span className="text-gray-600">Outstanding:</span>
+                              <span className="font-mono font-semibold text-blue-700">{formatINR(totalOutstanding)}</span>
+                              <span className="text-gray-400">({outstandingPercent.toFixed(0)}%)</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1.5 pl-2 border-l border-gray-300">
                             <span className="text-gray-600">Total:</span>
                             <span className="font-mono font-semibold text-gray-800">{formatINR(grandTotal)}</span>
@@ -3036,8 +4052,8 @@ export default function Holdings() {
                         <input 
                           type="radio" 
                           name="holdingStatus" 
-                          checked={statusFilter === 'fully_repaid'} 
-                          onChange={() => setStatusFilter('fully_repaid')} 
+                          checked={statusFilter === 'completed'} 
+                          onChange={() => setStatusFilter('completed')} 
                           className="h-3.5 w-3.5 text-etihad-gold-600 focus:ring-etihad-gold-500" 
                         />
                         <span className="text-sm text-gray-600">Completed</span>
@@ -3067,35 +4083,87 @@ export default function Holdings() {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">Scheme</th>
+                        <th className="text-left py-2 px-2 text-[10px] font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 min-w-[220px]">NCD Name</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Investment</th>
-                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Repaid</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
+                        <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Repaid</th>
                         <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
+                        <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
                         <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredHoldings.map((holding) => {
-                        // Get all expected cashflows (from secondary market calculator)
-                        const allExpectedCashflows = (holding.trades || []).flatMap(trade => trade.expected_cashflows || []);
-                        // EXPECTED Gross (sum of expected inflows - this is the target without prepayments affecting it)
+                        // Check if this holding has prepayments
+                        const holdingHasPrepayments = (holding.prepaid_count || 0) > 0 || (holding.prepaid_amount || 0) > 0 ||
+                          (holding.trades || []).some(t => (t.prepaid_count || 0) > 0 || (t.prepaid_amount || 0) > 0);
+                        
+                        // Get all expected cashflows (from secondary market calculator) and sort by date
+                        // Support both structures: holding.trades[].expected_cashflows OR holding.expected_cashflows
+                        const allExpectedCashflows = holding.trades?.length > 0
+                          ? (holding.trades || []).flatMap(trade => trade.expected_cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date))
+                          : (holding.expected_cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+                        
+                        // Check if any cashflow has been amended due to prepayment
+                        const hasAmendedCashflows = allExpectedCashflows.some(cf => cf.is_prepayment_amended);
+                        
+                        // ORIGINAL EXPECTED Gross (before any prepayments - use original_gross_amount if available)
+                        const originalExpectedGross = allExpectedCashflows
+                          .filter(cf => cf.type !== 'investment')
+                          .reduce((sum, cf) => {
+                            // Use original values if this was amended, otherwise use current values
+                            if (cf.is_prepayment_amended && cf.original_gross_amount) {
+                              return sum + cf.original_gross_amount;
+                            }
+                            return sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0));
+                          }, 0);
+                        
+                        // ADJUSTED EXPECTED Gross (after prepayments - use current gross_amount)
                         const expectedGross = allExpectedCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
-                        const expectedProfit = expectedGross - holding.invested_amount;
+                        
+                        // Use adjusted expected for profit calculation when there are prepayments
+                        // Profit = Repaid - Investment for Completed (matured) bonds
+                        //        = Gross Expected - Investment for Active bonds
+                        const _matStrRow = (holding.maturity_date || '').slice(0, 10) || (
+                          (holding.trades || [])
+                            .map(t => (t.maturity_date || '').slice(0, 10))
+                            .filter(Boolean)
+                            .sort()
+                            .pop() || ''
+                        );
+                        const _todayStrRow = new Date().toISOString().slice(0, 10);
+                        const _isMaturedRow = !!_matStrRow && _matStrRow <= _todayStrRow;
+                        const repaidPrincipalEarly = holding.repaid_principal || 0;
+                        const repaidInterestEarly = holding.repaid_interest || 0;
+                        const totalRepaidEarly = holding.gross_repaid || (repaidPrincipalEarly + repaidInterestEarly);
+                        const expectedProfit = _isMaturedRow
+                          ? (totalRepaidEarly - holding.invested_amount)
+                          : (expectedGross - holding.invested_amount);
+                        const originalExpectedProfit = _isMaturedRow
+                          ? (totalRepaidEarly - holding.invested_amount)
+                          : (originalExpectedGross - holding.invested_amount);
                         
                         // ACTUAL Gross (from actual cashflows - sum of repayments made + due)
                         // This changes due to prepayments affecting interest calculations
-                        const allActualCashflows = (holding.trades || []).flatMap(trade => trade.actual_cashflows || []);
+                        // FIX: Prefer holding-level actual_cashflows (canonical source) to avoid duplicates from flatMap
+                        const allActualCashflows = (holding.actual_cashflows && holding.actual_cashflows.length > 0)
+                          ? [...holding.actual_cashflows].sort((a, b) => new Date(a.date) - new Date(b.date))
+                          : (holding.trades?.length > 0
+                            ? (holding.trades || []).flatMap(trade => trade.actual_cashflows || []).sort((a, b) => new Date(a.date) - new Date(b.date))
+                            : []);
                         const actualGross = allActualCashflows
                           .filter(cf => cf.type !== 'investment')
                           .reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
                         const actualProfit = actualGross - holding.invested_amount;
                         
-                        // Difference due to prepayments (Actual - Expected)
+                        // Difference between Original Expected and Adjusted Expected (due to prepayments)
+                        const expectedReduction = hasAmendedCashflows ? (originalExpectedGross - expectedGross) : 0;
+                        
+                        // Difference due to prepayments (Actual - Adjusted Expected)
                         // Negative means less profit due to prepayments reducing interest
                         const grossDifference = actualGross - expectedGross;
                         const profitDifference = actualProfit - expectedProfit;
@@ -3120,47 +4188,145 @@ export default function Holdings() {
                         // Tooltip text for Profit column - shows profit difference explanation
                         const profitDiffTooltip = `Previous profit: ₹${formatNum(expectedProfit)} - Actual profit now: ₹${formatNum(actualProfit)}`;
                         
+                        // Calculate payment status: "On Time" or "Partly Prepaid"
+                        // Get current date and previous month end
+                        const now = new Date();
+                        const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
+                        const prevMonthEndStr = prevMonthEnd.toISOString().slice(0, 10);
+                        
+                        // Get expected payments up to previous month end (excluding investment)
+                        const expectedPaymentsTillPrevMonth = allExpectedCashflows
+                          .filter(cf => cf.type !== 'investment' && cf.date <= prevMonthEndStr)
+                          .map(cf => ({
+                            date: cf.date,
+                            amount: cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)),
+                            type: cf.type
+                          }));
+                        
+                        // Get actual payments up to previous month end (excluding investment)
+                        const actualPaymentsTillPrevMonth = allActualCashflows
+                          .filter(cf => cf.type !== 'investment' && cf.date <= prevMonthEndStr && cf.is_repaid)
+                          .map(cf => ({
+                            date: cf.date,
+                            amount: cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)),
+                            type: cf.type,
+                            isPrepayment: cf.type === 'prepayment' || ((cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                          }));
+                        
+                        // Check for prepayments (payments with principal > 0 and interest = 0, or type = prepayment)
+                        const hasPrepayments = actualPaymentsTillPrevMonth.some(p => p.isPrepayment) || holdingHasPrepayments;
+                        
+                        // ─────────────────────────────────────────────
+                        // Primary status: Active (maturity in future) or Completed
+                        // (maturity reached). Driven strictly by NCD_Master.end_date
+                        // (shipped as holding.maturity_date). Sub-info — As per / Out of
+                        // schedule — is shown in a tooltip, not inline.
+                        // ─────────────────────────────────────────────
+                        const _todayStr = new Date().toISOString().slice(0, 10);
+                        const _matStr = (holding.maturity_date || '').slice(0, 10) || (
+                          (holding.trades || [])
+                            .map(t => (t.maturity_date || '').slice(0, 10))
+                            .filter(Boolean)
+                            .sort()
+                            .pop() || ''
+                        );
+                        const isMatured = !!_matStr && _matStr <= _todayStr;
+
+                        let paymentStatus = isMatured ? 'Completed' : 'Active';
+                        let statusColor = isMatured
+                          ? 'text-purple-600 bg-purple-50'
+                          : 'text-green-600 bg-green-50';
+                        let scheduleRemark = hasPrepayments ? 'Out of schedule' : 'As per schedule';
+                        let scheduleRemarkColor = hasPrepayments ? 'text-amber-600' : 'text-green-600';
+                        
                         return (
                         <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-2 px-2 sticky left-0 bg-white">
-                            <p className="font-medium text-gray-800 text-xs truncate max-w-[120px]" title={holding.bond_name}>{holding.bond_name}</p>
+                          <td className="py-2 px-2 sticky left-0 bg-white min-w-[220px]">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p
+                                    className="font-medium text-gray-800 text-xs whitespace-normal break-words cursor-help"
+                                    data-testid={`scheme-name-${holding.bond_id}`}
+                                  >
+                                    {holding.bond_name}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" align="start" className="bg-gray-900 text-white border-0 px-2.5 py-1.5 text-xs">
+                                  <span className="text-gray-400">Deal ID: </span>
+                                  <span className="font-mono">{holding.bond_code || '—'}</span>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <p className="text-[10px] text-gray-400">{holding.total_units} units</p>
                           </td>
                           <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(holding.invested_amount)}</p>
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="cursor-help inline-block">{formatNum(holding.invested_amount)}</p>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" align="end" className="bg-gray-900 text-white border-0 p-0 overflow-hidden">
+                                  <div className="px-3 py-2 border-b border-gray-700">
+                                    <p className="text-[10px] uppercase tracking-wide text-gray-400">Investment breakdown</p>
+                                  </div>
+                                  <table className="text-[11px]">
+                                    <thead>
+                                      <tr className="text-gray-400">
+                                        <th className="text-left px-3 py-1.5 font-medium">Date</th>
+                                        <th className="text-right px-3 py-1.5 font-medium">Amount</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {((holding.trades || []).length > 0
+                                        ? holding.trades
+                                        : [{ investment_date: holding.investment_date, invested_amount: holding.invested_amount }]
+                                      ).map((t, idx) => (
+                                        <tr key={idx} className="border-t border-gray-800">
+                                          <td className="px-3 py-1 text-gray-200 whitespace-nowrap">
+                                            {t.investment_date ? format(new Date(t.investment_date), 'dd MMM yyyy') : '—'}
+                                          </td>
+                                          <td className="px-3 py-1 text-right font-mono">{formatNum(t.invested_amount || 0)}</td>
+                                        </tr>
+                                      ))}
+                                      <tr className="border-t-2 border-gray-600 bg-gray-800">
+                                        <td className="px-3 py-1.5 font-semibold text-gray-100">Total</td>
+                                        <td className="px-3 py-1.5 text-right font-mono font-semibold text-gray-100">
+                                          {formatNum(holding.invested_amount)}
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             {/* No difference shown for Investment - it doesn't change */}
                           </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p className="text-blue-700 font-semibold">{formatNum(totalRepaid)}</p>
-                            <div className="text-[10px] text-gray-500">
-                              <span title="Principal Repaid">P: {formatNum(repaidPrincipal)}</span>
-                              <span className="mx-1">|</span>
-                              <span title="Interest Repaid">I: {formatNum(repaidInterest)}</span>
-                            </div>
-                          </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p>{formatNum(actualGross)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={grossDiffTooltip}>{formatDiff(grossDifference)}</p>}
-                          </td>
-                          <td className="py-2 px-2 text-right font-mono text-xs">
-                            <p className={actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{formatNum(actualProfit)}</p>
-                            {showDifference && <p className="text-[10px] text-red-600 cursor-help" title={profitDiffTooltip}>{formatDiff(profitDifference)}</p>}
-                          </td>
-                          <td className="py-2 px-2 text-center overflow-visible">
-                            <div className="cursor-help group/expxirr relative inline-block">
-                              {holding.xirr !== null && holding.xirr !== undefined ? (
-                                <span className="font-mono text-xs text-green-600">{holding.xirr.toFixed(2)}%</span>
-                              ) : (
-                                <span className="text-gray-400 text-[10px]">-</span>
-                              )}
-                              {/* Expected XIRR Schedule Tooltip */}
+                          <td className="py-2 px-2 text-right font-mono text-xs overflow-visible">
+                            <HoverCard openDelay={100} closeDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <div className="cursor-help inline-block text-right">
+                                  <p className="font-semibold">{formatNum(expectedGross)}</p>
+                                  <div className="text-[10px] text-gray-500">
+                                    <span title="Principal">P: {formatNum(allExpectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.principal_component || 0), 0))}</span>
+                                    <span className="mx-1">|</span>
+                                    <span title="Interest">I: {formatNum(allExpectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.interest_component || 0), 0))}</span>
+                                  </div>
+                                  {hasAmendedCashflows && expectedReduction > 0 && (
+                                    <div className="text-[9px] text-amber-600" title={`Original: ₹${formatNum(originalExpectedGross)}`}>
+                                      (-{formatNum(expectedReduction)} due to prepay)
+                                    </div>
+                                  )}
+                                </div>
+                              </HoverCardTrigger>
+                              {/* Expected Cashflow Schedule Tooltip (moved from XIRR) */}
                               {allExpectedCashflows.length > 0 && (
-                                <div className="absolute hidden group-hover/expxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '320px'}}>
+                                <HoverCardContent side="top" align="end" className="w-[320px] p-0 bg-gray-900 text-white border-gray-600">
                                   <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
-                                    <p className="font-bold text-amber-400">Expected Cashflow Schedule</p>
+                                    <p className="font-bold text-amber-400 text-[11px]">Expected Repayments</p>
                                   </div>
                                   <div className="p-3 max-h-64 overflow-y-auto">
-                                    <table className="w-full">
+                                    <table className="w-full text-[10px]">
                                       <thead>
                                         <tr className="text-gray-400 border-b border-gray-700">
                                           <th className="text-left py-1 font-medium">Date</th>
@@ -3170,25 +4336,45 @@ export default function Holdings() {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {allExpectedCashflows.slice(0, 12).map((cf, i) => {
-                                          const isInvestment = cf.type === 'investment';
-                                          const principal = cf.principal_component || 0;
-                                          const interest = cf.interest_component || 0;
-                                          const total = cf.gross_amount || (principal + interest);
-                                          return (
-                                            <tr key={i} className={`border-b border-gray-800 ${isInvestment ? 'bg-red-900/30' : ''}`}>
-                                              <td className="py-1">{new Date(cf.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}</td>
-                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-blue-400'}`}>{isInvestment ? '-' : ''}{Math.round(principal).toLocaleString('en-IN')}</td>
-                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-green-400'}`}>{isInvestment ? '-' : ''}{Math.round(interest).toLocaleString('en-IN')}</td>
-                                              <td className={`text-right py-1 font-semibold ${isInvestment ? 'text-red-400' : 'text-white'}`}>{isInvestment ? '-' : ''}{Math.round(Math.abs(total)).toLocaleString('en-IN')}</td>
-                                            </tr>
+                                        {(() => {
+                                          // Group cashflows by date (YYYY-MM-DD) so entries
+                                          // falling on the same day (e.g. multiple trades of
+                                          // the same bond) render as a single merged row.
+                                          const groups = new Map();
+                                          for (const cf of allExpectedCashflows) {
+                                            const isInv = cf.type === 'investment';
+                                            const key = `${isInv ? 'INV::' : 'EXP::'}${(cf.date || '').slice(0, 10)}`;
+                                            const p = cf.principal_component || 0;
+                                            const i = cf.interest_component || 0;
+                                            const t = cf.gross_amount || (p + i);
+                                            if (!groups.has(key)) {
+                                              groups.set(key, { date: cf.date, isInvestment: isInv, principal: 0, interest: 0, total: 0, count: 0 });
+                                            }
+                                            const g = groups.get(key);
+                                            g.principal += p;
+                                            g.interest  += i;
+                                            g.total     += t;
+                                            g.count     += 1;
+                                          }
+                                          const merged = Array.from(groups.values()).sort(
+                                            (a, b) => new Date(a.date) - new Date(b.date)
                                           );
-                                        })}
-                                        {allExpectedCashflows.length > 12 && (
-                                          <tr className="border-b border-gray-700">
-                                            <td colSpan="4" className="py-1 text-center text-gray-400">... +{allExpectedCashflows.length - 12} more entries</td>
-                                          </tr>
-                                        )}
+                                          return (
+                                            <>
+                                              {merged.map((g, i) => (
+                                                <tr key={i} className={`border-b border-gray-800 ${g.isInvestment ? 'bg-red-900/30' : ''}`}>
+                                                  <td className="py-1">
+                                                    {new Date(g.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}
+                                                    {g.count > 1 && <span className="ml-1 text-[9px] text-gray-400">({g.count})</span>}
+                                                  </td>
+                                                  <td className={`text-right py-1 ${g.isInvestment ? 'text-red-400' : 'text-blue-400'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.principal).toLocaleString('en-IN')}</td>
+                                                  <td className={`text-right py-1 ${g.isInvestment ? 'text-red-400' : 'text-green-400'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.interest).toLocaleString('en-IN')}</td>
+                                                  <td className={`text-right py-1 font-semibold ${g.isInvestment ? 'text-red-400' : 'text-white'}`}>{g.isInvestment ? '-' : ''}{Math.round(Math.abs(g.total)).toLocaleString('en-IN')}</td>
+                                                </tr>
+                                              ))}
+                                            </>
+                                          );
+                                        })()}
                                       </tbody>
                                       <tfoot>
                                         <tr className="font-bold bg-gray-800">
@@ -3198,69 +4384,237 @@ export default function Holdings() {
                                       </tfoot>
                                     </table>
                                   </div>
-                                </div>
+                                </HoverCardContent>
                               )}
-                            </div>
+                            </HoverCard>
                           </td>
-                          <td className="py-2 px-2 text-center overflow-visible">
-                            <div className="cursor-help group/actxirr relative inline-block">
-                              {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
-                                <span className="font-mono text-xs text-green-600">{holding.actual_xirr.toFixed(2)}%</span>
-                              ) : (
-                                <span className="text-gray-400 text-[10px]">-</span>
-                              )}
-                              {/* Actual XIRR Schedule Tooltip */}
-                              {allActualCashflows.length > 0 && (
-                                <div className="absolute hidden group-hover/actxirr:block right-0 bottom-full mb-2 z-[100] bg-gray-900 text-white text-[10px] rounded-lg shadow-2xl border border-gray-600" style={{width: '340px'}}>
+                          <td className="py-2 px-2 text-right font-mono text-xs overflow-visible">
+                            <HoverCard openDelay={100} closeDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <div className="cursor-help inline-block text-right" data-testid={`repaid-cell-${holding.bond_id}`}>
+                                  <p className="text-blue-700 font-semibold">{formatNum(totalRepaid)}</p>
+                                  <div className="text-[10px] text-gray-500">
+                                    <span title="Principal Repaid">P: {formatNum(repaidPrincipal)}</span>
+                                    <span className="mx-1">|</span>
+                                    <span title="Interest Repaid">I: {formatNum(repaidInterest)}</span>
+                                  </div>
+                                </div>
+                              </HoverCardTrigger>
+                              {/* Repayment History Tooltip — mirrors the Gross Expected style */}
+                              {(holding.repaid_rows || []).length > 0 && (
+                                <HoverCardContent side="top" align="end" className="w-[320px] p-0 bg-gray-900 text-white border-gray-600">
                                   <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
-                                    <p className="font-bold text-amber-400">Actual Cashflow Schedule</p>
-                                    <p className="text-gray-400 text-[9px]">Repaid: ₹{totalRepaid.toLocaleString('en-IN', {maximumFractionDigits: 0})}</p>
+                                    <p className="font-bold text-blue-400 text-[11px]">Repayment History (from emails)</p>
                                   </div>
                                   <div className="p-3 max-h-64 overflow-y-auto">
-                                    <table className="w-full">
+                                    <table className="w-full text-[10px]">
                                       <thead>
                                         <tr className="text-gray-400 border-b border-gray-700">
                                           <th className="text-left py-1 font-medium">Date</th>
                                           <th className="text-right py-1 font-medium">Principal</th>
                                           <th className="text-right py-1 font-medium">Interest</th>
                                           <th className="text-right py-1 font-medium">Total</th>
-                                          <th className="text-center py-1 font-medium">Status</th>
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {allActualCashflows.slice(0, 12).map((cf, i) => {
-                                          const isInvestment = cf.type === 'investment';
-                                          const isPaid = cf.status === 'paid' || cf.is_paid;
-                                          const principal = cf.principal_component || 0;
-                                          const interest = cf.interest_component || 0;
-                                          const total = cf.gross_amount || (principal + interest);
-                                          return (
-                                            <tr key={i} className={`border-b border-gray-800 ${isInvestment ? 'bg-red-900/30' : isPaid ? 'bg-green-900/20' : ''}`}>
-                                              <td className="py-1">{new Date(cf.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}</td>
-                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-blue-400'}`}>{isInvestment ? '-' : ''}{Math.round(principal).toLocaleString('en-IN')}</td>
-                                              <td className={`text-right py-1 ${isInvestment ? 'text-red-400' : 'text-green-400'}`}>{isInvestment ? '-' : ''}{Math.round(interest).toLocaleString('en-IN')}</td>
-                                              <td className={`text-right py-1 font-semibold ${isInvestment ? 'text-red-400' : 'text-white'}`}>{isInvestment ? '-' : ''}{Math.round(Math.abs(total)).toLocaleString('en-IN')}</td>
-                                              <td className="text-center py-1">{isInvestment ? <span className="text-red-400">Out</span> : isPaid ? <span className="text-green-400">✓</span> : <span className="text-gray-500">-</span>}</td>
-                                            </tr>
-                                          );
-                                        })}
-                                        {allActualCashflows.length > 12 && (
-                                          <tr className="border-b border-gray-700">
-                                            <td colSpan="5" className="py-1 text-center text-gray-400">... +{allActualCashflows.length - 12} more entries</td>
+                                        {(holding.repaid_rows || []).map((r, i) => (
+                                          <tr key={i} className="border-b border-gray-800">
+                                            <td className="py-1">
+                                              {new Date(r.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}
+                                              {r.count > 1 && <span className="ml-1 text-[9px] text-gray-400">({r.count})</span>}
+                                            </td>
+                                            <td className="text-right py-1 text-blue-400">{Math.round(r.principal || 0).toLocaleString('en-IN')}</td>
+                                            <td className="text-right py-1 text-green-400">{Math.round(r.interest || 0).toLocaleString('en-IN')}</td>
+                                            <td className="text-right py-1 font-semibold text-white">{Math.round(r.gross || 0).toLocaleString('en-IN')}</td>
                                           </tr>
-                                        )}
+                                        ))}
                                       </tbody>
                                       <tfoot>
                                         <tr className="font-bold bg-gray-800">
-                                          <td className="py-1.5 text-amber-400">XIRR</td>
-                                          <td colSpan="4" className="text-right py-1.5 text-green-400">{holding.actual_xirr?.toFixed(2) || '-'}%</td>
+                                          <td className="py-1.5 text-blue-400">Total</td>
+                                          <td className="text-right py-1.5 text-blue-400">{Math.round(repaidPrincipal).toLocaleString('en-IN')}</td>
+                                          <td className="text-right py-1.5 text-green-400">{Math.round(repaidInterest).toLocaleString('en-IN')}</td>
+                                          <td className="text-right py-1.5 text-white">{Math.round(totalRepaid).toLocaleString('en-IN')}</td>
                                         </tr>
                                       </tfoot>
                                     </table>
                                   </div>
-                                </div>
+                                </HoverCardContent>
                               )}
-                            </div>
+                            </HoverCard>
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-xs">
+                            <p className={expectedProfit >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>{formatNum(expectedProfit)}</p>
+                            {(() => {
+                              // Informational A | N breakdown (does NOT change the main profit above)
+                              // A = Gross interest already received (NCD_Repayments)
+                              // N = Balance of future-dated interest still to come
+                              const _todayStr = new Date().toISOString().slice(0, 10);
+                              const futureInterestBalance = allExpectedCashflows
+                                .filter(cf => cf.type !== 'investment')
+                                .filter(cf => ((cf.date || '') + '').slice(0, 10) > _todayStr)
+                                .reduce((s, cf) => s + (cf.interest_component || 0), 0);
+                              return (
+                                <div className="text-[10px] text-gray-500">
+                                  <span title="Actual = Gross interest already received (from NCD_Repayments)">A: {formatNum(repaidInterest)}</span>
+                                  <span className="mx-1">|</span>
+                                  <span title="Notional = Balance of interest on future-dated repayments still to be received">N: {formatNum(futureInterestBalance)}</span>
+                                </div>
+                              );
+                            })()}
+                            {hasAmendedCashflows && expectedReduction > 0 && (
+                              <div className="text-[9px] text-amber-600" title={`Original profit: ₹${formatNum(originalExpectedProfit)}`}>
+                                (-{formatNum(expectedReduction)} adj)
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {holding.xirr !== null && holding.xirr !== undefined ? (
+                              <span className="font-mono text-xs text-green-600">{holding.xirr.toFixed(2)}%</span>
+                            ) : (
+                              <span className="text-gray-400 text-[10px]">-</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-center overflow-visible">
+                            {(() => {
+                              // Build actual-XIRR cashflows on the fly so we can also
+                              // show them in a tooltip.
+                              // - Investment(s): negative outflows on trade investment_date
+                              // - Past repayments: positive inflows from Ncd_Repayments (repaid_rows)
+                              // - Future scheduled: positive inflows from the expected
+                              //   schedule AFTER today, ONLY IF the bond has not yet matured
+                              const todayStr = new Date().toISOString().slice(0, 10);
+                              const maturityStr = (holding.trades || [])
+                                .map(t => (t.maturity_date || '').slice(0, 10))
+                                .filter(Boolean)
+                                .sort()
+                                .pop() || '';
+                              const matured = !!maturityStr && maturityStr <= todayStr;
+                              const cfs = [];
+                              (holding.trades || []).forEach(t => {
+                                if (t.investment_date && (t.invested_amount || t.total_amount)) {
+                                  cfs.push({
+                                    date: (t.investment_date || '').slice(0, 10),
+                                    amount: -(t.invested_amount || t.total_amount || 0),
+                                    label: `Investment${t.units ? ` (${t.units}u)` : ''}`,
+                                  });
+                                }
+                              });
+                              if (cfs.length === 0 && holding.invested_amount) {
+                                cfs.push({
+                                  date: ((holding.trades || [])[0]?.investment_date || '').slice(0, 10) || todayStr,
+                                  amount: -(holding.invested_amount || 0),
+                                  label: 'Investment',
+                                });
+                              }
+                              (holding.repaid_rows || []).forEach(r => {
+                                cfs.push({ date: r.date, amount: r.gross || 0, label: 'Actual repayment' });
+                              });
+                              if (!matured) {
+                                allExpectedCashflows
+                                  .filter(cf => cf.type !== 'investment' && ((cf.date || '').slice(0, 10)) > todayStr)
+                                  .forEach(cf => {
+                                    const p = cf.principal_component || 0;
+                                    const i = cf.interest_component || 0;
+                                    cfs.push({
+                                      date: (cf.date || '').slice(0, 10),
+                                      amount: cf.gross_amount || (p + i),
+                                      label: 'Scheduled',
+                                    });
+                                  });
+                              }
+                              const xirrVal = computeXirr(cfs);
+                              const displayed = xirrVal !== null ? xirrVal : holding.actual_xirr;
+                              // Compare rounded values (2dp) so floating-point noise like
+                              // 11.4999999 doesn't flag a holding as amber when it displays
+                              // identical to the expected XIRR.
+                              const expectedRounded = Math.round(((holding.xirr || 0) + Number.EPSILON) * 100) / 100;
+                              const actualRounded   = displayed !== null && displayed !== undefined
+                                ? Math.round((displayed + Number.EPSILON) * 100) / 100
+                                : null;
+                              const isGood = actualRounded !== null && actualRounded >= expectedRounded;
+                              return (
+                                <HoverCard openDelay={100} closeDelay={100}>
+                                  <HoverCardTrigger asChild>
+                                    <div className="cursor-help inline-block">
+                                      {displayed !== null && displayed !== undefined ? (
+                                        <span className={`font-mono text-xs ${isGood ? 'text-green-600' : 'text-amber-600'}`}>
+                                          {displayed.toFixed(2)}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400 text-[10px]">-</span>
+                                      )}
+                                    </div>
+                                  </HoverCardTrigger>
+                                  {cfs.length > 0 && (
+                                    <HoverCardContent side="top" align="end" className="w-[340px] p-0 bg-gray-900 text-white border-gray-600">
+                                      <div className="px-3 py-2 bg-gray-800 rounded-t-lg border-b border-gray-700">
+                                        <p className="font-bold text-amber-400 text-[11px]">
+                                          Actual Repayments {matured ? '(Matured — actuals only)' : '(Actuals + future scheduled)'}
+                                        </p>
+                                      </div>
+                                      <div className="p-3 max-h-64 overflow-y-auto">
+                                        <table className="w-full text-[10px]">
+                                          <thead>
+                                            <tr className="text-gray-400 border-b border-gray-700">
+                                              <th className="text-left py-1 font-medium">Date</th>
+                                              <th className="text-left py-1 font-medium">Source</th>
+                                              <th className="text-right py-1 font-medium">Amount</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {[...cfs].sort((a, b) => a.date.localeCompare(b.date)).map((c, i) => {
+                                              const isInv = c.amount < 0;
+                                              const isFuture = (c.date || '') > todayStr;
+                                              return (
+                                                <tr key={i} className={`border-b border-gray-800 ${isInv ? 'bg-red-900/30' : ''}`}>
+                                                  <td className="py-1">
+                                                    {new Date(c.date).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}
+                                                  </td>
+                                                  <td className={`py-1 ${isFuture && !isInv ? 'text-amber-300' : 'text-gray-300'}`}>
+                                                    {c.label}{isFuture && !isInv ? ' (future)' : ''}
+                                                  </td>
+                                                  <td className={`text-right py-1 font-semibold ${isInv ? 'text-red-400' : (isFuture ? 'text-amber-300' : 'text-green-400')}`}>
+                                                    {isInv ? '-' : ''}{Math.round(Math.abs(c.amount)).toLocaleString('en-IN')}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                          <tfoot>
+                                            <tr className="font-bold bg-gray-800">
+                                              <td className="py-1.5 text-amber-400" colSpan={2}>XIRR</td>
+                                              <td className="text-right py-1.5 text-green-400">{displayed !== null && displayed !== undefined ? `${displayed.toFixed(2)}%` : '-'}</td>
+                                            </tr>
+                                          </tfoot>
+                                        </table>
+                                      </div>
+                                    </HoverCardContent>
+                                  )}
+                                </HoverCard>
+                              );
+                            })()}
+                          </td>
+                          <td className="py-2 px-2 text-center overflow-visible">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium cursor-help ${statusColor}`}>
+                                    {paymentStatus}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="bg-gray-900 text-white border-gray-700">
+                                  <div className="text-[11px]">
+                                    <p className="font-semibold">
+                                      {paymentStatus}{_matStr ? ` · Maturity ${new Date(_matStr).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'})}` : ''}
+                                    </p>
+                                    <p className={`mt-1 ${hasPrepayments ? 'text-amber-300' : 'text-green-300'}`}>
+                                      {scheduleRemark}
+                                    </p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </td>
                           <td className="py-2 px-2 text-center">
                             <button 
@@ -3282,6 +4636,7 @@ export default function Holdings() {
                   )}
                 </div>
               </div>
+              </>)}
               </>
               )}
             </div>
@@ -3298,26 +4653,10 @@ export default function Holdings() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-etihad-gold-50 to-orange-50">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Cashflow Details</h2>
+                <h2 className="text-lg font-semibold text-gray-800">Repayment Details</h2>
                 <p className="text-sm text-gray-600">{modalData.bond_name} • {modalData.total_units} units • Invested: {formatINR(modalData.invested_amount)}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => downloadCombinedCashflowPDF(modalData, expectedCashflows, actualCashflows)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-etihad-gold-600 hover:bg-etihad-gold-700 rounded-lg text-white text-sm font-medium transition-colors"
-                  title="Download as PDF"
-                >
-                  <FileText className="h-4 w-4" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => downloadCombinedCashflowExcel(modalData, expectedCashflows, actualCashflows)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm font-medium transition-colors"
-                  title="Download as Excel (CSV)"
-                >
-                  <Download className="h-4 w-4" />
-                  Excel
-                </button>
                 <button onClick={closeModal} className="p-2 hover:bg-white/50 rounded-full transition-colors" data-testid="close-modal-btn">
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
@@ -3342,16 +4681,18 @@ export default function Holdings() {
                 </div>
               </button>
               
-              {/* Individual Transaction Tabs - Only show if multiple distinct investment dates */}
+              {/* Individual Transaction Tabs - Show for each investment date */}
               {(() => {
-                // Get unique investment dates
-                const uniqueDates = [...new Set(modalData.trades.map(t => t.investment_date?.split('T')[0]))];
-                // Only show individual tabs if more than 1 unique date
-                if (uniqueDates.length <= 1) return null;
+                // Get unique investment dates from trades array
+                const trades = modalData.trades || [];
+                if (!trades.length) return null;
                 
-                return modalData.trades.map((trade, index) => (
+                const uniqueDates = [...new Set(trades.map(t => t.investment_date?.split('T')[0]).filter(Boolean))];
+                
+                // Show tabs even for single investment date
+                return trades.map((trade, index) => (
                   <button
-                    key={trade.trade_id}
+                    key={trade.trade_id || index}
                     onClick={() => setActiveTab(index)}
                     className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
                       activeTab === index 
@@ -3360,7 +4701,7 @@ export default function Holdings() {
                     }`}
                     data-testid={`trade-tab-${index}`}
                   >
-                    <span className="block">{format(new Date(trade.investment_date), "dd MMM yyyy")}</span>
+                    <span className="block">{trade.investment_date ? format(new Date(trade.investment_date), "dd MMM yyyy") : 'N/A'}</span>
                     <span className="text-xs text-gray-400">{trade.units} units</span>
                   </button>
                 ));
@@ -3371,152 +4712,265 @@ export default function Holdings() {
             <div className="flex-1 overflow-auto">
               {/* Summary Tab Content */}
               {activeTab === "summary" && (
-                <div className="p-4">
+                <div className="p-4 space-y-4">
+                  {/* ──────────────────────────────────────────────
+                       TOP STRIP — same metrics as the outer table row
+                      ────────────────────────────────────────────── */}
+                  {(() => {
+                    const investedTotal = modalData.invested_amount || 0;
+                    const grossExpectedTotal = expectedCashflows
+                      .filter(cf => cf.type !== 'investment')
+                      .reduce((s, cf) => s + (cf.gross_amount || ((cf.principal_component||0)+(cf.interest_component||0))), 0);
+                    const grossRepaidTotal = (modalData.repaid_rows || [])
+                      .reduce((s, r) => s + (r.gross || 0), 0);
+                    // Determine status (Active vs Completed) for profit logic
+                    const _todayStrProfit = new Date().toISOString().slice(0, 10);
+                    const _matStrProfit = (modalData.maturity_date || '').slice(0, 10) || (
+                      (modalData.trades || [])
+                        .map(t => (t.maturity_date || '').slice(0, 10))
+                        .filter(Boolean)
+                        .sort()
+                        .pop() || ''
+                    );
+                    const _isMaturedProfit = !!_matStrProfit && _matStrProfit <= _todayStrProfit;
+                    // Profit = Repaid - Investment for Completed bonds, else Gross Expected - Investment
+                    const expectedProfitTotal = _isMaturedProfit
+                      ? (grossRepaidTotal - investedTotal)
+                      : (grossExpectedTotal - investedTotal);
+                    const expectedXirrVal = modalData.xirr;
+
+                    // Recompute Actual XIRR (matches the outer table: actuals + future scheduled unless matured)
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const matStr = (modalData.maturity_date || '').slice(0, 10) || (
+                      (modalData.trades || [])
+                        .map(t => (t.maturity_date || '').slice(0, 10))
+                        .filter(Boolean)
+                        .sort()
+                        .pop() || ''
+                    );
+                    const isMatured = !!matStr && matStr <= todayStr;
+                    const actualXirrCfs = [];
+                    (modalData.trades || []).forEach(t => {
+                      if (t.investment_date && (t.invested_amount || t.total_amount)) {
+                        actualXirrCfs.push({ date: (t.investment_date || '').slice(0,10), amount: -(t.invested_amount || t.total_amount || 0), label: `Investment${t.units ? ` (${t.units}u)` : ''}` });
+                      }
+                    });
+                    if (actualXirrCfs.length === 0 && investedTotal) {
+                      actualXirrCfs.push({ date: ((modalData.trades || [])[0]?.investment_date || '').slice(0,10) || todayStr, amount: -investedTotal, label: 'Investment' });
+                    }
+                    (modalData.repaid_rows || []).forEach(r => actualXirrCfs.push({ date: r.date, amount: r.gross || 0, label: 'Actual repayment' }));
+                    if (!isMatured) {
+                      expectedCashflows
+                        .filter(cf => cf.type !== 'investment' && ((cf.date || '').slice(0,10)) > todayStr)
+                        .forEach(cf => {
+                          const p = cf.principal_component || 0; const i = cf.interest_component || 0;
+                          actualXirrCfs.push({ date: (cf.date || '').slice(0,10), amount: cf.gross_amount || (p+i), label: 'Scheduled' });
+                        });
+                    }
+                    const actualXirrVal = computeXirr(actualXirrCfs);
+
+                    const stat = (label, value, valueClass = 'text-gray-800') => (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
+                        <span className={`text-sm font-semibold font-mono mt-0.5 ${valueClass}`}>{value}</span>
+                      </div>
+                    );
+
+                    return (
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 grid grid-cols-3 md:grid-cols-6 gap-3">
+                        {stat('Investment', formatINR(investedTotal))}
+                        {stat('Gross Expected', formatINR(grossExpectedTotal))}
+                        {stat('Repaid', formatINR(grossRepaidTotal), 'text-blue-700')}
+                        {stat('Profit', formatINR(expectedProfitTotal), expectedProfitTotal >= 0 ? 'text-green-600' : 'text-red-600')}
+                        {stat('Expected XIRR', expectedXirrVal !== null && expectedXirrVal !== undefined ? `${expectedXirrVal.toFixed(2)}%` : '-', 'text-green-600')}
+                        {stat('Actual XIRR', actualXirrVal !== null && actualXirrVal !== undefined ? `${actualXirrVal.toFixed(2)}%` : '-', (actualXirrVal !== null && actualXirrVal !== undefined && Math.round((actualXirrVal + Number.EPSILON) * 100) / 100 >= Math.round(((expectedXirrVal || 0) + Number.EPSILON) * 100) / 100) ? 'text-green-600' : 'text-amber-600')}
+                      </div>
+                    );
+                  })()}
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     
-                    {/* LEFT COLUMN - Expected Repayments */}
+                    {/* LEFT COLUMN — Expected Repayments (same as Gross Expected tooltip) */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
                       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          Expected Cashflow
+                          Expected Repayments
                         </h3>
                       </div>
-                      
-                      {/* Expected Cashflows Table */}
-                      <div className="flex-1 max-h-[300px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
-                            <tr>
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {expectedCashflows.length > 0 ? expectedCashflows.map((cf, idx) => (
-                              cf.type === 'investment' ? (
-                                <tr key={idx} className="bg-red-50">
-                                  <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
-                                    -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
-                                  </td>
-                                </tr>
-                              ) : (
-                                <tr key={idx} className="bg-white hover:bg-gray-50">
-                                  <td className="py-3 px-4 font-mono text-sm text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-gray-900">
-                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                  </td>
-                                </tr>
-                              )
-                            )) : (
-                              <tr>
-                                <td colSpan="2" className="py-8 text-center text-gray-500">
-                                  <p className="text-sm">No expected cashflows</p>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Expected Summary Footer - Fixed at bottom */}
-                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-sm text-gray-600">Profits:</span>
-                            <span className="font-mono font-bold ml-2 text-green-600">
-                              {formatAbsoluteINR(
-                                expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                                expectedCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0)
-                              )}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm text-gray-600">XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-blue-700">
-                              {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      {(() => {
+                        // Group cashflows by date — same logic as the Gross Expected tooltip
+                        const groups = new Map();
+                        for (const cf of expectedCashflows) {
+                          const isInv = cf.type === 'investment';
+                          const key = `${isInv ? 'INV::' : 'EXP::'}${(cf.date || '').slice(0, 10)}`;
+                          const p = cf.principal_component || 0;
+                          const i = cf.interest_component || 0;
+                          const td = cf.tds_amount || cf.tds || 0;
+                          const t = cf.gross_amount || (p + i);
+                          if (!groups.has(key)) {
+                            groups.set(key, { date: cf.date, isInvestment: isInv, principal: 0, interest: 0, tds: 0, total: 0, count: 0 });
+                          }
+                          const g = groups.get(key);
+                          g.principal += p;
+                          g.interest  += i;
+                          g.tds       += td;
+                          g.total     += t;
+                          g.count     += 1;
+                        }
+                        const merged = Array.from(groups.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+                        return (
+                          <>
+                            <div className="flex-1 max-h-[340px] overflow-y-auto">
+                              <table className="w-full text-xs">
+                                <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                  <tr>
+                                    <th className="text-left py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Date</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Principal</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Interest</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">TDS</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {merged.length === 0 ? (
+                                    <tr><td colSpan="5" className="py-8 text-center text-gray-500">No expected cashflows</td></tr>
+                                  ) : merged.map((g, i) => (
+                                    <tr key={i} className={g.isInvestment ? 'bg-red-50' : 'bg-white hover:bg-gray-50'}>
+                                      <td className={`py-2 px-3 font-mono ${g.isInvestment ? 'text-red-700' : 'text-gray-900'}`}>
+                                        {format(new Date(g.date), 'dd MMM yy')}
+                                        {g.count > 1 && <span className="ml-1 text-[10px] text-gray-400">({g.count})</span>}
+                                      </td>
+                                      <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-blue-700'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.principal).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-green-700'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.interest).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-amber-600'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.tds || 0).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono font-semibold ${g.isInvestment ? 'text-red-700' : 'text-gray-900'}`}>{g.isInvestment ? '-' : ''}{Math.round(Math.abs(g.total)).toLocaleString('en-IN')}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            {/* Sticky XIRR footer */}
+                            <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-gray-600 uppercase">Expected XIRR</span>
+                              <span className="font-mono text-xs font-bold text-green-700">
+                                {modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-'}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                     
-                    {/* RIGHT COLUMN - Actual Cashflow */}
+                    {/* RIGHT COLUMN — Actual Repayments (same as Actual XIRR tooltip) */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
-                        <h3 className="font-semibold text-white flex items-center gap-2">
-                          <Check className="h-4 w-4" />
-                          Actual Cashflow
-                        </h3>
-                      </div>
-                      
-                      {/* Actual Cashflows Table */}
-                      <div className="flex-1 max-h-[300px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
-                            <tr>
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
-                              cf.type === 'investment' ? (
-                                <tr key={idx} className="bg-red-50">
-                                  <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
-                                    -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
-                                  </td>
-                                </tr>
-                              ) : cf.type === 'maturity' ? (
-                                <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                  <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                  </td>
-                                </tr>
-                              ) : (
-                                <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                  <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                  </td>
-                                </tr>
-                              )
-                            )) : (
-                              <tr>
-                                <td colSpan="2" className="py-8 text-center text-gray-500">
-                                  <p className="text-sm">No actual cashflow yet</p>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Actual Summary Footer - Fixed at bottom with Profits */}
-                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-sm text-gray-600">Profits:</span>
-                            <span className="font-mono font-bold ml-2 text-green-600">
-                              {formatAbsoluteINR(
-                                actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                                actualCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0)
-                              )}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm text-gray-600">XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-green-700">
-                              {modalData.actual_xirr !== null && modalData.actual_xirr !== undefined ? `${modalData.actual_xirr.toFixed(2)}%` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      {(() => {
+                        const todayStr = new Date().toISOString().slice(0, 10);
+                        const matStr = (modalData.maturity_date || '').slice(0, 10) || (
+                          (modalData.trades || [])
+                            .map(t => (t.maturity_date || '').slice(0, 10))
+                            .filter(Boolean)
+                            .sort()
+                            .pop() || ''
+                        );
+                        const isMatured = !!matStr && matStr <= todayStr;
+                        const cfs = [];
+                        (modalData.trades || []).forEach(t => {
+                          if (t.investment_date && (t.invested_amount || t.total_amount)) {
+                            cfs.push({ date: (t.investment_date || '').slice(0,10), amount: -(t.invested_amount || t.total_amount || 0), principal: 0, interest: 0, tds: 0, total: -(t.invested_amount || t.total_amount || 0), label: `Investment${t.units ? ` (${t.units}u)` : ''}`, kind: 'investment' });
+                          }
+                        });
+                        if (cfs.length === 0 && (modalData.invested_amount || 0) > 0) {
+                          cfs.push({ date: ((modalData.trades || [])[0]?.investment_date || '').slice(0,10) || todayStr, amount: -(modalData.invested_amount || 0), principal: 0, interest: 0, tds: 0, total: -(modalData.invested_amount || 0), label: 'Investment', kind: 'investment' });
+                        }
+                        (modalData.repaid_rows || []).forEach(r => cfs.push({
+                          date: r.date,
+                          amount: r.gross || 0,
+                          principal: r.principal || 0,
+                          interest: r.interest || 0,
+                          tds: r.tds || 0,
+                          total: r.gross || 0,
+                          label: 'Actual repayment',
+                          kind: 'actual',
+                        }));
+                        if (!isMatured) {
+                          expectedCashflows
+                            .filter(cf => cf.type !== 'investment' && ((cf.date || '').slice(0,10)) > todayStr)
+                            .forEach(cf => {
+                              const p = cf.principal_component || 0;
+                              const i = cf.interest_component || 0;
+                              const td = cf.tds_amount || cf.tds || 0;
+                              const tt = cf.gross_amount || (p + i);
+                              cfs.push({
+                                date: (cf.date || '').slice(0,10),
+                                amount: tt,
+                                principal: p,
+                                interest: i,
+                                tds: td,
+                                total: tt,
+                                label: 'Scheduled',
+                                kind: 'future',
+                              });
+                            });
+                        }
+                        const actualXirrVal = computeXirr(cfs);
+                        const sorted = [...cfs].sort((a, b) => a.date.localeCompare(b.date));
+                        return (
+                          <>
+                            <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
+                              <h3 className="font-semibold text-white flex items-center gap-2">
+                                <Check className="h-4 w-4" />
+                                Actual Repayments
+                                <span className="text-[10px] font-normal text-green-100">
+                                  {isMatured ? '(Matured — actuals only)' : '(Actuals + future scheduled)'}
+                                </span>
+                              </h3>
+                            </div>
+                            <div className="flex-1 max-h-[340px] overflow-y-auto">
+                              <table className="w-full text-xs">
+                                <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                  <tr>
+                                    <th className="text-left py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Date</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Principal</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Interest</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">TDS</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {!sorted.length ? (
+                                    <tr><td colSpan="5" className="py-8 text-center text-gray-500">No actual cashflows</td></tr>
+                                  ) : sorted.map((c, idx) => {
+                                    const isInv = c.kind === 'investment';
+                                    const isFut = c.kind === 'future';
+                                    const dashIfInv = isInv ? '-' : '';
+                                    return (
+                                      <tr key={idx} className={isInv ? 'bg-red-50' : isFut ? 'bg-amber-50' : 'bg-white hover:bg-gray-50'}>
+                                        <td className={`py-2 px-3 font-mono ${isInv ? 'text-red-700' : isFut ? 'text-amber-700' : 'text-gray-900'}`}>
+                                          {format(new Date(c.date), 'dd MMM yy')}
+                                          {isFut && <span className="ml-1 text-[9px] text-amber-700">(future)</span>}
+                                        </td>
+                                        <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : isFut ? 'text-amber-700' : 'text-blue-700'}`}>{dashIfInv}{Math.round(c.principal || 0).toLocaleString('en-IN')}</td>
+                                        <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : isFut ? 'text-amber-700' : 'text-green-700'}`}>{dashIfInv}{Math.round(c.interest || 0).toLocaleString('en-IN')}</td>
+                                        <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : 'text-amber-600'}`}>{dashIfInv}{Math.round(c.tds || 0).toLocaleString('en-IN')}</td>
+                                        <td className={`py-2 px-3 text-right font-mono font-semibold ${isInv ? 'text-red-700' : isFut ? 'text-amber-700' : 'text-gray-900'}`}>{isInv ? '-' : ''}{Math.round(Math.abs(c.total || c.amount || 0)).toLocaleString('en-IN')}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                            {/* Sticky XIRR footer */}
+                            <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-gray-600 uppercase">Actual XIRR</span>
+                              <span className={`font-mono text-xs font-bold ${actualXirrVal !== null && actualXirrVal !== undefined && Math.round((actualXirrVal + Number.EPSILON) * 100) / 100 >= Math.round(((modalData.xirr || 0) + Number.EPSILON) * 100) / 100 ? 'text-green-700' : 'text-amber-600'}`}>
+                                {actualXirrVal !== null && actualXirrVal !== undefined ? `${actualXirrVal.toFixed(2)}%` : '-'}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
-                    
                   </div>
                 </div>
               )}
@@ -3548,135 +5002,205 @@ export default function Holdings() {
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-500">Actual XIRR:</span>
-                        <span className="font-mono font-semibold ml-2 text-purple-600">
-                          {modalData.trades[activeTab].actual_xirr !== null ? `${modalData.trades[activeTab].actual_xirr.toFixed(2)}%` : '-'}
+                        <span className="text-gray-500">Status:</span>
+                        <span className={`font-semibold ml-2 px-2 py-0.5 rounded-full text-xs ${
+                          (modalData.trades[activeTab].actual_cashflows || []).some(cf => 
+                            cf.type === 'prepayment' || 
+                            (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                          ) || (modalData.trades[activeTab].prepaid_count || 0) > 0
+                            ? 'text-amber-600 bg-amber-50' 
+                            : 'text-green-600 bg-green-50'
+                        }`}>
+                          {(modalData.trades[activeTab].actual_cashflows || []).some(cf => 
+                            cf.type === 'prepayment' || 
+                            (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                          ) || (modalData.trades[activeTab].prepaid_count || 0) > 0 ? 'Partly Prepaid' : 'On Time'}
                         </span>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Two Column Layout for Individual Transaction */}
+                  {/* Two Column Layout for Individual Transaction — SAME template as Summary tab */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Expected Cashflows for this trade */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2">
-                        <h3 className="font-semibold text-white text-sm">Expected Cashflow</h3>
-                      </div>
-                      <div className="flex-1 max-h-[250px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
-                            <tr>
-                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {(modalData.trades[activeTab].expected_cashflows || []).map((cf, idx) => (
-                              cf.type === 'investment' ? (
-                                <tr key={idx} className="bg-red-50">
-                                  <td className="py-2 px-3 font-mono text-xs text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
-                                    -{formatAbsoluteINR(Math.abs(cf.amount || cf.gross_amount || 0))}
-                                  </td>
-                                </tr>
-                              ) : (
-                                <tr key={idx} className="bg-white hover:bg-gray-50">
-                                  <td className="py-2 px-3 font-mono text-xs text-gray-900">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                  <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-gray-900">
-                                    {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                  </td>
-                                </tr>
-                              )
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm mt-auto">
-                        <span className="text-gray-600">Profits:</span>
-                        <span className="font-mono font-bold ml-2 text-green-600">
-                          {formatAbsoluteINR(
-                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                            (modalData.trades[activeTab].expected_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.amount || cf.gross_amount || 0), 0)
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Actual Cashflow for this trade */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
-                      <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-2">
-                        <h3 className="font-semibold text-white text-sm">Actual Cashflow</h3>
-                      </div>
-                      <div className="flex-1 max-h-[250px] overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
-                            <tr>
-                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Date</th>
-                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {(() => {
-                              const actualCfs = modalData.trades[activeTab].actual_cashflows || [];
-                              if (actualCfs.length > 0) {
-                                return actualCfs.map((cf, idx) => (
-                                  cf.type === 'investment' ? (
-                                    <tr key={idx} className="bg-red-50">
-                                      <td className="py-2 px-3 font-mono text-xs text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                      <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
-                                        -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0))}
-                                      </td>
-                                    </tr>
-                                  ) : cf.type === 'maturity' ? (
-                                    <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                      <td className={`py-2 px-3 font-mono text-xs ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                      <td className={`py-2 px-3 text-right font-mono text-xs font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                        {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                      </td>
-                                    </tr>
-                                  ) : (
-                                    <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                      <td className={`py-2 px-3 font-mono text-xs ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                      <td className={`py-2 px-3 text-right font-mono text-xs font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                        {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                      </td>
-                                    </tr>
-                                  )
-                                ));
-                              } else {
-                                return (
-                                  <tr>
-                                    <td colSpan="2" className="py-6 text-center text-gray-500">
-                                      <p className="text-xs">No actual cashflow yet</p>
-                                    </td>
-                                  </tr>
-                                );
-                              }
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-sm mt-auto">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-gray-600">Profits:</span>
-                            <span className="font-mono font-bold ml-2 text-green-600">
-                              {formatAbsoluteINR(
-                                (modalData.trades[activeTab].actual_cashflows || []).filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                                (modalData.trades[activeTab].actual_cashflows || []).filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || cf.amount || 0), 0)
-                              )}
-                            </span>
+                    {(() => {
+                      const trade = modalData.trades[activeTab];
+                      const tradeInvested = trade.invested_amount || trade.total_amount || 0;
+                      // Per-trade repaid rows come straight from the API
+                      // (principal-matched per investment-date group on the
+                      // backend), so each tab shows ONLY that trade's actual
+                      // transaction history — no pro-rata cross-attribution.
+                      const tradeRepaidRows = (trade.repaid_rows || []).map(r => ({
+                        date: r.date,
+                        principal: r.principal || 0,
+                        interest:  r.interest  || 0,
+                        tds:       r.tds       || 0,
+                        gross:     r.gross     || 0,
+                      }));
+                      const tradeExpected = trade.expected_cashflows || [];
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      const matStr = (trade.maturity_date || modalData.maturity_date || '').slice(0, 10);
+                      const isMatured = !!matStr && matStr <= todayStr;
+
+                      // EXPECTED — group by date (principal/interest/tds/total) so columns mirror Actual
+                      const groups = new Map();
+                      for (const cf of tradeExpected) {
+                        const isInv = cf.type === 'investment';
+                        const key = `${isInv ? 'INV::' : 'EXP::'}${(cf.date || '').slice(0, 10)}`;
+                        const p = cf.principal_component || 0;
+                        const i = cf.interest_component || 0;
+                        const td = cf.tds_amount || cf.tds || 0;
+                        const t = cf.gross_amount || (p + i);
+                        if (!groups.has(key)) {
+                          groups.set(key, { date: cf.date, isInvestment: isInv, principal: 0, interest: 0, tds: 0, total: 0, count: 0 });
+                        }
+                        const g = groups.get(key);
+                        g.principal += p;
+                        g.interest  += i;
+                        g.tds       += td;
+                        g.total     += t;
+                        g.count     += 1;
+                      }
+                      const expMerged = Array.from(groups.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                      // ACTUAL — investments + per-trade actual repayments + future scheduled (if not matured)
+                      // Each entry carries Principal / Interest / TDS / Total so the table mirrors the Expected panel.
+                      const cfs = [];
+                      if (trade.investment_date && tradeInvested) {
+                        cfs.push({ date: (trade.investment_date || '').slice(0,10), amount: -tradeInvested, principal: 0, interest: 0, tds: 0, total: -tradeInvested, label: 'Investment', kind: 'investment' });
+                      }
+                      tradeRepaidRows.forEach(r => cfs.push({
+                        date: r.date,
+                        amount: r.gross || 0,
+                        principal: r.principal || 0,
+                        interest: r.interest || 0,
+                        tds: r.tds || 0,
+                        total: r.gross || 0,
+                        label: 'Actual repayment',
+                        kind: 'actual',
+                      }));
+                      if (!isMatured) {
+                        tradeExpected
+                          .filter(cf => cf.type !== 'investment' && ((cf.date || '').slice(0,10)) > todayStr)
+                          .forEach(cf => {
+                            const p = cf.principal_component || 0;
+                            const i = cf.interest_component || 0;
+                            const td = cf.tds_amount || cf.tds || 0;
+                            const tt = cf.gross_amount || (p + i);
+                            cfs.push({
+                              date: (cf.date || '').slice(0,10),
+                              amount: tt,
+                              principal: p,
+                              interest: i,
+                              tds: td,
+                              total: tt,
+                              label: 'Scheduled',
+                              kind: 'future',
+                            });
+                          });
+                      }
+                      const actualXirrVal = computeXirr(cfs);
+                      const sortedCfs = [...cfs].sort((a, b) => a.date.localeCompare(b.date));
+
+                      return (<>
+                        {/* LEFT — Expected Repayments (mirrors Summary tab) */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                            <h3 className="font-semibold text-white flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Expected Repayments
+                            </h3>
                           </div>
-                          <div>
-                            <span className="text-gray-600">XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-green-700">
-                              {modalData.trades[activeTab].actual_xirr !== null && modalData.trades[activeTab].actual_xirr !== undefined ? `${modalData.trades[activeTab].actual_xirr.toFixed(2)}%` : '-'}
+                          <div className="flex-1 max-h-[340px] overflow-y-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                <tr>
+                                  <th className="text-left py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Date</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Principal</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Interest</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">TDS</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {expMerged.length === 0 ? (
+                                  <tr><td colSpan="5" className="py-8 text-center text-gray-500">No expected cashflows</td></tr>
+                                ) : expMerged.map((g, i) => (
+                                  <tr key={i} className={g.isInvestment ? 'bg-red-50' : 'bg-white hover:bg-gray-50'}>
+                                    <td className={`py-2 px-3 font-mono ${g.isInvestment ? 'text-red-700' : 'text-gray-900'}`}>
+                                      {format(new Date(g.date), 'dd MMM yy')}
+                                      {g.count > 1 && <span className="ml-1 text-[10px] text-gray-400">({g.count})</span>}
+                                    </td>
+                                    <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-blue-700'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.principal).toLocaleString('en-IN')}</td>
+                                    <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-green-700'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.interest).toLocaleString('en-IN')}</td>
+                                    <td className={`py-2 px-3 text-right font-mono ${g.isInvestment ? 'text-red-600' : 'text-amber-600'}`}>{g.isInvestment ? '-' : ''}{Math.round(g.tds || 0).toLocaleString('en-IN')}</td>
+                                    <td className={`py-2 px-3 text-right font-mono font-semibold ${g.isInvestment ? 'text-red-700' : 'text-gray-900'}`}>{g.isInvestment ? '-' : ''}{Math.round(Math.abs(g.total)).toLocaleString('en-IN')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-gray-600 uppercase">Expected XIRR</span>
+                            <span className="font-mono text-xs font-bold text-green-700">
+                              {trade.xirr !== null && trade.xirr !== undefined ? `${trade.xirr.toFixed(2)}%` : (modalData.xirr !== null && modalData.xirr !== undefined ? `${modalData.xirr.toFixed(2)}%` : '-')}
                             </span>
                           </div>
                         </div>
-                      </div>
-                    </div>
+
+                        {/* RIGHT — Actual Repayments (mirrors Summary tab: Date | P | I | TDS | Total) */}
+                        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col">
+                          <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3">
+                            <h3 className="font-semibold text-white flex items-center gap-2">
+                              <Check className="h-4 w-4" />
+                              Actual Repayments
+                              <span className="text-[10px] font-normal text-green-100">
+                                {isMatured ? '(Matured — actuals only)' : '(Actuals + future scheduled)'}
+                              </span>
+                            </h3>
+                          </div>
+                          <div className="flex-1 max-h-[340px] overflow-y-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
+                                <tr>
+                                  <th className="text-left py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Date</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Principal</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Interest</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">TDS</th>
+                                  <th className="text-right py-2 px-3 text-[10px] font-semibold text-gray-600 uppercase">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {sortedCfs.length === 0 ? (
+                                  <tr><td colSpan="5" className="py-8 text-center text-gray-500">No actual cashflows</td></tr>
+                                ) : sortedCfs.map((c, idx) => {
+                                  const isInv = c.kind === 'investment';
+                                  const isFut = c.kind === 'future';
+                                  const dashIfInv = isInv ? '-' : '';
+                                  return (
+                                    <tr key={idx} className={isInv ? 'bg-red-50' : isFut ? 'bg-amber-50' : 'bg-white hover:bg-gray-50'}>
+                                      <td className={`py-2 px-3 font-mono ${isInv ? 'text-red-700' : isFut ? 'text-amber-700' : 'text-gray-900'}`}>
+                                        {format(new Date(c.date), 'dd MMM yy')}
+                                        {isFut && <span className="ml-1 text-[9px] text-amber-700">(future)</span>}
+                                      </td>
+                                      <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : isFut ? 'text-amber-700' : 'text-blue-700'}`}>{dashIfInv}{Math.round(c.principal || 0).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : isFut ? 'text-amber-700' : 'text-green-700'}`}>{dashIfInv}{Math.round(c.interest || 0).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono ${isInv ? 'text-red-600' : 'text-amber-600'}`}>{dashIfInv}{Math.round(c.tds || 0).toLocaleString('en-IN')}</td>
+                                      <td className={`py-2 px-3 text-right font-mono font-semibold ${isInv ? 'text-red-700' : isFut ? 'text-amber-700' : 'text-gray-900'}`}>{isInv ? '-' : ''}{Math.round(Math.abs(c.total || c.amount || 0)).toLocaleString('en-IN')}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-gray-600 uppercase">Actual XIRR</span>
+                            <span className={`font-mono text-xs font-bold ${actualXirrVal !== null && actualXirrVal !== undefined && Math.round((actualXirrVal + Number.EPSILON) * 100) / 100 >= Math.round(((trade.xirr || modalData.xirr || 0) + Number.EPSILON) * 100) / 100 ? 'text-green-700' : 'text-amber-600'}`}>
+                              {actualXirrVal !== null && actualXirrVal !== undefined ? `${actualXirrVal.toFixed(2)}%` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </>);
+                    })()}
                   </div>
                 </div>
               )}

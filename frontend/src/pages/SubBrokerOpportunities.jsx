@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
+import CreateRealEstateModal from "@/components/CreateRealEstateModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2, Building2, TrendingUp, MapPin } from "lucide-react";
+import { Share2, Building2, TrendingUp, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { logUserActivity } from "@/utils/activityLogger";
 
@@ -14,10 +15,12 @@ const API = `${BACKEND_URL}/api`;
 export default function SubBrokerOpportunities() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [partnerInfo, setPartnerInfo] = useState(null);
   const [bonds, setBonds] = useState([]);
   const [realEstateOpportunities, setRealEstateOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all"); // "all", "bonds", "real-estate"
+  const [showCreateRealEstateModal, setShowCreateRealEstateModal] = useState(false);
 
   // Log user activity
   useEffect(() => {
@@ -39,7 +42,20 @@ export default function SubBrokerOpportunities() {
     
     setUser(parsedUser);
     fetchAllOpportunities();
+    fetchPartnerInfo();
   }, [navigate]);
+
+  const fetchPartnerInfo = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API}/sub-broker/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPartnerInfo(response.data);
+    } catch (error) {
+      console.error("Error fetching partner info:", error);
+    }
+  };
 
   const fetchAllOpportunities = async () => {
     try {
@@ -49,11 +65,13 @@ export default function SubBrokerOpportunities() {
       // Fetch both bonds and real estate in parallel
       const [bondsRes, realEstateRes] = await Promise.all([
         axios.get(`${API}/bonds`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API}/real-estate-opportunities`, { headers }).catch(() => ({ data: { data: [] } }))
       ]);
       
       setBonds(bondsRes.data || []);
-      setRealEstateOpportunities(realEstateRes.data || []);
+      // Handle both paginated response and direct array
+      const realEstateData = realEstateRes.data?.data || realEstateRes.data || [];
+      setRealEstateOpportunities(Array.isArray(realEstateData) ? realEstateData : []);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching opportunities:", error);
@@ -314,8 +332,22 @@ export default function SubBrokerOpportunities() {
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-800" data-testid="subbroker-opportunities-title">Opportunities</h1>
-          <p className="text-sm text-gray-500 mt-1">Share these investment opportunities with your clients</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="subbroker-opportunities-title">Opportunities</h1>
+              <p className="text-sm text-gray-500 mt-1">Share these investment opportunities with your investors</p>
+            </div>
+            {partnerInfo?.can_create_real_estate && (
+              <Button
+                onClick={() => setShowCreateRealEstateModal(true)}
+                className="bg-teal-600 hover:bg-teal-700"
+                data-testid="add-real-estate-btn"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Property
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -346,7 +378,7 @@ export default function SubBrokerOpportunities() {
                   {availableRealEstate.map(property => (
                     <RealEstateCard key={property.id} property={property} status="available" />
                   ))}
-                  {/* Bonds */}
+                  {/* NCD */}
                   {availableBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="available" />
                   ))}
@@ -367,7 +399,7 @@ export default function SubBrokerOpportunities() {
                   {fundedRealEstate.map(property => (
                     <RealEstateCard key={property.id} property={property} status="funded" />
                   ))}
-                  {/* Funded Bonds */}
+                  {/* Funded NCD */}
                   {fundedBonds.map(bond => (
                     <BondCard key={bond.id} bond={bond} status="funded" />
                   ))}
@@ -393,6 +425,18 @@ export default function SubBrokerOpportunities() {
           </Tabs>
         </div>
       </div>
+
+      {/* Create Real Estate Modal */}
+      {showCreateRealEstateModal && (
+        <CreateRealEstateModal
+          onClose={() => setShowCreateRealEstateModal(false)}
+          onSuccess={() => {
+            setShowCreateRealEstateModal(false);
+            fetchAllOpportunities();
+            toast.success("Property created successfully!");
+          }}
+        />
+      )}
     </div>
   );
 }

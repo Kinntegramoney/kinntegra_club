@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { TrendingUp, Wallet, User, LogOut, Menu, X, Bell, RefreshCw, CheckSquare, FileText } from "lucide-react";
+import { TrendingUp, Wallet, LogOut, Menu, X, Bell, RefreshCw, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 
@@ -56,7 +56,7 @@ export default function ClientSidebar({ user }) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/");
   };
 
   const isActive = (path) => location.pathname === path;
@@ -65,8 +65,6 @@ export default function ClientSidebar({ user }) {
     { path: "/client/opportunities", label: "Opportunities", icon: TrendingUp },
     { path: "/client/holdings", label: "Holdings", icon: Wallet },
     { path: "/client/approvals", label: "Approve", icon: CheckSquare, badge: pendingApprovals },
-    { path: "/client/logs", label: "Logs", icon: FileText },
-    { path: "/client/profile", label: "Profile", icon: User },
   ];
 
   const SidebarContent = () => (

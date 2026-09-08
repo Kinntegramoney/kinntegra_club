@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, Info, Download, Calculator, AlertTriangle, CheckCircle, Clock, Settings2, X } from "lucide-react";
+import { User, TrendingUp, TrendingDown, PiggyBank, Landmark, Target, Info, Download, Calculator, AlertTriangle, CheckCircle, Clock, Settings2, X, FileText } from "lucide-react";
 // recharts removed - using simple text display
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { generateFinancialPlanPDF } from "@/components/PDFExport/FinancialPlanPDF";
 
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
@@ -44,8 +45,44 @@ export default function SurplusSection({ family, isReadOnly }) {
   };
 
   const primaryAge = calculateAge(primaryMember?.date_of_birth);
-  const lifeExpectancy = parseInt(primaryMember?.life_expectancy) || 85;
-  const endYear = currentYear + (lifeExpectancy - primaryAge);
+  // Per-member life expectancy (falls back to 85 if missing on the family record)
+  const memberLifeExp = (m) => Number(m?.life_expectancy) || 85;
+  const lifeExpectancy = memberLifeExp(primaryMember);
+  
+  // End year = the year when the LONGEST-LIVED member reaches their own life
+  // expectancy. Using the youngest member with a hardcoded 85 was the bug:
+  // even when the primary's life_expectancy was 95, the projection capped at
+  // 85 and any member outliving 85 fell off the table.
+  const endYear = members.reduce((maxYear, m) => {
+    const memberAge = calculateAge(m?.date_of_birth);
+    if (!Number.isFinite(memberAge)) return maxYear;
+    const yearReachesLife = currentYear + Math.max(0, memberLifeExp(m) - memberAge);
+    return Math.max(maxYear, yearReachesLife);
+  }, currentYear);
+  
+  // Calculate totalAssets at component level (used by both Excel export and Simulator)
+  // Exclude EPF and Gratuity (come via maturities at retirement)
+  // Exclude debt instruments with maturity dates (come via maturities)
+  const totalAssets = (() => {
+    const excludedFromAssets = ['epf', 'gratuity'];
+    const debtCategoriesWithMaturity = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+    let total = 0;
+    incomeDetails.forEach(inc => {
+      if (excludedFromAssets.includes(inc.category)) return;
+      const d = inc.details || {};
+      const hasMaturityDate = d.maturity_date || d.maturity_year || d.maturity_amount;
+      if (debtCategoriesWithMaturity.includes(inc.category) && hasMaturityDate) return;
+      let assetValue = 0;
+      if (inc.category === 'cash') {
+        assetValue = parseFloat(d.bank_balance) || 0;
+      } else {
+        assetValue = parseFloat(d.market_value) || parseFloat(d.current_value) || 
+                    parseFloat(d.investment_value) || parseFloat(d.balance) || 0;
+      }
+      total += assetValue;
+    });
+    return total;
+  })();
 
   // Get member-specific income info and growth rates
   const getMemberIncomeInfo = (memberId) => {
@@ -121,26 +158,88 @@ export default function SurplusSection({ family, isReadOnly }) {
     return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension, baseMutualFund };
   };
 
-  // Get member expenses with inflation (including family expenses distributed)
+  // Get member expenses with inflation (including family expenses distributed and insurance premiums)
   const getMemberBaseExpenses = (memberId) => {
     const memberExpenses = [];
     
+    // Loan expense types that use EMI/installment logic
+    const loanTypes = ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'];
+    // Insurance expense types from expense_details (not from insurance_premiums collection)
+    const insuranceTypes = ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'];
+    
+    // Regular expenses from expense_details
     expenseDetails.forEach(exp => {
       const expMemberIds = exp.member_ids || [];
       const isFamilyExpense = expMemberIds.includes('family') || expMemberIds.length === 0;
       const isAssignedToMember = expMemberIds.includes(memberId);
       
       if (isAssignedToMember || isFamilyExpense) {
-        const baseAmount = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) || 0) * 12;
+        const expenseType = exp.expense_type || '';
+        const isLoan = loanTypes.includes(expenseType);
+        const isInsurance = insuranceTypes.includes(expenseType);
+        
+        // For loans, use monthly_emi * 12; for others use annual_amount or monthly_amount * 12
+        let baseAmount;
+        if (isLoan) {
+          baseAmount = (parseFloat(exp.monthly_emi) || 0) * 12;
+        } else {
+          baseAmount = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) || 0) * 12;
+        }
+        
         // If family expense, divide among all members
         const amount = isFamilyExpense ? baseAmount / members.length : baseAmount;
         
+        // Calculate loan completion year based on installments
+        let loanCompletionYear = null;
+        if (isLoan && exp.num_installments) {
+          const numInstallments = parseFloat(exp.num_installments) || 0;
+          loanCompletionYear = currentYear + Math.ceil(numInstallments / 12);
+        }
+        
         memberExpenses.push({
           annualAmount: amount,
-          inflationRate: parseFloat(exp.inflation_percent) ?? 5,
+          inflationRate: isLoan || isInsurance ? 0 : (parseFloat(exp.inflation_percent) ?? 5), // Loans and insurance don't inflate
           uptoYear: parseInt(exp.upto_year) || endYear,
           considerPostRetirement: exp.consider_post_retirement || false,
-          postRetirementPercent: parseFloat(exp.post_retirement_percent) ?? 100
+          postRetirementPercent: parseFloat(exp.post_retirement_percent) ?? 100,
+          expenseType: expenseType,
+          isLoan: isLoan,
+          isInsurance: isInsurance,
+          loanCompletionYear: loanCompletionYear
+        });
+      }
+    });
+    
+    // Insurance premiums from insurance_premiums collection
+    insurancePremiumsData.forEach(ins => {
+      const insMemberId = ins.member_id;
+      const isFamilyInsurance = !insMemberId;
+      const isAssignedToMember = insMemberId === memberId;
+      
+      if (isAssignedToMember || isFamilyInsurance) {
+        const premium = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+        // If family insurance, divide among all members
+        const amount = isFamilyInsurance ? premium / members.length : premium;
+        // Annual escalation (mostly used by health / critical_illness /
+        // personal_accident — others store 0). step_up_amount takes precedence
+        // over inflation_percent if both happen to be non-zero.
+        const stepUp = parseFloat(ins.step_up_amount) || 0;
+        const inflPct = stepUp > 0 ? 0 : (parseFloat(ins.inflation_percent) || 0);
+        const proRatedStepUp = isFamilyInsurance ? stepUp / Math.max(1, members.length) : stepUp;
+        
+        memberExpenses.push({
+          annualAmount: amount,
+          inflationRate: inflPct,
+          stepUpAmount: proRatedStepUp,
+          uptoYear: parseInt(ins.upto_year) || parseInt(ins.premium_end_year) || endYear,
+          // Insurance premiums typically continue until their upto_year, regardless of retirement
+          // So we set considerPostRetirement to true to allow them to continue
+          considerPostRetirement: true,
+          postRetirementPercent: 100,
+          expenseType: 'insurance_premium',
+          isLoan: false,
+          isInsurance: true,
+          loanCompletionYear: null
         });
       }
     });
@@ -319,7 +418,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     const isPostRetirement = targetYear >= info.retirementYear;
     
     const breakdown = {};
+    let total = 0;
     
+    // Regular expenses from expense_details
     expenseDetails.forEach(exp => {
       const expMemberIds = exp.member_ids || [];
       const isFamilyExpense = expMemberIds.includes('family') || expMemberIds.length === 0;
@@ -332,18 +433,56 @@ export default function SurplusSection({ family, isReadOnly }) {
         const inflationRate = parseFloat(exp.inflation_percent) ?? 5;
         const uptoYear = parseInt(exp.upto_year) || endYear;
         
-        if (targetYear > uptoYear) return;
-        
-        let projectedAmount = yearsFromNow <= 0 ? amount : amount * Math.pow(1 + inflationRate / 100, yearsFromNow);
-        
-        if (isPostRetirement && exp.consider_post_retirement) {
+        // Post-retirement logic:
+        // - Checkbox TICKED: Expense continues with percentage, extends to life expectancy
+        // - Checkbox NOT TICKED: Expense STOPS at retirement
+        if (isPostRetirement) {
+          if (!exp.consider_post_retirement) {
+            return; // Skip - expense stops at retirement
+          }
+          // Checkbox ticked - expense continues with percentage
+          let projectedAmount = yearsFromNow <= 0 ? amount : amount * Math.pow(1 + inflationRate / 100, yearsFromNow);
           projectedAmount = projectedAmount * ((parseFloat(exp.post_retirement_percent) ?? 100) / 100);
+          
+          if (!breakdown[category]) breakdown[category] = 0;
+          breakdown[category] += projectedAmount;
+          total += projectedAmount;
+        } else {
+          // Before retirement - respect uptoYear
+          if (targetYear > uptoYear) return;
+          let projectedAmount = yearsFromNow <= 0 ? amount : amount * Math.pow(1 + inflationRate / 100, yearsFromNow);
+          
+          if (!breakdown[category]) breakdown[category] = 0;
+          breakdown[category] += projectedAmount;
+          total += projectedAmount;
         }
-        
-        if (!breakdown[category]) breakdown[category] = 0;
-        breakdown[category] += projectedAmount;
       }
     });
+    
+    // Insurance premiums from insurance_premiums collection
+    insurancePremiumsData.forEach(ins => {
+      const insMemberId = ins.member_id;
+      const isFamilyInsurance = !insMemberId;
+      const isAssignedToMember = insMemberId === memberId;
+      
+      if (isAssignedToMember || isFamilyInsurance) {
+        const premium = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+        const amount = isFamilyInsurance ? premium / members.length : premium;
+        const uptoYear = parseInt(ins.upto_year) || parseInt(ins.premium_end_year) || endYear;
+        
+        if (targetYear > uptoYear) return;
+        
+        const insType = ins.insurance_type || ins.category || ins.type || 'insurance';
+        const category = `insurance_${insType}`;
+        
+        if (!breakdown[category]) breakdown[category] = 0;
+        breakdown[category] += amount;
+        total += amount;
+      }
+    });
+    
+    // Add total to breakdown for display
+    breakdown._total = total;
     
     return breakdown;
   };
@@ -434,7 +573,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       
       // Add to maturities if valid
       if (maturityYear && maturityValue > 0 && maturities[maturityYear]) {
-        maturityType = inc.category === 'fd' ? 'FD' : inc.category === 'bond' ? 'Bond' :
+        maturityType = inc.category === 'fd' ? 'FD' : inc.category === 'bond' ? 'NCD' :
                       inc.category === 'ppf' ? 'PPF' : inc.category === 'rd_pis' ? 'RD' :
                       inc.category === 'insurance_income' ? 'Insurance' : inc.category === 'nps' ? 'NPS' :
                       inc.category === 'epf' ? 'EPF' : inc.category === 'gratuity' ? 'Gratuity' :
@@ -494,15 +633,168 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     let total = 0;
     memberExpenses.forEach(expense => {
-      if (targetYear > expense.uptoYear) return;
-      let projectedAmount = expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yearsFromNow);
-      if (isPostRetirement && expense.considerPostRetirement) {
-        projectedAmount = projectedAmount * (expense.postRetirementPercent / 100);
+      // Handle loans - check completion year
+      if (expense.isLoan) {
+        if (expense.loanCompletionYear && targetYear >= expense.loanCompletionYear) {
+          return; // Loan completed, skip
+        }
+        // Loans don't inflate, just add the EMI amount
+        total += expense.annualAmount;
+        return;
       }
-      total += projectedAmount;
+      
+      // Handle insurance from expense_details - check uptoYear, apply inflation/step-up if any
+      if (expense.isInsurance) {
+        if (targetYear > expense.uptoYear) {
+          return; // Insurance ended
+        }
+        // Project the premium forward — step-up is additive (linear), inflation
+        // is compounding. Only one of the two should be non-zero in practice.
+        const yrs = Math.max(0, yearsFromNow);
+        const inflated = expense.inflationRate
+          ? expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yrs)
+          : expense.annualAmount;
+        const stepUpDelta = (expense.stepUpAmount || 0) * yrs;
+        total += inflated + stepUpDelta;
+        return;
+      }
+      
+      // Regular expenses with post-retirement logic:
+      // - Checkbox TICKED (considerPostRetirement = TRUE): Expense continues with percentage, extends to life expectancy
+      // - Checkbox NOT TICKED (considerPostRetirement = FALSE): Expense STOPS at retirement
+      
+      if (isPostRetirement) {
+        // After retirement
+        if (!expense.considerPostRetirement) {
+          return; // Skip - expense stops at retirement when checkbox is NOT ticked
+        }
+        // Checkbox is ticked - expense continues to life expectancy with percentage
+        let projectedAmount = expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yearsFromNow);
+        projectedAmount = projectedAmount * (expense.postRetirementPercent / 100);
+        total += projectedAmount;
+      } else {
+        // Before retirement - respect uptoYear limit
+        if (targetYear > expense.uptoYear) return;
+        let projectedAmount = expense.annualAmount * Math.pow(1 + expense.inflationRate / 100, yearsFromNow);
+        total += projectedAmount;
+      }
     });
     
     return total;
+  };
+
+  // Calculate TOTAL FAMILY income for a year - mirrors Excel TOTAL INCOME (A) calculation exactly
+  const getTotalFamilyIncome = (year) => {
+    const targetYear = parseInt(year);
+    
+    // Sum income from all members
+    let totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year), 0);
+    
+    // Add maturities for this year
+    const yearMaturities = maturitiesByYear[targetYear]?.total || 0;
+    totalIncome += yearMaturities;
+    
+    return totalIncome;
+  };
+
+  // Calculate TOTAL FAMILY expenses for a year - mirrors Excel TOTAL EXPENSES (B) calculation exactly
+  const getTotalFamilyExpenses = (year) => {
+    const targetYear = parseInt(year);
+    const yearsFromNow = targetYear - currentYear;
+    
+    // Loan expense types
+    const loanTypes = ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'];
+    // Insurance expense types from expense_details
+    const insuranceTypes = ['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'];
+    
+    let totalYearExp = 0;
+    
+    // Process all expenses from expense_details (same as Excel TOTAL EXPENSES)
+    expenseDetails.forEach(exp => {
+      const expenseType = exp.expense_type || '';
+      const isLoan = loanTypes.includes(expenseType);
+      const isInsurance = insuranceTypes.includes(expenseType);
+      
+      // Calculate base amount
+      let baseAnn;
+      if (isLoan) {
+        baseAnn = (parseFloat(exp.monthly_emi) || 0) * 12;
+      } else {
+        baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) || 0) * 12 || (parseFloat(exp.yearly_premium) || 0);
+      }
+      
+      const inflRate = parseFloat(exp.inflation_percent) ?? 5;
+      const uptoYr = parseInt(exp.upto_year) || endYear;
+      
+      // Handle loans - check completion year
+      if (isLoan) {
+        const numInstallments = parseFloat(exp.num_installments) || 0;
+        const completionYear = currentYear + Math.ceil(numInstallments / 12);
+        if (targetYear < completionYear) {
+          totalYearExp += baseAnn;
+        }
+        return;
+      }
+      
+      // Handle insurance from expense_details - apply inflation/step-up if any
+      if (isInsurance) {
+        if (targetYear <= uptoYr) {
+          const yrs = Math.max(0, yearsFromNow);
+          const stepUp = parseFloat(exp.step_up_amount) || 0;
+          const effectiveInfl = stepUp > 0 ? 0 : (parseFloat(exp.inflation_percent) || 0);
+          const inflated = effectiveInfl
+            ? baseAnn * Math.pow(1 + effectiveInfl / 100, yrs)
+            : baseAnn;
+          totalYearExp += inflated + stepUp * yrs;
+        }
+        return;
+      }
+      
+      // Regular expenses - get retirement year based on assigned members
+      const memberIds = exp.member_ids || [];
+      const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+      let retirementYear;
+      
+      if (isFamilyExpense) {
+        const primaryMember = members.find(m => m.is_primary);
+        retirementYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
+      } else {
+        retirementYear = memberIds.map(mid => {
+          const m = members.find(mem => mem.id === mid);
+          return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
+        }).reduce((min, yr) => Math.min(min, yr), endYear);
+      }
+      
+      const isPostRet = targetYear >= retirementYear;
+      
+      // Post-retirement logic
+      if (isPostRet) {
+        if (!exp.consider_post_retirement) {
+          return; // Expense stops at retirement
+        }
+        // Continue with percentage
+        let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+        const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+        amount = amount * postRetPct / 100;
+        totalYearExp += amount;
+      } else {
+        // Before retirement - respect uptoYear
+        if (targetYear > uptoYr) return;
+        let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+        totalYearExp += amount;
+      }
+    });
+    
+    // Add Insurance Premiums from insurance_premiums collection
+    insurancePremiumsData.forEach(ins => {
+      const premium = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+      const uptoYr = parseInt(ins.upto_year) || parseInt(ins.premium_end_year) || endYear;
+      if (targetYear <= uptoYr) {
+        totalYearExp += premium;
+      }
+    });
+    
+    return totalYearExp;
   };
 
   // Calculate projected member investments (uses combined investments with upto_year)
@@ -544,7 +836,10 @@ export default function SurplusSection({ family, isReadOnly }) {
   };
 
   // Export to Excel function - Individual sheets for each Data Gathering tab
-  const handleExportToExcel = () => {
+  // allocationSettings: { equity, debt, equityReturn, debtReturn } - optional, defaults to 80/20, 12%/7%
+  const handleExportToExcel = (allocationSettings = null) => {
+    // Use provided allocation settings or defaults
+    const allocation = allocationSettings || { equity: 80, debt: 20, equityReturn: 12, debtReturn: 7 };
     const wb = XLSX.utils.book_new();
     
     // Helper function to format currency with Indian comma format
@@ -587,7 +882,7 @@ export default function SurplusSection({ family, isReadOnly }) {
       const labels = {
         'salary': 'Salary', 'business': 'Business', 'rental': 'Rental', 'pension': 'Pension',
         'mutual_fund': 'Mutual Fund', 'ppf': 'PPF', 'epf': 'EPF', 'nps': 'NPS',
-        'fd': 'Fixed Deposit', 'rd_pis': 'RD/PIS', 'bond': 'Bonds', 'insurance_income': 'Insurance (Income)',
+        'fd': 'Fixed Deposit', 'rd_pis': 'RD/PIS', 'bond': 'NCD', 'insurance_income': 'Insurance (Income)',
         'shares_pms': 'Shares/PMS', 'gratuity': 'Gratuity', 'commodities': 'Commodities',
         'cash': 'Cash', 'vehicle': 'Vehicle', 'other': 'Other',
         'living_expenses': 'Living Expenses', 'housing': 'Housing', 'utilities': 'Utilities',
@@ -601,12 +896,13 @@ export default function SurplusSection({ family, isReadOnly }) {
       return labels[category] || (category || 'Other').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     };
     
-    // Generate projection years
+    // Generate projection years until youngest member reaches 85
     const projectionYears = [];
-    const maxYears = Math.min(endYear, currentYear + 35);
-    for (let y = currentYear; y <= maxYears; y++) {
+    for (let y = currentYear; y <= endYear; y++) {
       projectionYears.push(y);
     }
+    
+    // totalAssets is already calculated at component level
     
     // Line separator for Data Gathering
     const dgSeparator = '────────────────────────────────────────────────────────────────────────';
@@ -839,6 +1135,27 @@ export default function SurplusSection({ family, isReadOnly }) {
         exp.post_retirement_percent ? `${exp.post_retirement_percent}%` : '100%'
       ]);
     });
+    
+    // Add Insurance Premiums to Expenses section (from insurance_premiums collection)
+    if (insurancePremiumsData.length > 0) {
+      insurancePremiumsData.forEach(ins => {
+        const annual = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+        const monthly = Math.round(annual / 12);
+        const memberName = ins.member_id ? (members.find(m => m.id === ins.member_id)?.name || 'Unknown') : 'Family';
+        const policyInfo = ins.policy_name || ins.description || '';
+        const categoryLabel = getCategoryLabel(ins.insurance_type || ins.category || ins.type || 'insurance');
+        dgData.push([
+          policyInfo ? `${categoryLabel} - ${policyInfo}` : categoryLabel,
+          memberName,
+          formatCurrencyINR(monthly),
+          formatCurrencyINR(annual),
+          '0%', // Insurance premiums typically don't inflate
+          ins.upto_year || ins.premium_end_year || '',
+          'No',
+          '100%'
+        ]);
+      });
+    }
     dgData.push([]);
     
     // ========== GOALS SECTION ==========
@@ -869,28 +1186,6 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     dgData.push([]);
     
-    // ========== INSURANCE PREMIUMS (from insurance_premiums collection) ==========
-    dgData.push([dgSeparator]);
-    dgData.push(['INSURANCE PREMIUMS']);
-    dgData.push([dgSeparator]);
-    if (insurancePremiumsData.length > 0) {
-      dgData.push(['Type', 'Member', 'Policy Name', 'Annual Premium', 'Sum Assured/Coverage', 'Premium End Year']);
-      insurancePremiumsData.forEach(ins => {
-        const memberName = ins.member_id ? (members.find(m => m.id === ins.member_id)?.name || 'Unknown') : 'Family';
-        dgData.push([
-          getCategoryLabel(ins.insurance_type || ins.category || ins.type), 
-          memberName,
-          ins.policy_name || ins.description || '-',
-          formatCurrencyINR(ins.yearly_premium || ins.annual_premium || ins.premium_amount), 
-          formatCurrencyINR(ins.coverage_amount || ins.sum_assured), 
-          ins.upto_year || ins.premium_end_year || '-'
-        ]);
-      });
-    } else {
-      dgData.push(['No insurance premiums recorded']);
-    }
-    dgData.push([]);
-    
     // ========== LIABILITIES ==========
     const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
     if (loanExpenses.length > 0) {
@@ -912,157 +1207,33 @@ export default function SurplusSection({ family, isReadOnly }) {
     XLSX.utils.book_append_sheet(wb, dgSheet, "Data Gathering");
 
     // ==================================================================================
-    // SHEET 2: COMPREHENSIVE FINANCIAL PLAN (Year-wise Projection)
+    // SHEET 2: CASHFLOW (Year-wise Projection)
     // ==================================================================================
     const data = [];
     const separator = '═══════════════════════════════════════════════════════════════════════════════';
     const thinSeparator = '───────────────────────────────────────────────────────────────────────────────';
     
     // Header
-    data.push([`COMPREHENSIVE FINANCIAL PLAN - ${family?.family_name || 'Family'}`]);
-    data.push([`Plan Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`]);
+    data.push([`CASHFLOW PROJECTION - ${family?.family_name || 'Family'}`]);
+    data.push([`Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`]);
     data.push([separator]);
     data.push([]);
     
-    // SECTION 1: MEMBER SUMMARY
-    data.push(['SECTION 1: MEMBER DETAILS']);
-    data.push(['Name', 'Relation', 'Age', 'Retirement Year', 'Life Expectancy']);
-    members.forEach(m => {
-      data.push([m.name, m.is_primary ? 'Self' : m.relation, calculateAge(m.date_of_birth), m.retirement_year, m.life_expectancy]);
-    });
-    data.push([]);
-    
-    // SECTION 2: INCOME SUMMARY (ALL TYPES)
-    data.push(['SECTION 2: INCOME SUMMARY (Annual)']);
-    data.push(['Income Type', 'Member', 'Annual Amount', 'Growth/Interest Rate']);
-    
-    // Add all income types
-    incomeDetails.forEach(inc => {
-      const d = inc.details || {};
-      let annualAmount = 0;
-      let growthRate = '';
-      
-      switch(inc.category) {
-        case 'salary':
-          annualAmount = parseFloat(d.net_income_yearly) || 0;
-          growthRate = d.avg_growth_rate ? `${d.avg_growth_rate}% growth` : '';
-          break;
-        case 'business':
-          annualAmount = parseFloat(d.net_income_yearly) || 0;
-          growthRate = d.avg_growth_rate ? `${d.avg_growth_rate}% growth` : '';
-          break;
-        case 'rental':
-          annualAmount = parseFloat(d.annual_rent) || 0;
-          growthRate = d.rental_growth_rate ? `${d.rental_growth_rate}% growth` : '3% growth';
-          break;
-        case 'pension':
-          annualAmount = parseFloat(d.amount_yearly) || 0;
-          growthRate = 'Fixed';
-          break;
-        case 'fd':
-          annualAmount = (parseFloat(d.investment_value) || 0) * (parseFloat(d.interest_rate) || 0) / 100;
-          growthRate = d.interest_rate ? `${d.interest_rate}% interest` : '';
-          break;
-        case 'bond':
-          const payoutAmt = parseFloat(d.payout_amount) || 0;
-          const freq = d.payout_frequency || 'yearly';
-          annualAmount = freq === 'monthly' ? payoutAmt * 12 : freq === 'quarterly' ? payoutAmt * 4 : freq === 'half_yearly' ? payoutAmt * 2 : payoutAmt;
-          growthRate = 'Fixed payout';
-          break;
-        case 'mutual_fund':
-          annualAmount = parseFloat(d.annual_sip_amount) || (parseFloat(d.sip_amount) * 12) || 0;
-          growthRate = 'Market linked';
-          break;
-        default:
-          annualAmount = parseFloat(d.annual_contribution) || parseFloat(d.annual_rent) || 0;
-      }
-      
-      if (annualAmount > 0) {
-        data.push([getCategoryLabel(inc.category), getMemberNames(inc.member_ids), formatCurrencyINR(annualAmount), growthRate]);
-      }
-    });
-    
-    const totalIncome = incomeDetails.reduce((sum, inc) => {
-      const d = inc.details || {};
-      if (inc.category === 'salary' || inc.category === 'business') return sum + (parseFloat(d.net_income_yearly) || 0);
-      if (inc.category === 'rental') return sum + (parseFloat(d.annual_rent) || 0);
-      if (inc.category === 'pension') return sum + (parseFloat(d.amount_yearly) || 0);
-      if (inc.category === 'fd') return sum + ((parseFloat(d.investment_value) || 0) * (parseFloat(d.interest_rate) || 0) / 100);
-      return sum;
-    }, 0);
-    data.push(['TOTAL ANNUAL INCOME', '', formatCurrencyINR(totalIncome), '']);
-    data.push([]);
-    
-    // SECTION 3: EXPENSE SUMMARY
-    data.push(['SECTION 3: EXPENSE SUMMARY (Annual)']);
-    data.push(['Category', 'Annual Amount', 'Inflation %', 'Post Retirement %']);
-    
-    let totalExp = 0;
-    expenseDetails.forEach(exp => {
-      const annual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
-      totalExp += annual;
-      data.push([
-        getCategoryLabel(exp.expense_type), 
-        formatCurrencyINR(annual), 
-        `${exp.inflation_percent ?? 5}%`,
-        exp.consider_post_retirement ? `${exp.post_retirement_percent || 100}%` : 'N/A'
-      ]);
-    });
-    data.push(['TOTAL ANNUAL EXPENSES', formatCurrencyINR(totalExp), '', '']);
-    data.push([]);
-    
-    // SECTION 4: GOALS SUMMARY
-    data.push(['SECTION 4: FINANCIAL GOALS']);
-    data.push(['Goal', 'Current Value', 'Target Year', 'Inflation %', 'Future Value']);
-    let totalGoalsFV = 0;
-    goalDetails.forEach(goal => {
-      const base = parseFloat(goal.goal_amount) || 0;
-      const infl = parseFloat(goal.inflation_percent) || 0;
-      const yr = goal.goal_years?.[0] || goal.goal_year || currentYear;
-      const fv = base * Math.pow(1 + infl / 100, Math.max(0, parseInt(yr) - currentYear));
-      totalGoalsFV += fv;
-      data.push([goal.name || goal.goal_name || goal.category, formatCurrencyINR(base), yr, `${infl}%`, formatCurrencyINR(Math.round(fv))]);
-    });
-    data.push(['TOTAL', '', '', '', formatCurrencyINR(Math.round(totalGoalsFV))]);
-    data.push([]);
-    
-    // SECTION 5: ASSETS SUMMARY (Excluding EPF & Gratuity as they are counted in maturities)
-    data.push(['SECTION 5: EXISTING ASSETS']);
-    data.push(['Asset Type', 'Current Value', 'Maturity Year', 'Maturity Value']);
-    let totalAssets = 0;
-    // Exclude EPF and Gratuity from assets as they are counted via maturities
-    const excludedFromAssets = ['epf', 'gratuity'];
-    incomeDetails.forEach(inc => {
-      if (excludedFromAssets.includes(inc.category)) return; // Skip EPF and Gratuity
-      const d = inc.details || {};
-      const currentVal = parseFloat(d.market_value) || parseFloat(d.current_value) || parseFloat(d.investment_value) || parseFloat(d.bank_balance) || 0;
-      const maturityVal = parseFloat(d.maturity_value) || parseFloat(d.maturity_amount) || parseFloat(d.maturity_corpus) || 0;
-      if (currentVal > 0) {
-        totalAssets += currentVal;
-        data.push([getCategoryLabel(inc.category), formatCurrencyINR(currentVal), d.maturity_date || d.maturity_year || '-', maturityVal > 0 ? formatCurrencyINR(maturityVal) : '-']);
-      }
-    });
-    data.push(['TOTAL ASSETS', formatCurrencyINR(totalAssets), '', '']);
-    data.push(['Note: EPF & Gratuity excluded (counted via maturities)']);
-    data.push([]);
-    
-    // SECTION 6: ASSUMPTIONS
-    data.push(['SECTION 6: INVESTMENT ASSUMPTIONS']);
-    data.push(['Parameter', 'Value']);
-    data.push(['Equity Allocation', '80%']);
-    data.push(['Debt Allocation', '20%']);
-    data.push(['Equity Return', '12%']);
-    data.push(['Debt Return', '7%']);
-    data.push(['Weighted Average Return', '11%']);
-    data.push([]);
-    
-    data.push([separator]);
     data.push(['YEAR-WISE CASH FLOW PROJECTION']);
     data.push([separator]);
     
-    // Year-wise projection header
+    // Year-wise projection header with ages for ALL members (stop at each
+    // member's own life_expectancy — was previously hardcoded to 85)
     data.push(['Year', ...projectionYears]);
-    data.push(['Age', ...projectionYears.map(y => primaryAge + (y - currentYear))]);
+    members.forEach(m => {
+      const memberAge = calculateAge(m.date_of_birth);
+      const memberLife = memberLifeExp(m);
+      const isPrimary = m.is_primary ? '*' : '';
+      data.push([`Age (${m.name}${isPrimary})`, ...projectionYears.map(y => {
+        const ageInYear = memberAge + (y - currentYear);
+        return ageInYear <= memberLife ? ageInYear : '-';
+      })]);
+    });
     data.push([thinSeparator]);
     
     // INCOME PROJECTION
@@ -1084,10 +1255,10 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     data.push(matRow);
     
-    // Total Income
+    // Total Income - use getTotalFamilyIncome for consistency with simulation
     const totIncRow = ['TOTAL INCOME (A)'];
     projectionYears.forEach(year => {
-      const yrInc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
+      const yrInc = getTotalFamilyIncome(year.toString());
       totIncRow.push(formatCurrencyINR(Math.round(yrInc)));
     });
     data.push(totIncRow);
@@ -1119,33 +1290,40 @@ export default function SurplusSection({ family, isReadOnly }) {
             return;
           }
           
-          if (year <= uptoYr) {
-            const yearsFromNow = year - currentYear;
-            let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
-            
-            // Apply post-retirement reduction
-            const memberIds = exp.member_ids || [];
-            const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
-            
-            if (isFamilyExpense) {
-              const primaryMember = members.find(m => m.is_primary);
-              const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
-              if (year >= primaryRetYear && exp.consider_post_retirement) {
-                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
-                amount = amount * postRetPct / 100;
-              }
-            } else {
-              const memberRetYear = memberIds.map(mid => {
-                const m = members.find(mem => mem.id === mid);
-                return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
-              }).reduce((min, yr) => Math.min(min, yr), endYear);
-              
-              if (year >= memberRetYear && exp.consider_post_retirement) {
-                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
-                amount = amount * postRetPct / 100;
-              }
+          // Get retirement year
+          const memberIds = exp.member_ids || [];
+          const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
+          let retirementYear;
+          
+          if (isFamilyExpense) {
+            const primaryMember = members.find(m => m.is_primary);
+            retirementYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
+          } else {
+            retirementYear = memberIds.map(mid => {
+              const m = members.find(mem => mem.id === mid);
+              return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
+            }).reduce((min, yr) => Math.min(min, yr), endYear);
+          }
+          
+          const isPostRet = year >= retirementYear;
+          const yearsFromNow = year - currentYear;
+          
+          // Post-retirement logic:
+          // - Checkbox TICKED: Expense continues with percentage (extends to life expectancy)
+          // - Checkbox NOT TICKED: Expense STOPS at retirement
+          if (isPostRet) {
+            if (!exp.consider_post_retirement) {
+              return; // Skip - expense stops at retirement
             }
-            
+            // Checkbox ticked - continue with percentage
+            let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
+            const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
+            amount = amount * postRetPct / 100;
+            yearExp += amount;
+          } else {
+            // Before retirement - respect uptoYear
+            if (year > uptoYr) return;
+            let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
             yearExp += amount;
           }
         });
@@ -1165,7 +1343,16 @@ export default function SurplusSection({ family, isReadOnly }) {
           const premium = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
           const uptoYr = parseInt(ins.upto_year) || parseInt(ins.premium_end_year) || endYear;
           if (year <= uptoYr) {
-            yearIns += premium;
+            // Apply per-row inflation / step-up the same way the projection
+            // simulator does (step_up_amount additive, inflation_percent
+            // compounding; only one is non-zero in practice).
+            const yrs = Math.max(0, year - currentYear);
+            const stepUp = parseFloat(ins.step_up_amount) || 0;
+            const inflPct = stepUp > 0 ? 0 : (parseFloat(ins.inflation_percent) || 0);
+            const inflated = inflPct
+              ? premium * Math.pow(1 + inflPct / 100, yrs)
+              : premium;
+            yearIns += inflated + stepUp * yrs;
           }
         });
         row.push(yearIns > 0 ? formatCurrencyINR(Math.round(yearIns)) : '-');
@@ -1173,62 +1360,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       data.push(row);
     });
     
-    // Total Expenses
+    // Total Expenses - use getTotalFamilyExpenses for consistency with simulation
     const totExpRow = ['TOTAL EXPENSES (B)'];
     projectionYears.forEach(year => {
-      // Recalculate total with post-retirement logic
-      let totalYearExp = 0;
-      expenseDetails.forEach(exp => {
-        const baseAnn = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
-        const inflRate = parseFloat(exp.inflation_percent) ?? 5;
-        const uptoYr = parseInt(exp.upto_year) || endYear;
-        
-        // Loans
-        if (['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(exp.expense_type)) {
-          const numInstallments = parseFloat(exp.num_installments) || 0;
-          const completionYear = currentYear + Math.ceil(numInstallments / 12);
-          if (year < completionYear) {
-            totalYearExp += baseAnn;
-          }
-          return;
-        }
-        
-        // Insurance
-        if (['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(exp.expense_type)) {
-          if (year <= uptoYr) {
-            totalYearExp += baseAnn;
-          }
-          return;
-        }
-        
-        if (year <= uptoYr) {
-          const yearsFromNow = year - currentYear;
-          let amount = baseAnn * Math.pow(1 + inflRate / 100, yearsFromNow);
-          
-          // Post-retirement reduction
-          const memberIds = exp.member_ids || [];
-          const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
-          
-          if (isFamilyExpense) {
-            const primaryMember = members.find(m => m.is_primary);
-            const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
-            if (year >= primaryRetYear && exp.consider_post_retirement) {
-              amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
-            }
-          } else {
-            const memberRetYear = memberIds.map(mid => {
-              const m = members.find(mem => mem.id === mid);
-              return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
-            }).reduce((min, yr) => Math.min(min, yr), endYear);
-            
-            if (year >= memberRetYear && exp.consider_post_retirement) {
-              amount = amount * (parseFloat(exp.post_retirement_percent) || 100) / 100;
-            }
-          }
-          
-          totalYearExp += amount;
-        }
-      });
+      const totalYearExp = getTotalFamilyExpenses(year.toString());
       totExpRow.push(formatCurrencyINR(Math.round(totalYearExp)));
     });
     data.push(totExpRow);
@@ -1238,11 +1373,30 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(['▶ FINANCIAL GOALS']);
     goalDetails.forEach(goal => {
       const row = [`  ${goal.name || goal.goal_name || goal.category}`];
-      const goalYrs = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
-      const base = parseFloat(goal.goal_amount) || 0;
-      const infl = parseFloat(goal.inflation_percent) || 0;
+      // Handle various formats of goal years
+      let goalYrs = [];
+      
+      // Check goal_years array first
+      if (goal.goal_years && Array.isArray(goal.goal_years) && goal.goal_years.length > 0) {
+        goalYrs = goal.goal_years;
+      } 
+      // Then check goal_year (can be single value or array)
+      else if (goal.goal_year) {
+        goalYrs = Array.isArray(goal.goal_year) ? goal.goal_year : [goal.goal_year];
+      }
+      // Also check target_year field
+      else if (goal.target_year) {
+        goalYrs = Array.isArray(goal.target_year) ? goal.target_year : [goal.target_year];
+      }
+      
+      // Normalize all years to integers for comparison
+      const goalYearsNormalized = goalYrs.map(y => parseInt(String(y).trim())).filter(y => !isNaN(y));
+      
+      const base = parseFloat(goal.goal_amount) || parseFloat(goal.amount) || 0;
+      const infl = parseFloat(goal.inflation_percent) || parseFloat(goal.inflation) || 0;
+      
       projectionYears.forEach(year => {
-        if (goalYrs.includes(year.toString()) || goalYrs.includes(year)) {
+        if (goalYearsNormalized.includes(year)) {
           const fv = base * Math.pow(1 + infl / 100, year - currentYear);
           row.push(formatCurrencyINR(Math.round(fv)));
         } else {
@@ -1263,16 +1417,23 @@ export default function SurplusSection({ family, isReadOnly }) {
     // INVESTMENTS PROJECTION
     data.push(['▶ INVESTMENTS']);
     
-    // Group investments by category
+    // Get primary member's retirement year for default
+    const primaryRetirementYear = parseInt(primaryMember?.retirement_year) || (currentYear + (60 - primaryAge));
+    
+    // Group investments by category, respecting upto_year or retirement year
     const investmentsByCategory = {};
     combinedInvestments.forEach(inv => {
       const cat = getCategoryLabel(inv.category) || inv.category || 'Other';
+      // Use upto_year if filled, otherwise default to retirement year (NOT life expectancy)
+      const invUptoYear = inv.upto_year ? parseInt(inv.upto_year) : primaryRetirementYear;
+      
       if (!investmentsByCategory[cat]) {
-        investmentsByCategory[cat] = { annualAmount: 0, uptoYear: endYear };
+        investmentsByCategory[cat] = { annualAmount: 0, uptoYear: invUptoYear };
       }
       investmentsByCategory[cat].annualAmount += parseFloat(inv.annual_amount) || 0;
-      if (inv.upto_year && parseInt(inv.upto_year) < investmentsByCategory[cat].uptoYear) {
-        investmentsByCategory[cat].uptoYear = parseInt(inv.upto_year);
+      // Use the minimum upto_year among all investments in this category
+      if (invUptoYear < investmentsByCategory[cat].uptoYear) {
+        investmentsByCategory[cat].uptoYear = invUptoYear;
       }
     });
     
@@ -1301,8 +1462,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     const netSavRow = ['  Net Savings'];
     const netSavingsArray = [];
     projectionYears.forEach(year => {
-      const inc = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, year.toString()), 0) + (maturitiesByYear[year]?.total || 0);
-      const exp = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, year.toString()), 0);
+      // Use the same calculation functions as the simulation for consistency
+      const inc = getTotalFamilyIncome(year.toString());
+      const exp = getTotalFamilyExpenses(year.toString());
       const goal = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, year.toString()), 0);
       const inv = members.reduce((sum, m) => sum + getProjectedMemberInvestments(m.id, year.toString()), 0);
       const netSav = inc - exp - goal - inv;
@@ -1312,29 +1474,78 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(netSavRow);
     data.push([thinSeparator]);
     
-    // EQUITY PORTFOLIO (80% Allocation)
-    data.push(['▶ EQUITY PORTFOLIO (80% Allocation @ 12% Return)']);
+    // Get allocation settings from passed allocation parameter (user-configurable)
+    const equityPct = (allocation.equity || 80) / 100;
+    const debtPct = (allocation.debt || 20) / 100;
+    const equityReturnRate = (allocation.equityReturn || 12) / 100;
+    const debtReturnRate = (allocation.debtReturn || 7) / 100;
+    
+    // Calculate opening balance - honour the user's per-asset toggles from
+    // the "Configure Assets" modal when computing the included portfolio.
+    // Falls back to the unfiltered family total when the caller hasn't
+    // passed `selectedAssets` (e.g., older code paths) so behaviour stays
+    // backward compatible.
+    let effectiveAssetTotal = totalAssets;
+    if (allocation.selectedAssets && typeof allocation.selectedAssets === 'object') {
+      const debtCategoriesWithMaturity = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+      const excludedFromAssets = ['epf', 'gratuity'];
+      const sel = allocation.selectedAssets || {};
+      const amounts = allocation.assetAmounts || {};
+      effectiveAssetTotal = 0;
+      incomeDetails.forEach(inc => {
+        if (excludedFromAssets.includes(inc.category)) return;
+        const d = inc.details || {};
+        const hasMaturityDate = d.maturity_date || d.maturity_year || d.maturity_amount;
+        const isDebtWithMaturity = debtCategoriesWithMaturity.includes(inc.category) && hasMaturityDate;
+        // Default selection: debt-with-maturity assets are opt-in (selected=false),
+        // every other asset is opt-out (selected=true). The toggle's
+        // explicit value, when present, wins over both.
+        const explicit = sel[inc.id];
+        const isSel = explicit !== undefined ? explicit : !isDebtWithMaturity;
+        if (!isSel) return;
+        let assetValue = 0;
+        if (inc.category === 'cash') {
+          assetValue = parseFloat(d.bank_balance) || 0;
+        } else {
+          assetValue = parseFloat(d.market_value) || parseFloat(d.current_value) ||
+                      parseFloat(d.investment_value) || parseFloat(d.balance) || 0;
+        }
+        // Custom amount override from the modal
+        if (amounts[inc.id] !== undefined && amounts[inc.id] !== null && amounts[inc.id] !== '') {
+          assetValue = parseFloat(amounts[inc.id]) || 0;
+        }
+        effectiveAssetTotal += assetValue;
+      });
+    }
+    const openingPortfolio = allocation.includeAssets ? effectiveAssetTotal : 0;
+    
+    // EQUITY PORTFOLIO (User's Allocation)
+    data.push([`▶ EQUITY PORTFOLIO (${allocation.equity || 80}% Allocation @ ${allocation.equityReturn || 12}% Return)`]);
     const eqOpeningRow = ['  Opening Balance'];
-    const eqSavingsRow = ['  (+) Savings Allocated (80%)'];
+    const eqSavingsRow = [`  (+/-) Net Savings Allocated (${allocation.equity || 80}%)`];
     const eqBalanceRow = ['  Balance After Savings'];
-    const eqReturnsRow = ['  (+) Returns @ 12%'];
+    const eqReturnsRow = [`  (+) Returns @ ${allocation.equityReturn || 12}%`];
     const eqClosingRow = ['  CLOSING BALANCE'];
     
-    let equityBalance = totalAssets * 0.8;
+    let equityBalance = openingPortfolio * equityPct;
     projectionYears.forEach((year, idx) => {
       const netSav = netSavingsArray[idx];
       const eqOpening = equityBalance;
       eqOpeningRow.push(formatCurrencyINR(Math.round(eqOpening)));
       
-      const eqSavAlloc = netSav > 0 ? netSav * 0.8 : netSav * 0.8; // 80% of savings (can be negative)
+      // First add/subtract savings allocation
+      const eqSavAlloc = netSav * equityPct;
       eqSavingsRow.push(formatCurrencyINR(Math.round(eqSavAlloc)));
       
+      // Balance after savings
       const eqBalAfterSav = eqOpening + eqSavAlloc;
       eqBalanceRow.push(formatCurrencyINR(Math.round(eqBalAfterSav)));
       
-      const eqReturn = eqBalAfterSav * 0.12;
+      // Then calculate returns on balance after savings
+      const eqReturn = eqBalAfterSav * equityReturnRate;
       eqReturnsRow.push(formatCurrencyINR(Math.round(eqReturn)));
       
+      // Closing = (Opening + Savings) × (1 + Return%) = Balance After Savings + Returns
       equityBalance = eqBalAfterSav + eqReturn;
       eqClosingRow.push(formatCurrencyINR(Math.round(equityBalance)));
     });
@@ -1346,29 +1557,33 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(eqClosingRow);
     data.push([thinSeparator]);
     
-    // DEBT PORTFOLIO (20% Allocation)
-    data.push(['▶ DEBT PORTFOLIO (20% Allocation @ 7% Return)']);
+    // DEBT PORTFOLIO (User's Allocation)
+    data.push([`▶ DEBT PORTFOLIO (${allocation.debt || 20}% Allocation @ ${allocation.debtReturn || 7}% Return)`]);
     const dbOpeningRow = ['  Opening Balance'];
-    const dbSavingsRow = ['  (+) Savings Allocated (20%)'];
+    const dbSavingsRow = [`  (+/-) Net Savings Allocated (${allocation.debt || 20}%)`];
     const dbBalanceRow = ['  Balance After Savings'];
-    const dbReturnsRow = ['  (+) Returns @ 7%'];
+    const dbReturnsRow = [`  (+) Returns @ ${allocation.debtReturn || 7}%`];
     const dbClosingRow = ['  CLOSING BALANCE'];
     
-    let debtBalance = totalAssets * 0.2;
+    let debtBalance = openingPortfolio * debtPct;
     projectionYears.forEach((year, idx) => {
       const netSav = netSavingsArray[idx];
       const dbOpening = debtBalance;
       dbOpeningRow.push(formatCurrencyINR(Math.round(dbOpening)));
       
-      const dbSavAlloc = netSav > 0 ? netSav * 0.2 : netSav * 0.2; // 20% of savings (can be negative)
+      // First add/subtract savings allocation
+      const dbSavAlloc = netSav * debtPct;
       dbSavingsRow.push(formatCurrencyINR(Math.round(dbSavAlloc)));
       
+      // Balance after savings
       const dbBalAfterSav = dbOpening + dbSavAlloc;
       dbBalanceRow.push(formatCurrencyINR(Math.round(dbBalAfterSav)));
       
-      const dbReturn = dbBalAfterSav * 0.07;
+      // Then calculate returns on balance after savings
+      const dbReturn = dbBalAfterSav * debtReturnRate;
       dbReturnsRow.push(formatCurrencyINR(Math.round(dbReturn)));
       
+      // Closing = (Opening + Savings) × (1 + Return%) = Balance After Savings + Returns
       debtBalance = dbBalAfterSav + dbReturn;
       dbClosingRow.push(formatCurrencyINR(Math.round(debtBalance)));
     });
@@ -1384,19 +1599,19 @@ export default function SurplusSection({ family, isReadOnly }) {
     data.push(['▶ TOTAL PORTFOLIO VALUE (Equity + Debt)']);
     const totalPortfolioRow = ['  TOTAL PORTFOLIO'];
     
-    // Recalculate for display
-    let eqBal = totalAssets * 0.8;
-    let dbBal = totalAssets * 0.2;
+    // Recalculate: (Opening + Savings) × (1 + Return%) - use openingPortfolio for consistency
+    let eqBal = openingPortfolio * equityPct;
+    let dbBal = openingPortfolio * debtPct;
     projectionYears.forEach((year, idx) => {
       const netSav = netSavingsArray[idx];
       
-      // Equity
-      const eqSavAlloc = netSav * 0.8;
-      eqBal = (eqBal + eqSavAlloc) * 1.12;
+      // Equity: Balance after savings, then returns
+      const eqSavAlloc = netSav * equityPct;
+      eqBal = (eqBal + eqSavAlloc) * (1 + equityReturnRate);
       
-      // Debt
-      const dbSavAlloc = netSav * 0.2;
-      dbBal = (dbBal + dbSavAlloc) * 1.07;
+      // Debt: Balance after savings, then returns
+      const dbSavAlloc = netSav * debtPct;
+      dbBal = (dbBal + dbSavAlloc) * (1 + debtReturnRate);
       
       totalPortfolioRow.push(formatCurrencyINR(Math.round(eqBal + dbBal)));
     });
@@ -1407,13 +1622,48 @@ export default function SurplusSection({ family, isReadOnly }) {
     const fpSheet = XLSX.utils.aoa_to_sheet(data);
     fpSheet['!cols'] = autoFitColumns(data);
     fpSheet['!protect'] = { sheet: true, objects: true, scenarios: true };
-    XLSX.utils.book_append_sheet(wb, fpSheet, "Financial Plan");
+    XLSX.utils.book_append_sheet(wb, fpSheet, "Cashflow");
 
     // Generate and download file
     const familyName = family?.family_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Financial_Plan';
     const fileName = `${familyName}_Financial_Plan.xlsx`;
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveAs(new Blob([wbout], { type: 'application/octet-stream' }), fileName);
+  };
+
+  // Export to PDF function - Professional client-facing report
+  const handleExportToPDF = () => {
+    try {
+      // Get the family allocation result for simulation data
+      const familyAllocation = allocations['family'] || {
+        equity: 80,
+        debt: 20,
+        equityReturn: 12,
+        debtReturn: 7,
+        includeAssets: false
+      };
+      
+      const simulationResult = simulationResults['family'];
+      const yearlyProjection = simulationResult?.yearlyData || [];
+      
+      generateFinancialPlanPDF({
+        family,
+        members,
+        incomeDetails,
+        expenseDetails,
+        goalDetails,
+        investmentDetails,
+        insurancePremiumsData,
+        yearlyProjection,
+        allocation: familyAllocation,
+        simulationResult,
+        totalAssets,
+        maturitiesByYear
+      });
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      alert('Error generating PDF. Please try again.');
+    }
   };
 
   // Format currency
@@ -1630,15 +1880,21 @@ export default function SurplusSection({ family, isReadOnly }) {
                               <TooltipTrigger asChild>
                                 <span className="text-[10px] text-orange-700 cursor-help">{formatAmount(value)}</span>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="text-xs max-w-[200px]">
+                              <TooltipContent side="top" className="text-xs max-w-[220px]">
                                 <div className="space-y-1">
                                   <div className="font-semibold border-b pb-1">{member.name} - {year}</div>
-                                  {Object.entries(breakdown).map(([cat, amt]) => (
+                                  {Object.entries(breakdown)
+                                    .filter(([cat]) => cat !== '_total')
+                                    .map(([cat, amt]) => (
                                     <div key={cat} className="flex justify-between gap-2">
-                                      <span className="capitalize">{cat.replace(/_/g, ' ')}:</span>
+                                      <span className="capitalize">{cat.replace(/insurance_/g, '').replace(/_/g, ' ')}:</span>
                                       <span>{formatAmount(amt)}</span>
                                     </div>
                                   ))}
+                                  <div className="flex justify-between gap-2 font-semibold border-t pt-1 mt-1">
+                                    <span>Total:</span>
+                                    <span>{formatAmount(breakdown._total || value)}</span>
+                                  </div>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1864,14 +2120,20 @@ export default function SurplusSection({ family, isReadOnly }) {
         getMemberGoalExpenses={getMemberGoalExpenses}
         getProjectedMemberInvestments={getProjectedMemberInvestments}
         getMemberIncomeInfo={getMemberIncomeInfo}
+        getTotalFamilyIncome={getTotalFamilyIncome}
+        getTotalFamilyExpenses={getTotalFamilyExpenses}
         incomeDetails={incomeDetails}
         expenseDetails={expenseDetails}
         goalDetails={goalDetails}
         investmentDetails={investmentDetails}
+        insurancePremiumsData={insurancePremiumsData}
         primaryAge={primaryAge}
         lifeExpectancy={lifeExpectancy}
         calculateAge={calculateAge}
         handleExportToExcel={handleExportToExcel}
+        totalAssets={totalAssets}
+        maturitiesByYear={maturitiesByYear}
+        generateFinancialPlanPDF={generateFinancialPlanPDF}
       />
     </div>
   );
@@ -1889,14 +2151,20 @@ function AllocationSimulator({
   getMemberGoalExpenses,
   getProjectedMemberInvestments,
   getMemberIncomeInfo,
+  getTotalFamilyIncome,
+  getTotalFamilyExpenses,
   incomeDetails,
   expenseDetails,
   goalDetails,
   investmentDetails,
+  insurancePremiumsData,
   primaryAge,
   lifeExpectancy,
   calculateAge,
-  handleExportToExcel
+  handleExportToExcel,
+  totalAssets,
+  maturitiesByYear,
+  generateFinancialPlanPDF
 }) {
   // State for family-level allocation
   const [familyAllocation, setFamilyAllocation] = useState({
@@ -1926,17 +2194,21 @@ function AllocationSimulator({
   }
 
   // Categories with maturity dates are debt instruments - exclude from allocation simulator
-  const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps', 'epf', 'gratuity'];
+  const DEBT_CATEGORIES_WITH_MATURITY = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+  // Categories always excluded from opening assets (they come via maturities at retirement)
+  const ALWAYS_EXCLUDE_FROM_ASSETS = ['epf', 'gratuity'];
 
   // Get assets for a specific member or family
   const getAssetsForEntity = (entityId) => {
     const assets = [];
     incomeDetails.forEach(inc => {
       const details = inc.details || {};
+      
+      // Always exclude EPF and Gratuity from assets (they come via maturities)
+      if (ALWAYS_EXCLUDE_FROM_ASSETS.includes(inc.category)) return;
+      
       const hasMaturityDate = details.maturity_date || details.maturity_year || details.maturity_amount;
       const isDebtCategory = DEBT_CATEGORIES_WITH_MATURITY.includes(inc.category);
-      
-      if (isDebtCategory && hasMaturityDate) return;
       
       // Check for different value fields based on category
       let mktValue = 0;
@@ -1952,13 +2224,27 @@ function AllocationSimulator({
         const memberIds = inc.member_ids || [];
         // For family, include all assets; for individual, include only their assets
         if (entityId === 'family' || memberIds.includes(entityId)) {
+          // Debt instruments with a maturity date are still listed (so the
+          // user can see they exist) but default to UNSELECTED + use the
+          // maturity year as the include-from-year — preventing the double-
+          // counting issue with the maturity inflow row in the projection.
+          let defaultIncludeYear = currentYear;
+          let defaultSelected = true;
+          if (isDebtCategory && hasMaturityDate) {
+            const matYear = parseInt(details.maturity_year) ||
+              (details.maturity_date ? new Date(details.maturity_date).getFullYear() : null);
+            if (matYear && Number.isFinite(matYear)) defaultIncludeYear = matYear;
+            defaultSelected = false; // opt-in to avoid double-counting with maturities
+          }
           assets.push({
             id: inc.id,
             category: inc.category,
             label: getCategoryLabel(inc.category),
             memberIds: memberIds,
             value: entityId === 'family' ? mktValue : mktValue / Math.max(1, memberIds.length),
-            selected: true
+            selected: defaultSelected,
+            includeFromYear: defaultIncludeYear,
+            isDebtWithMaturity: !!(isDebtCategory && hasMaturityDate),
           });
         }
       }
@@ -1970,7 +2256,7 @@ function AllocationSimulator({
     const labels = {
       salary: 'Salary Assets', business: 'Business', rental: 'Real Estate',
       mutual_fund: 'Mutual Funds', shares_pms: 'Stocks/PMS', fd: 'Fixed Deposits',
-      bonds: 'Bonds', ppf: 'PPF', epf: 'EPF', nps: 'NPS', rd_pis: 'RD',
+      bonds: 'NCD', ppf: 'PPF', epf: 'EPF', nps: 'NPS', rd_pis: 'RD',
       commodities: 'Gold/Commodities', insurance_income: 'Insurance', 
       cash: 'Cash In Hand', vehicle: 'Vehicle'
     };
@@ -1984,7 +2270,7 @@ function AllocationSimulator({
   };
 
   // Simple Text Result Display Component
-  const WealthChart = ({ result, entityName }) => {
+  const WealthChart = ({ result, entityName, entityId }) => {
     if (!result) {
       return null;
     }
@@ -2021,6 +2307,12 @@ function AllocationSimulator({
             Covers life expectancy
           </span>
         )}
+        <button 
+          onClick={() => exportSimulationToExcel(entityId)}
+          className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100"
+        >
+          Export Debug
+        </button>
       </div>
     );
   };
@@ -2057,61 +2349,92 @@ function AllocationSimulator({
     }
 
     const { equity, debt, equityReturn, debtReturn, includeAssets, selectedAssets, assetStartYears, assetAmounts } = allocation;
-    const weightedReturn = (equity * equityReturn + debt * debtReturn) / 100;
+    // Calculate returns separately for equity and debt portions (matching Excel logic)
+    const equityPct = equity / 100;
+    const debtPct = debt / 100;
+    const eqReturnRate = equityReturn / 100;
+    const dbReturnRate = debtReturn / 100;
     
-    // Calculate maturities by year inline (Insurance, FD, PPF, EPF, Bonds, etc.)
+    // Calculate maturities inline (same logic as component-level getMaturitiesByYear)
     const simMaturitiesByYear = {};
     for (let y = currentYear; y <= endYear; y++) {
-      simMaturitiesByYear[y] = { total: 0, details: [] };
+      simMaturitiesByYear[y] = { total: 0 };
     }
-    
     incomeDetails.forEach(inc => {
-      const details = inc.details || {};
-      let maturityYear = null;
-      let maturityValue = 0;
-      
-      // Parse maturity date
-      if (details.maturity_date) {
-        const dateStr = details.maturity_date;
-        if (dateStr.includes('/')) {
-          const parts = dateStr.split('/');
-          const year = parts[1] || parts[0];
-          maturityYear = year.length === 4 ? parseInt(year) : (parseInt(year) >= 50 ? 1900 + parseInt(year) : 2000 + parseInt(year));
-        } else if (dateStr.includes('-')) {
-          maturityYear = new Date(dateStr).getFullYear();
+      const d = inc.details || {};
+      let matYr = null;
+      if (d.maturity_date) {
+        const ds = d.maturity_date;
+        if (ds.includes('/')) {
+          const p = ds.split('/');
+          const yr = p[1] || p[0];
+          matYr = yr.length === 4 ? parseInt(yr) : (parseInt(yr) >= 50 ? 1900 + parseInt(yr) : 2000 + parseInt(yr));
+        } else if (ds.includes('-')) {
+          matYr = new Date(ds).getFullYear();
         }
-      } else if (details.maturity_year) {
-        maturityYear = parseInt(details.maturity_year);
+      } else if (d.maturity_year) {
+        matYr = parseInt(d.maturity_year);
       }
-      
-      // Get maturity value - for EPF/PPF/NPS/Gratuity, use market_value as maturity amount
-      const isRetirementInstrument = ['epf', 'ppf', 'nps', 'gratuity'].includes(inc.category);
-      maturityValue = parseFloat(details.maturity_value) || parseFloat(details.maturity_amount) || 
-                     parseFloat(details.expected_maturity) || parseFloat(details.maturity_corpus) ||
-                     (isRetirementInstrument ? parseFloat(details.market_value) : 0) || 0;
-      
-      // Calculate maturity value if not provided
-      if (maturityYear && maturityValue === 0) {
-        const investmentVal = parseFloat(details.investment_value) || parseFloat(details.investment_amount) || 0;
-        const interestRate = parseFloat(details.interest_rate) || parseFloat(details.expected_return) || 0;
-        const tenureYears = maturityYear - currentYear;
-        if (investmentVal > 0 && tenureYears > 0) {
-          maturityValue = investmentVal * Math.pow(1 + interestRate / 100, tenureYears);
+      const isRetInst = ['epf', 'ppf', 'nps', 'gratuity'].includes(inc.category);
+      let matVal = parseFloat(d.maturity_value) || parseFloat(d.maturity_amount) || 
+                   parseFloat(d.expected_maturity) || parseFloat(d.maturity_corpus) ||
+                   (isRetInst ? parseFloat(d.market_value) : 0) || 0;
+      if (matYr && matVal === 0) {
+        const invVal = parseFloat(d.investment_value) || parseFloat(d.investment_amount) || 0;
+        const intRate = parseFloat(d.interest_rate) || parseFloat(d.expected_return) || 0;
+        const tenure = matYr - currentYear;
+        if (invVal > 0 && tenure > 0) {
+          matVal = invVal * Math.pow(1 + intRate / 100, tenure);
         }
       }
-      
-      // Add to maturities if valid
-      if (maturityYear && maturityValue > 0 && simMaturitiesByYear[maturityYear]) {
-        simMaturitiesByYear[maturityYear].total += maturityValue;
+      if (matYr && matVal > 0 && simMaturitiesByYear[matYr]) {
+        simMaturitiesByYear[matYr].total += matVal;
       }
     });
     
     // Get assets for this entity
     const entityAssets = getAssetsForEntity(entityId);
     
-    let corpus = 0;
+    // Calculate totalAssets inside runSimulation, honouring per-asset
+    // toggles from the Configure Assets modal (selectedAssets / assetAmounts)
+    // so the in-app projection matches the Excel export.
+    const excludedCats = ['epf', 'gratuity'];
+    const debtCats = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+    const sel = allocation?.selectedAssets || {};
+    const amountOverrides = allocation?.assetAmounts || {};
+    let openingBalance = 0;
+    incomeDetails.forEach(inc => {
+      if (excludedCats.includes(inc.category)) return;
+      const d = inc.details || {};
+      const hasMat = d.maturity_date || d.maturity_year || d.maturity_amount;
+      const isDebtWithMaturity = debtCats.includes(inc.category) && hasMat;
+      // Default selection mirrors Excel: opt-in for debt-with-maturity,
+      // opt-out for everything else; explicit toggle wins.
+      const explicit = sel[inc.id];
+      const isSel = explicit !== undefined ? explicit : !isDebtWithMaturity;
+      if (!isSel) return;
+      let val = 0;
+      if (inc.category === 'cash') {
+        val = parseFloat(d.bank_balance) || 0;
+      } else {
+        val = parseFloat(d.market_value) || parseFloat(d.current_value) || 
+              parseFloat(d.investment_value) || parseFloat(d.balance) || 0;
+      }
+      // Custom amount override from the Configure Assets modal
+      if (amountOverrides[inc.id] !== undefined && amountOverrides[inc.id] !== null && amountOverrides[inc.id] !== '') {
+        val = parseFloat(amountOverrides[inc.id]) || 0;
+      }
+      openingBalance += val;
+    });
+    
+    // Initialize corpus with openingBalance (same as Excel's totalAssets)
+    let corpus = includeAssets ? openingBalance : 0;
+    
+    // Track equity and debt balances separately (same as Excel)
+    let equityBalance = corpus * equityPct;
+    let debtBalance = corpus * debtPct;
+    
     let exhaustYear = null;
-    let assetsAdded = {};  // Track which assets have been added
     
     // Determine end year based on entity
     const entityEndYear = isFamily ? endYear : (() => {
@@ -2137,29 +2460,18 @@ function AllocationSimulator({
       const yearStr = year.toString();
       const age = entityAge + (year - currentYear);
       
-      // Add assets that should be included from this year
-      if (includeAssets) {
-        entityAssets.forEach(asset => {
-          if (!assetsAdded[asset.id] && selectedAssets[asset.id] !== false) {
-            const startYear = assetStartYears[asset.id] || currentYear;
-            if (year >= startYear) {
-              // Use custom amount if set, otherwise use original value
-              const assetValue = assetAmounts[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
-              corpus += assetValue;
-              assetsAdded[asset.id] = true;
-            }
-          }
-        });
-      }
-      
       // Calculate income/expenses based on entity
       let totalIncome, totalExpenses, totalGoals;
+      
       if (isFamily) {
-        totalIncome = members.reduce((sum, m) => sum + getProjectedMemberIncome(m.id, yearStr), 0);
-        totalExpenses = members.reduce((sum, m) => sum + getProjectedMemberExpenses(m.id, yearStr), 0);
+        // Use family-level functions that mirror Excel calculation exactly
+        totalIncome = getTotalFamilyIncome(yearStr);
+        totalExpenses = getTotalFamilyExpenses(yearStr);
         totalGoals = members.reduce((sum, m) => sum + getMemberGoalExpenses(m.id, yearStr), 0);
       } else {
-        totalIncome = getProjectedMemberIncome(entityId, yearStr);
+        // For individual members, use member-specific calculations
+        const yearMaturities = simMaturitiesByYear[year]?.total || 0;
+        totalIncome = getProjectedMemberIncome(entityId, yearStr) + yearMaturities;
         totalExpenses = getProjectedMemberExpenses(entityId, yearStr);
         totalGoals = getMemberGoalExpenses(entityId, yearStr);
       }
@@ -2172,32 +2484,70 @@ function AllocationSimulator({
         totalInvestments = getProjectedMemberInvestments(entityId, yearStr);
       }
       
-      // Add maturity amounts for this year (insurance, FD, PPF, EPF, bonds, etc.)
-      const yearMaturities = simMaturitiesByYear[year]?.total || 0;
+      // Net Savings = Income (with maturities) - Expenses - Goals - Investments
+      const netSavings = totalIncome - totalExpenses - totalGoals - totalInvestments;
       
-      // Surplus = Income - Expenses - Goals - Investments + Maturities
-      const yearSurplus = totalIncome - totalExpenses - totalGoals - totalInvestments;
-      corpus = corpus * (1 + weightedReturn / 100) + yearSurplus + yearMaturities;
+      // Portfolio calculation - matching Excel formula exactly:
+      // Track equity and debt separately (same as Excel)
       
-      // Store data point for chart (sample every 5 years or key years)
-      const yearsFromNow = year - currentYear;
-      if (yearsFromNow === 0 || yearsFromNow % 5 === 0 || year === entityEndYear || (corpus <= 0 && !exhaustYear)) {
-        yearlyData.push({
-          year,
-          age,
-          corpus: Math.max(0, Math.round(corpus)),
-          isExhausted: corpus <= 0,
-          isLifeExpectancy: year === entityEndYear
-        });
-      }
+      // Current opening values
+      const eqOpening = equityBalance;
+      const dbOpening = debtBalance;
+      
+      // Allocate net savings to equity and debt portions
+      const eqSavings = netSavings * equityPct;
+      const dbSavings = netSavings * debtPct;
+      
+      // Apply returns: (Opening + Savings) × (1 + Return%)
+      const eqClosing = (eqOpening + eqSavings) * (1 + eqReturnRate);
+      const dbClosing = (dbOpening + dbSavings) * (1 + dbReturnRate);
+      
+      // Store opening balance before updating
+      const openingThisYear = equityBalance + debtBalance;
+      
+      // Update balances for next iteration (same as Excel)
+      equityBalance = eqClosing;
+      debtBalance = dbClosing;
+      
+      // New total corpus
+      corpus = eqClosing + dbClosing;
+      
+      // Store ALL yearly data for debugging/export (income now includes maturities)
+      yearlyData.push({
+        year,
+        age,
+        openingBalance: Math.round(openingThisYear),
+        income: Math.round(totalIncome),  // Now includes maturities
+        expenses: Math.round(totalExpenses),
+        goals: Math.round(totalGoals),
+        investments: Math.round(totalInvestments),
+        netSavings: Math.round(netSavings),
+        eqOpening: Math.round(eqOpening),
+        dbOpening: Math.round(dbOpening),
+        eqSavings: Math.round(eqSavings),
+        dbSavings: Math.round(dbSavings),
+        eqClosing: Math.round(eqClosing),
+        dbClosing: Math.round(dbClosing),
+        corpus: Math.round(corpus),
+        isExhausted: corpus <= 0,
+        isLifeExpectancy: year === entityEndYear
+      });
       
       if (corpus <= 0 && !exhaustYear) {
         exhaustYear = year;
       }
     }
     
-    // Ensure life expectancy year is always included
-    if (!yearlyData.find(d => d.year === entityEndYear)) {
+    // Log first year's calculation for debugging
+    if (yearlyData.length > 0) {
+      console.log('=== SIMULATION DEBUG ===');
+      console.log('Opening Balance (Year 1):', openingBalance);
+      console.log('First 3 years data:', yearlyData.slice(0, 3));
+    }
+    
+    // Ensure life expectancy year data exists
+    const lifeExpYearData = yearlyData.find(d => d.year === entityEndYear);
+    if (!lifeExpYearData) {
       const finalAge = entityAge + (entityEndYear - currentYear);
       yearlyData.push({
         year: entityEndYear,
@@ -2244,6 +2594,54 @@ function AllocationSimulator({
         [entityId]: { ...prev[entityId], result, lastCalculated: timestamp }
       }));
     }
+  };
+
+  // Export simulation data to Excel for debugging
+  const exportSimulationToExcel = (entityId) => {
+    const isFamily = entityId === 'family';
+    const allocation = isFamily ? familyAllocation : memberAllocations[entityId];
+    
+    if (!allocation?.result?.yearlyData) {
+      alert('Please run simulation first');
+      return;
+    }
+    
+    const yearlyData = allocation.result.yearlyData;
+    const wb = XLSX.utils.book_new();
+    
+    // Create data array for Excel
+    const data = [
+      ['SIMULATION CASHFLOW DEBUG'],
+      [`Entity: ${isFamily ? 'Family' : members.find(m => m.id === entityId)?.name}`],
+      [`Generated: ${new Date().toLocaleString()}`],
+      ['Note: Income includes Maturities (same as Excel export)'],
+      [],
+      ['Year', 'Age', 'Opening Balance', 'Income (incl. Maturities)', 'Expenses', 'Goals', 'Investments', 'Net Savings', 'Eq Opening', 'Db Opening', 'Eq Savings', 'Db Savings', 'Eq Closing', 'Db Closing', 'Total Portfolio']
+    ];
+    
+    yearlyData.forEach(d => {
+      data.push([
+        d.year,
+        d.age,
+        d.openingBalance,
+        d.income,
+        d.expenses,
+        d.goals,
+        d.investments,
+        d.netSavings,
+        d.eqOpening,
+        d.dbOpening,
+        d.eqSavings,
+        d.dbSavings,
+        d.eqClosing,
+        d.dbClosing,
+        d.corpus
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Simulation Debug');
+    XLSX.writeFile(wb, `simulation_debug_${Date.now()}.xlsx`);
   };
 
   // Update allocation for entity
@@ -2552,7 +2950,10 @@ function AllocationSimulator({
       
       let totalAssets = 0;
       entityAssets.forEach(asset => {
-        if (selectedAssets[asset.id] !== false) {
+        const isSel = selectedAssets[asset.id] !== undefined
+          ? selectedAssets[asset.id]
+          : asset.selected !== false;
+        if (isSel) {
           const customAmount = assetAmounts?.[asset.id];
           const usedAmount = customAmount !== undefined ? customAmount : asset.value;
           totalAssets += usedAmount;
@@ -2561,7 +2962,7 @@ function AllocationSimulator({
             asset.label,
             asset.value,
             usedAmount,
-            assetStartYears[asset.id] || currentYear,
+            assetStartYears[asset.id] || asset.includeFromYear || currentYear,
             Math.round(usedAmount * equity / 100),
             Math.round(usedAmount * debt / 100)
           ]);
@@ -2629,8 +3030,13 @@ function AllocationSimulator({
     const assetsByYear = {};
     if (includeAssets) {
       entityAssets.forEach(asset => {
-        if (selectedAssets[asset.id] !== false) {
-          const startYear = assetStartYears[asset.id] || currentYear;
+        // Honour per-asset defaults so debt-with-maturity rows stay opt-in
+        // unless the user explicitly checks them.
+        const isSel = selectedAssets[asset.id] !== undefined
+          ? selectedAssets[asset.id]
+          : asset.selected !== false;
+        if (isSel) {
+          const startYear = assetStartYears[asset.id] || asset.includeFromYear || currentYear;
           const assetValue = assetAmounts?.[asset.id] !== undefined ? assetAmounts[asset.id] : asset.value;
           if (!assetsByYear[startYear]) assetsByYear[startYear] = 0;
           assetsByYear[startYear] += assetValue;
@@ -2674,7 +3080,7 @@ function AllocationSimulator({
       
       const totalIncome = totalSalary + totalBusiness + totalRental + totalInvestmentInc;
 
-      // Detailed expense breakdown
+      // Detailed expense breakdown (now includes insurance premiums via getProjectedMemberExpenses)
       const memberExpenses = {};
       let totalLivingExp = 0;
       
@@ -2684,9 +3090,8 @@ function AllocationSimulator({
         totalLivingExp += expenses;
       });
 
-      // Insurance premium details
+      // Note: Insurance premiums are now included in getProjectedMemberExpenses, no separate addition needed
       const info = getMemberIncomeInfo(targetMembers[0]?.id);
-      const insurancePremium = y < (info?.retirementYear || 2050) ? totalAnnualPremium : 0;
       
       // Loan installments by type
       let homeLoanEMI = 0, vehicleLoanEMI = 0, personalLoanEMI = 0;
@@ -2703,7 +3108,8 @@ function AllocationSimulator({
         }
       });
       
-      const totalExpense = totalLivingExp + insurancePremium + homeLoanEMI + vehicleLoanEMI + personalLoanEMI;
+      // Total expense now includes insurance premiums via totalLivingExp (from getProjectedMemberExpenses)
+      const totalExpense = totalLivingExp + homeLoanEMI + vehicleLoanEMI + personalLoanEMI;
 
       // Goal expenses - detailed by goal
       const goalExpenseDetails = {};
@@ -2782,10 +3188,10 @@ function AllocationSimulator({
         // Maturity details
         maturityAmount: Math.round(yearMaturityAmount),
         maturityDetails: yearMaturityDetails,
-        // Expense details
+        // Expense details (insurance premiums now included in totalLivingExp)
         memberExpenses,
         totalLivingExp: Math.round(totalLivingExp),
-        insurancePremium: Math.round(insurancePremium),
+        insurancePremium: 0, // Included in totalLivingExp via getProjectedMemberExpenses
         homeLoanEMI: Math.round(homeLoanEMI),
         vehicleLoanEMI: Math.round(vehicleLoanEMI),
         personalLoanEMI: Math.round(personalLoanEMI),
@@ -3184,7 +3590,7 @@ function AllocationSimulator({
                 <td className="py-3 px-3">
                   <div className="font-semibold text-gray-800 text-[11px] text-center">{familyName}</div>
                   {familyAllocation.result && (
-                    <WealthChart result={familyAllocation.result} entityName={familyName} />
+                    <WealthChart result={familyAllocation.result} entityName={familyName} entityId="family" />
                   )}
                 </td>
                 <td className="py-3 px-2 border-l border-gray-100 text-center">
@@ -3251,13 +3657,51 @@ function AllocationSimulator({
                 <td className="py-3 px-3 text-center border-l border-gray-200">
                   <div className="flex items-center justify-center gap-2">
                     <button 
-                      onClick={handleExportToExcel}
+                      onClick={() => handleExportToExcel({
+                        equity: familyAllocation.equity,
+                        debt: familyAllocation.debt,
+                        equityReturn: familyAllocation.equityReturn,
+                        debtReturn: familyAllocation.debtReturn,
+                        includeAssets: familyAllocation.includeAssets,
+                        selectedAssets: familyAllocation.selectedAssets || {},
+                        assetStartYears: familyAllocation.assetStartYears || {},
+                        assetAmounts: familyAllocation.assetAmounts || {},
+                      })}
                       disabled={!familyAllocation.result}
-                      className="px-3 py-1.5 text-[10px] font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
-                      title="Download Complete Financial Plan (8 Sheets)"
+                      className="px-2 py-1.5 text-[10px] font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                      title="Download Complete Financial Plan (Excel)"
                     >
                       <Download className="h-3 w-3" />
                       <span>Excel</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        try {
+                          generateFinancialPlanPDF({
+                            family,
+                            members,
+                            incomeDetails,
+                            expenseDetails,
+                            goalDetails,
+                            investmentDetails,
+                            insurancePremiumsData,
+                            yearlyProjection: familyAllocation.result?.yearlyData || [],
+                            allocation: familyAllocation,
+                            simulationResult: familyAllocation.result,
+                            totalAssets,
+                            maturitiesByYear
+                          });
+                        } catch (error) {
+                          console.error('PDF Export Error:', error);
+                          alert('Error generating PDF. Please try again.');
+                        }
+                      }}
+                      disabled={!familyAllocation.result}
+                      className="px-2 py-1.5 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                      title="Download Professional PDF Report"
+                    >
+                      <FileText className="h-3 w-3" />
+                      <span>PDF</span>
                     </button>
                   </div>
                 </td>
@@ -3282,7 +3726,7 @@ function AllocationSimulator({
                           {age}y | LE:{memberLifeExp} | R:{memberInfo.retirementYear}
                         </div>
                         {allocation.result && (
-                          <WealthChart result={allocation.result} entityName={member.name} />
+                          <WealthChart result={allocation.result} entityName={member.name} entityId={member.id} />
                         )}
                       </td>
                       <td className="py-3 px-2 border-l border-gray-100 text-center">
@@ -3370,7 +3814,7 @@ function AllocationSimulator({
         {/* Footer Note */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
           <p className="text-[9px] text-gray-400 text-center">
-            Debt instruments with maturity dates (FD, Bonds, RD, Insurance) excluded—available only at maturity.
+            Debt instruments with maturity dates (FD, Bonds, RD, Insurance) appear as "At maturity" — opt-in inside the configure modal; they default to off so they aren't double-counted with the maturities row.
           </p>
         </div>
 
@@ -3387,8 +3831,12 @@ function AllocationSimulator({
             <div className="space-y-3 max-h-[400px] overflow-y-auto py-2">
               {assetModalEntity && getAssetsForEntity(assetModalEntity).map(asset => {
                 const allocation = getEntityAllocation(assetModalEntity);
-                const isSelected = allocation.selectedAssets?.[asset.id] !== false;
-                const startYear = allocation.assetStartYears?.[asset.id] || currentYear;
+                const isSelected = allocation.selectedAssets?.[asset.id] !== undefined
+                  ? allocation.selectedAssets[asset.id]
+                  : asset.selected !== false; // honour per-asset default (debt-with-maturity → false)
+                const startYear = allocation.assetStartYears?.[asset.id]
+                  || asset.includeFromYear
+                  || currentYear;
                 const customAmount = allocation.assetAmounts?.[asset.id];
                 const displayAmount = customAmount !== undefined ? customAmount : asset.value;
                 const isCustom = customAmount !== undefined;
@@ -3408,7 +3856,17 @@ function AllocationSimulator({
                         className="h-5 w-5 rounded border-gray-300 text-blue-600 cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-800 text-sm">{asset.label}</div>
+                        <div className="font-medium text-gray-800 text-sm flex items-center gap-1.5">
+                          {asset.label}
+                          {asset.isDebtWithMaturity && (
+                            <span
+                              className="text-[9px] uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded"
+                              title="Debt instrument with a maturity date — defaults to off + maturity-year start to avoid double-counting with the maturities row in the projection."
+                            >
+                              At maturity
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-gray-400">Original: ₹{formatLargeNumber(asset.value)}</div>
                       </div>
                     </div>
@@ -3471,7 +3929,11 @@ function AllocationSimulator({
                   Total Selected: <span className="font-semibold text-green-600">
                     ₹{assetModalEntity && formatLargeNumber(
                       getAssetsForEntity(assetModalEntity)
-                        .filter(a => getEntityAllocation(assetModalEntity).selectedAssets?.[a.id] !== false)
+                        .filter(a => {
+                          const allocation = getEntityAllocation(assetModalEntity);
+                          const explicit = allocation.selectedAssets?.[a.id];
+                          return explicit !== undefined ? explicit : (a.selected !== false);
+                        })
                         .reduce((sum, a) => {
                           const allocation = getEntityAllocation(assetModalEntity);
                           const customAmount = allocation.assetAmounts?.[a.id];

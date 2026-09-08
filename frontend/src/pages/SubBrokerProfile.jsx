@@ -555,7 +555,7 @@ export default function SubBrokerProfile() {
                 </Badge>
               </div>
               <div>
-                <p className="text-gray-500">Linked Clients</p>
+                <p className="text-gray-500">Linked Investors</p>
                 <p className="font-medium">{profile?.linked_clients_count || 0}</p>
               </div>
               <div>

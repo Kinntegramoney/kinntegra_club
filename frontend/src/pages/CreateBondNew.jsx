@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, ArrowRight, Upload, FileSpreadsheet, Check, AlertCircle, Calculator, Trash2, Download } from "lucide-react";
+import { ArrowLeft, ArrowRight, Upload, FileSpreadsheet, Check, AlertCircle, Calculator, Trash2, Download, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,28 +13,39 @@ import { useDropzone } from "react-dropzone";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-export default function CreateBondNew() {
+export default function CreateBondNew({ bond, onClose, onSuccess, controlledStep, onStepChange } = {}) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const asModal = Boolean(onClose || onSuccess);
+  const isEditing = Boolean(bond?.id);
+  const goBack = () => (onClose ? onClose() : navigate("/admin/bonds"));
+  const stepIsControlled = typeof controlledStep === "number" && typeof onStepChange === "function";
+  const [internalStep, setInternalStep] = useState(1);
+  const step = stepIsControlled ? controlledStep : internalStep;
+  const setStep = stepIsControlled ? onStepChange : setInternalStep;
   const [submitting, setSubmitting] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [calculatedPrice, setCalculatedPrice] = useState(null);
-  
-  // Step 1: Basic bond details
+  const [mediaBondId, setMediaBondId] = useState(bond?.id || null);
+  const [images, setImages] = useState(bond?.images || []);
+  const [presentations, setPresentations] = useState(bond?.presentations || []);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingPresentation, setUploadingPresentation] = useState(false);
+
+  // Step 1: Basic bond details (pre-filled in edit mode)
   const [formData, setFormData] = useState({
-    bond_code: "",
-    name: "",
-    isin: "",
-    start_date: "",
-    end_date: "",
-    principal_amount: "",
-    coupon_rate: "",
-    primary_irr: "",
-    secondary_irr: "",
-    total_units: "1",
-    minimum_units: "1",
-    description: ""
+    bond_code: bond?.bond_code || "",
+    name: bond?.name || "",
+    isin: bond?.isin || "",
+    start_date: bond?.start_date || "",
+    end_date: bond?.end_date || "",
+    principal_amount: bond?.principal_amount?.toString?.() || bond?.principal_amount || "",
+    coupon_rate: bond?.coupon_rate?.toString?.() || bond?.coupon_rate || "",
+    primary_irr: bond?.primary_irr?.toString?.() || bond?.primary_irr || "",
+    secondary_irr: bond?.secondary_irr?.toString?.() || bond?.secondary_irr || "",
+    total_units: bond?.total_units?.toString?.() || "1",
+    minimum_units: bond?.minimum_units?.toString?.() || "1",
+    description: bond?.description || ""
   });
   
   // Step 2: Cashflows (from Excel upload)
@@ -182,23 +193,47 @@ export default function CreateBondNew() {
     setCalculatedPrice(null);
   };
   
+  // Upload staged media (images + presentations) against a bond_id
+  const uploadStagedMedia = async (bondId) => {
+    const token = localStorage.getItem("token");
+    for (const img of images) {
+      if (img.id || img.uploaded) continue;
+      try {
+        const fd = new FormData(); fd.append("file", img.file);
+        await axios.post(`${API}/bonds/${bondId}/images`, fd, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        });
+      } catch (e) { /* swallow — individual failures toasted below */ }
+    }
+    for (const pres of presentations) {
+      if (pres.id || pres.uploaded) continue;
+      try {
+        const fd = new FormData(); fd.append("file", pres.file);
+        await axios.post(`${API}/bonds/${bondId}/presentations`, fd, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        });
+      } catch (e) { /* swallow */ }
+    }
+  };
+
   // Submit bond
   const handleSubmit = async () => {
     if (!formData.name || !formData.start_date || !formData.end_date || !formData.principal_amount) {
       toast.error("Please fill in all required fields");
       return;
     }
-    
-    if (cashflows.length === 0) {
+
+    // On create cashflows are required. On edit, they're already in place.
+    if (!isEditing && cashflows.length === 0) {
       toast.error("Please upload cashflow Excel in Step 2");
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
       const token = localStorage.getItem("token");
-      const bondData = {
+      const baseData = {
         bond_code: formData.bond_code || `BOND-${Date.now()}`,
         name: formData.name,
         isin: formData.isin || "",
@@ -211,64 +246,89 @@ export default function CreateBondNew() {
         total_units: parseInt(formData.total_units) || 1,
         minimum_units: parseInt(formData.minimum_units) || 1,
         description: formData.description || "",
-        cashflows_per_unit: cashflows,
-        interest_payments: [],
-        interest_payment_frequency: "custom"
       };
-      
-      await axios.post(`${API}/bonds`, bondData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      toast.success("Bond created successfully!");
-      navigate("/admin/bonds");
+
+      let bondId = mediaBondId;
+
+      if (isEditing) {
+        await axios.put(`${API}/bonds/${bond.id}`, baseData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        bondId = bond.id;
+        toast.success("NCD updated successfully!");
+      } else {
+        const res = await axios.post(`${API}/bonds`, {
+          ...baseData,
+          cashflows_per_unit: cashflows,
+          interest_payments: [],
+          interest_payment_frequency: "custom",
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        bondId = res.data?.id || res.data?.bond?.id || null;
+        setMediaBondId(bondId);
+        toast.success("NCD created successfully!");
+      }
+
+      // Upload any media staged locally
+      if (bondId) await uploadStagedMedia(bondId);
+
+      if (onSuccess) onSuccess();
+      if (onClose) onClose();
+      else navigate("/admin/bonds");
     } catch (error) {
-      console.error("Error creating bond:", error);
-      toast.error(error.response?.data?.detail || "Failed to create bond");
+      console.error(isEditing ? "Error updating NCD:" : "Error creating NCD:", error);
+      toast.error(error.response?.data?.detail || (isEditing ? "Failed to update NCD" : "Failed to create NCD"));
     } finally {
       setSubmitting(false);
     }
   };
   
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/admin/bonds")} data-testid="back-btn">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Create New Bond</h1>
-            <p className="text-slate-600">Step {step} of 2: {step === 1 ? "Basic Details" : "Cashflow Upload"}</p>
-          </div>
-        </div>
-        
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
-              {step > 1 ? <Check className="w-5 h-5" /> : "1"}
+    <div className={asModal ? "" : "min-h-screen bg-slate-50 p-6"}>
+      <div className={asModal ? "" : "max-w-4xl mx-auto"}>
+        {/* Header — hidden when used as a modal (modal supplies its own) */}
+        {!asModal && (
+          <div className="flex items-center gap-4 mb-8">
+            <Button variant="ghost" size="icon" onClick={goBack} data-testid="back-btn">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Create New NCD</h1>
+              <p className="text-slate-600">Step {step} of 2: {step === 1 ? "Basic Details" : "Cashflow Upload"}</p>
             </div>
-            <span className={`font-medium ${step >= 1 ? "text-blue-600" : "text-slate-400"}`}>Basic Details</span>
           </div>
-          <div className={`w-20 h-1 mx-2 ${step >= 2 ? "bg-blue-600" : "bg-slate-200"}`} />
-          <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
-              2
+        )}
+
+        {/* Progress bar — classic circle view for the standalone page.
+            When used inside the NCD modal the shell owns the step tabs,
+            so we render nothing here. */}
+        {!asModal && (
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center gap-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
+                {step > 1 ? <Check className="w-5 h-5" /> : "1"}
+              </div>
+              <span className={`font-medium ${step >= 1 ? "text-blue-600" : "text-slate-400"}`}>Basic Details</span>
             </div>
-            <span className={`font-medium ${step >= 2 ? "text-blue-600" : "text-slate-400"}`}>Cashflow Upload</span>
+            <div className={`w-20 h-1 mx-2 ${step >= 2 ? "bg-blue-600" : "bg-slate-200"}`} />
+            <div className="flex items-center gap-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
+                2
+              </div>
+              <span className={`font-medium ${step >= 2 ? "text-blue-600" : "text-slate-400"}`}>Cashflow Upload</span>
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Step 1: Basic Details */}
         {step === 1 && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6" data-testid="step-1-form">
-            <h2 className="text-lg font-semibold text-slate-900 mb-6">Bond Information</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-6">NCD Information</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="bond_code">Bond Code</Label>
+                <Label htmlFor="bond_code">NCD Code</Label>
                 <Input
                   id="bond_code"
                   name="bond_code"
@@ -292,7 +352,7 @@ export default function CreateBondNew() {
               </div>
               
               <div className="md:col-span-2">
-                <Label htmlFor="name">Bond Name *</Label>
+                <Label htmlFor="name">NCD Name *</Label>
                 <Input
                   id="name"
                   name="name"
@@ -592,21 +652,241 @@ export default function CreateBondNew() {
                 <ArrowLeft className="w-4 h-4" />
                 Back to Details
               </Button>
-              <Button 
-                onClick={handleSubmit} 
-                disabled={submitting || cashflows.length === 0}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(3)}
+                  className="gap-2"
+                  data-testid="next-to-media-btn"
+                >
+                  Next: Media
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || (!isEditing && cashflows.length === 0)}
+                  className="gap-2"
+                  data-testid="submit-bond-btn"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                      {isEditing ? "Saving..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      {isEditing ? "Save Changes" : "Create NCD"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* Step 3 — Media (Images + Presentations)                         */}
+        {/* ============================================================== */}
+        {step === 3 && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6" data-testid="step-3-form">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5" /> Media
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">
+              {isEditing
+                ? "Upload images and presentation PDFs for this NCD — they'll appear on the opportunity card and detail page."
+                : "Stage images and presentation PDFs now; they'll be attached to the NCD automatically after you click Save."}
+            </p>
+
+            {/* Images */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-medium text-slate-700">Images</label>
+                <span className="text-xs text-slate-400">{images.length} total</span>
+              </div>
+              <div
+                className="border-2 border-dashed border-slate-300 hover:border-etihad-gold-500 rounded-xl p-6 text-center cursor-pointer transition-colors mb-4"
+                onClick={() => document.getElementById("ncd-image-input")?.click()}
+              >
+                <input
+                  id="ncd-image-input"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    if (isEditing && mediaBondId) {
+                      setUploadingImage(true);
+                      const token = localStorage.getItem("token");
+                      for (const file of files) {
+                        try {
+                          const fd = new FormData(); fd.append("file", file);
+                          const res = await axios.post(`${API}/bonds/${mediaBondId}/images`, fd, {
+                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+                          });
+                          setImages((prev) => [...prev, res.data]);
+                        } catch (err) {
+                          toast.error(err.response?.data?.detail || `Failed to upload ${file.name}`);
+                        }
+                      }
+                      setUploadingImage(false);
+                    } else {
+                      // stage client-side — will be uploaded after Create
+                      setImages((prev) => [
+                        ...prev,
+                        ...files.map((file) => ({
+                          file,
+                          name: file.name,
+                          url: URL.createObjectURL(file),
+                          staged: true,
+                        })),
+                      ]);
+                    }
+                    e.target.value = "";
+                  }}
+                  data-testid="ncd-images-input"
+                />
+                <ImageIcon className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                <p className="text-sm text-slate-600">Click to upload images</p>
+                <p className="text-xs text-slate-400">PNG, JPG, WEBP (multiple allowed)</p>
+              </div>
+              {images.length > 0 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {images.map((img, i) => (
+                    <div key={img.id || img.name || i} className="relative group">
+                      <img
+                        src={img.url || img.image_url}
+                        alt={img.name || `image-${i}`}
+                        className="w-full h-24 object-cover rounded-lg border border-slate-200"
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-1 right-1 bg-white/90 hover:bg-red-100 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={async () => {
+                          if (img.id && mediaBondId) {
+                            try {
+                              const token = localStorage.getItem("token");
+                              await axios.delete(`${API}/bonds/${mediaBondId}/images/${img.id}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                            } catch (e) { /* ignore */ }
+                          }
+                          setImages((prev) => prev.filter((_, idx) => idx !== i));
+                        }}
+                      >
+                        <X className="w-3 h-3 text-red-600" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {uploadingImage && <p className="text-xs text-slate-400 mt-1">Uploading…</p>}
+            </div>
+
+            {/* Presentations */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-medium text-slate-700">Presentation PDFs</label>
+                <span className="text-xs text-slate-400">{presentations.length} total</span>
+              </div>
+              <div
+                className="border-2 border-dashed border-slate-300 hover:border-etihad-gold-500 rounded-xl p-6 text-center cursor-pointer transition-colors mb-4"
+                onClick={() => document.getElementById("ncd-presentation-input")?.click()}
+              >
+                <input
+                  id="ncd-presentation-input"
+                  type="file"
+                  multiple
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (!files.length) return;
+                    if (isEditing && mediaBondId) {
+                      setUploadingPresentation(true);
+                      const token = localStorage.getItem("token");
+                      for (const file of files) {
+                        try {
+                          const fd = new FormData(); fd.append("file", file);
+                          const res = await axios.post(`${API}/bonds/${mediaBondId}/presentations`, fd, {
+                            headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+                          });
+                          setPresentations((prev) => [...prev, res.data]);
+                        } catch (err) {
+                          toast.error(err.response?.data?.detail || `Failed to upload ${file.name}`);
+                        }
+                      }
+                      setUploadingPresentation(false);
+                    } else {
+                      setPresentations((prev) => [
+                        ...prev,
+                        ...files.map((file) => ({
+                          file,
+                          name: file.name,
+                          staged: true,
+                        })),
+                      ]);
+                    }
+                    e.target.value = "";
+                  }}
+                  data-testid="ncd-presentations-input"
+                />
+                <FileSpreadsheet className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                <p className="text-sm text-slate-600">Click to upload PDFs</p>
+                <p className="text-xs text-slate-400">PDF only (multiple allowed)</p>
+              </div>
+              {presentations.length > 0 && (
+                <ul className="space-y-2">
+                  {presentations.map((p, i) => (
+                    <li key={p.id || p.name || i} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded px-3 py-2 text-sm">
+                      <span className="truncate">{p.name || p.filename || `presentation-${i}`}</span>
+                      <button
+                        type="button"
+                        className="text-red-600 hover:text-red-800"
+                        onClick={async () => {
+                          if (p.id && mediaBondId) {
+                            try {
+                              const token = localStorage.getItem("token");
+                              await axios.delete(`${API}/bonds/${mediaBondId}/presentations/${p.id}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                            } catch (e) { /* ignore */ }
+                          }
+                          setPresentations((prev) => prev.filter((_, idx) => idx !== i));
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {uploadingPresentation && <p className="text-xs text-slate-400 mt-1">Uploading…</p>}
+            </div>
+
+            {/* Step 3 Navigation */}
+            <div className="flex justify-between mt-8">
+              <Button variant="outline" onClick={() => setStep(2)} className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Cashflow
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting}
                 className="gap-2"
-                data-testid="submit-bond-btn"
+                data-testid="submit-bond-btn-step3"
               >
                 {submitting ? (
                   <>
                     <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                    Creating...
+                    {isEditing ? "Saving..." : "Creating..."}
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    Create Bond
+                    {isEditing ? "Save Changes" : "Create NCD"}
                   </>
                 )}
               </Button>

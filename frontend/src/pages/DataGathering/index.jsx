@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
@@ -51,17 +51,22 @@ const LIFE_EXPECTANCY_OPTIONS = [65, 70, 75, 80, 85, 90, 95, 100];
 const TAX_REGIME_OPTIONS = ["Old Regime", "New Regime", "NA"];
 const TAX_STATUS_OPTIONS = ["Resident", "NRI with Indian Passport", "NRI with Foreign Passport", "Foreign Passport"];
 const TAX_SLAB_OPTIONS = ["0%", "5%", "10%", "15%", "20%", "25%", "30%"];
-const PROCEED_OPTIONS = ["Data Gathering", "Proceed to Account Opening"];
+const PROCEED_OPTIONS = ["Data Gathering"];
 
 export default function DataGathering() {
   const navigate = useNavigate();
   const { familyId } = useParams();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [families, setFamilies] = useState([]);
   const [selectedFamily, setSelectedFamily] = useState(null);
   const [activeTab, setActiveTab] = useState("introduction");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // New family from CRM lead
+  const [showNewFamilyForm, setShowNewFamilyForm] = useState(false);
+  const [pendingLeadData, setPendingLeadData] = useState(null);
   
   // Form states
   const [subBrokers, setSubBrokers] = useState([]);
@@ -81,9 +86,50 @@ export default function DataGathering() {
       navigate("/login");
       return;
     }
-    setUser(JSON.parse(userData));
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+    
     fetchData();
-  }, [navigate]);
+    
+    // Check if coming from CRM lead with newFamily parameter
+    const isNewFamily = searchParams.get('newFamily') === 'true';
+    const fromLeadId = searchParams.get('fromLead');
+    
+    if (isNewFamily && fromLeadId) {
+      // Get lead data from sessionStorage
+      const leadDataStr = sessionStorage.getItem('pendingLeadForFamily');
+      if (leadDataStr) {
+        try {
+          const leadData = JSON.parse(leadDataStr);
+          if (leadData.crm_lead_id === fromLeadId) {
+            setPendingLeadData(leadData);
+            setShowNewFamilyForm(true);
+            // Pre-fill the primary member with lead data
+            setMembers([{
+              id: 1,
+              name: leadData.name || "",
+              dob: leadData.dob || "",
+              relation: "Self",
+              life_expectancy: "85",
+              retirement_year: "",
+              tax_regime: "",
+              tax_status: "",
+              tax_slab: "",
+              isPrimary: true
+            }]);
+            // Set advisor if available (only for brokers)
+            if (leadData.advisor_id && parsedUser.role === 'broker') {
+              setSelectedSubBroker(leadData.advisor_id);
+            }
+            // Clear the sessionStorage after using it
+            sessionStorage.removeItem('pendingLeadForFamily');
+          }
+        } catch (e) {
+          console.error("Error parsing lead data:", e);
+        }
+      }
+    }
+  }, [navigate, searchParams]);
 
   useEffect(() => {
     if (familyId && families.length > 0) {
@@ -110,7 +156,7 @@ export default function DataGathering() {
       const token = localStorage.getItem("token");
       const [familiesRes, subBrokersRes] = await Promise.all([
         axios.get(`${API}/data-gathering/families`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API}/data-gathering/lookup/sub-brokers`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { sub_brokers: [] } }))
+        axios.get(`${API}/data-gathering/lookup/mfd-ria/admin`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { sub_brokers: [] } }))
       ]);
       setFamilies(familiesRes.data.families || []);
       setSubBrokers(subBrokersRes.data.sub_brokers || []);
@@ -123,7 +169,10 @@ export default function DataGathering() {
   };
 
   const loadFamilyData = (family) => {
-    setSelectedSubBroker(family.sub_broker_id || "");
+    // Only set sub_broker_id for brokers (sub_brokers don't need to select themselves)
+    if (user?.role === 'broker') {
+      setSelectedSubBroker(family.sub_broker_id || "");
+    }
     setFamilyName(family.family_name || "");
     setProceedOption(family.proceed_option || "");
     const loadedMembers = family.members?.map((m, idx) => ({
@@ -201,11 +250,14 @@ export default function DataGathering() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      // For sub_brokers (MFDs), auto-tag the family to themselves if no associate selected
-      const effectiveSubBrokerId = selectedSubBroker || (user?.role === 'sub_broker' ? user.id : null);
+      
+      // For sub_broker users, we don't need to pass sub_broker_id 
+      // as the backend will use their ID automatically
+      const subBrokerId = user?.role === 'sub_broker' ? null : (selectedSubBroker || null);
+      
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
-        sub_broker_id: effectiveSubBrokerId,
+        sub_broker_id: subBrokerId,
         proceed_option: proceedOption,
         primary_holder: {
           name: primaryMember.name,
@@ -246,6 +298,24 @@ export default function DataGathering() {
         setSelectedFamily(savedFamily);
         setFamilyName(savedFamily.family_name);
         toast.success("Family created successfully!");
+        
+        // If this family was created from a CRM lead, update the lead stage to "introduction"
+        if (pendingLeadData?.crm_lead_id && proceedOption === "Data Gathering") {
+          try {
+            await axios.put(`${API}/crm/leads/${pendingLeadData.crm_lead_id}/stage`, {
+              stage: "introduction",
+              notes: "Data Gathering initiated - family profile created"
+            }, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            // Clear the pending lead data from session storage
+            sessionStorage.removeItem('pendingLeadForFamily');
+            setPendingLeadData(null);
+          } catch (stageError) {
+            console.error("Error updating lead stage:", stageError);
+            // Don't show error toast - family was created successfully
+          }
+        }
       }
       
       // Show "Why do this exercise" modal only on Introduction tab
@@ -280,11 +350,36 @@ export default function DataGathering() {
 
   const handleNewFamily = () => {
     setSelectedFamily(null);
-    setSelectedSubBroker("");
+    // Only brokers need to select sub_broker
+    if (user?.role === 'broker') {
+      setSelectedSubBroker("");
+    }
     setFamilyName("");
     setProceedOption("");
-    setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", retirement_year: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }]);
+    
+    // Check if there's pending lead data to pre-fill
+    if (pendingLeadData) {
+      setMembers([{
+        id: 1,
+        name: pendingLeadData.name || "",
+        dob: pendingLeadData.dob || "",
+        relation: "Self",
+        life_expectancy: "85",
+        retirement_year: "",
+        tax_regime: "",
+        tax_status: "",
+        tax_slab: "",
+        isPrimary: true
+      }]);
+      if (pendingLeadData.advisor_id && user?.role === 'broker') {
+        setSelectedSubBroker(pendingLeadData.advisor_id);
+      }
+    } else {
+      setMembers([{ id: 1, name: "", dob: "", relation: "Self", life_expectancy: "", retirement_year: "", tax_regime: "", tax_status: "", tax_slab: "", isPrimary: true }]);
+    }
+    
     setActiveTab("introduction");
+    setShowNewFamilyForm(false);
   };
 
   const filteredFamilies = families.filter(f => 
@@ -403,23 +498,46 @@ export default function DataGathering() {
 
   const renderIntroductionTab = () => (
     <div className="space-y-6">
-      {/* Sub Broker & Family Name - Stacked */}
+      {/* Banner for pre-filled data from CRM Lead */}
+      {pendingLeadData && !selectedFamily && (
+        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+            <Users className="h-5 w-5 text-teal-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-teal-800">Creating family profile from CRM Lead</p>
+            <p className="text-xs text-teal-600">Lead data has been pre-filled. Complete the form and save to create the family.</p>
+          </div>
+        </div>
+      )}
+      
+      {/* MFD/RIA Partner & Family Name - Stacked */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <Label className="text-sm text-gray-600 mb-2 block">Sub Broker</Label>
-            <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Sub Broker" />
-              </SelectTrigger>
-              <SelectContent>
-                {subBrokers.map(sb => (
-                  <SelectItem key={sb.id} value={sb.id}>
-                    {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-sm text-gray-600 mb-2 block">MFD/RIA Partner</Label>
+            {user?.role === 'sub_broker' ? (
+              // For MFD/RIA Partners, show their name as read-only (auto-selected)
+              <Input 
+                value={user?.name || 'Current User'} 
+                readOnly 
+                className="bg-gray-50" 
+              />
+            ) : (
+              // For Brokers, show dropdown to select MFD/RIA Partner
+              <Select value={selectedSubBroker} onValueChange={setSelectedSubBroker}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select MFD/RIA Partner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subBrokers.map(sb => (
+                    <SelectItem key={sb.id} value={sb.id}>
+                      {sb.name} {sb.employee_code ? `(${sb.employee_code})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div>
             <Label className="text-sm text-gray-600 mb-2 block">Family Name</Label>

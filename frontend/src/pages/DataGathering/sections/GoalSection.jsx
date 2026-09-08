@@ -97,7 +97,26 @@ export default function GoalSection({ family, onUpdate, isReadOnly, onRefresh })
     }
   };
 
-  const skipCategory = (categoryValue) => {
+  const skipCategory = async (categoryValue) => {
+    // Persist deletion of existing goal items so they don't reappear on tab
+    // switch. Skip-only-on-state was the same bug as in ExpenseSection.
+    const existing = (goalItems[categoryValue] || []).filter(i => !i.isNew && i.id && !String(i.id).startsWith('new_'));
+    if (existing.length > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        await Promise.all(existing.map(i =>
+          axios.delete(
+            `${API}/data-gathering/family/${family.id}/goal/${i.id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+        ));
+        toast.success(`Removed ${existing.length} goal${existing.length > 1 ? 's' : ''}`);
+        if (typeof onRefresh === 'function') onRefresh();
+      } catch {
+        toast.error("Failed to remove. Please retry.");
+        return;
+      }
+    }
     setAddedCategories(prev => prev.filter(c => c !== categoryValue));
     setExpandedCategories(prev => ({ ...prev, [categoryValue]: false }));
     setGoalItems(prev => ({ ...prev, [categoryValue]: [] }));

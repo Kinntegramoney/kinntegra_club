@@ -153,7 +153,7 @@ export default function ClientApprovals() {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount || 0);
   };
 
   // Round down to nearest 100 for investment amount
@@ -278,7 +278,7 @@ export default function ClientApprovals() {
               </tr>
               <tr className="bg-gray-50">
                 <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Repayment</th>
-                <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Bond Name</th>
+                <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">NCD Name</th>
                 <th className="text-right px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Net Amount</th>
                 <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Date of Investment</th>
                 <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200">Portfolio</th>
@@ -472,7 +472,7 @@ export default function ClientApprovals() {
     const labels = {
       'wealth': 'Wealth Portfolio',
       'short_term': 'Short Term Portfolio',
-      'bonds': 'Bonds',
+      'bonds': 'NCD',
       'real_estate': 'Real Estate',
       'none': 'No Portfolio'
     };
@@ -794,7 +794,7 @@ export default function ClientApprovals() {
             <div className="py-4">
               <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Bond</span>
+                  <span className="text-sm text-gray-500">NCD</span>
                   <span className="text-sm font-medium">{selectedItem.bond_name}</span>
                 </div>
                 <div className="flex justify-between">

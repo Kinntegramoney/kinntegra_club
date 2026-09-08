@@ -23,7 +23,7 @@ export default function AdminBonds() {
 
   // Set page title
   useEffect(() => {
-    document.title = "Kinntegraa | Bonds";
+    document.title = "Kinntegraa | NCD";
   }, []);
 
   useEffect(() => {
@@ -69,11 +69,11 @@ export default function AdminBonds() {
       await axios.delete(`${API}/bonds/${bondId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Bond deleted successfully");
+      toast.success("NCD deleted successfully");
       fetchBonds();
     } catch (error) {
       console.error("Error deleting bond:", error);
-      toast.error("Failed to delete bond");
+      toast.error("Failed to delete NCD");
     }
   };
 
@@ -102,7 +102,7 @@ export default function AdminBonds() {
       setVerificationResult(response.data);
       
       if (response.data.verification_passed) {
-        toast.success("Price verification passed! Bond is now ACTIVE.");
+        toast.success("Price verification passed! NCD is now ACTIVE.");
         fetchBonds();
       } else {
         toast.error(`Price verification failed. ${response.data.summary.mismatched} date(s) mismatched.`);
@@ -116,34 +116,34 @@ export default function AdminBonds() {
   };
 
   const handleActivateBond = async (bondId) => {
-    if (!window.confirm("Are you sure you want to manually activate this bond without price verification?")) return;
+    if (!window.confirm("Are you sure you want to manually activate this NCD without price verification?")) return;
     
     try {
       const token = localStorage.getItem("token");
       await axios.post(`${API}/bonds/${bondId}/activate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Bond activated successfully");
+      toast.success("NCD activated successfully");
       fetchBonds();
     } catch (error) {
       console.error("Error activating bond:", error);
-      toast.error("Failed to activate bond");
+      toast.error("Failed to activate NCD");
     }
   };
 
   const handleDeactivateBond = async (bondId) => {
-    if (!window.confirm("Are you sure you want to deactivate this bond?")) return;
+    if (!window.confirm("Are you sure you want to deactivate this NCD?")) return;
     
     try {
       const token = localStorage.getItem("token");
       await axios.post(`${API}/bonds/${bondId}/deactivate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Bond deactivated successfully");
+      toast.success("NCD deactivated successfully");
       fetchBonds();
     } catch (error) {
       console.error("Error deactivating bond:", error);
-      toast.error("Failed to deactivate bond");
+      toast.error("Failed to deactivate NCD");
     }
   };
 
@@ -158,8 +158,8 @@ export default function AdminBonds() {
         <div className="bg-white border-b border-gray-200 px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-bonds-title">Admin - Bonds</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage all bond listings</p>
+              <h1 className="text-2xl font-bold text-gray-800" data-testid="admin-bonds-title">Admin - NCD</h1>
+              <p className="text-sm text-gray-500 mt-1">Manage all NCD listings</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -176,7 +176,7 @@ export default function AdminBonds() {
                 data-testid="add-bond-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Bond
+                Add NCD
               </Button>
             </div>
           </div>
@@ -188,10 +188,10 @@ export default function AdminBonds() {
             <p className="text-center text-gray-500 py-12">Loading...</p>
           ) : bonds.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No bonds created yet</p>
+              <p className="text-gray-500 mb-4">No NCD created yet</p>
               <Button onClick={() => navigate("/bonds/create")}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create First Bond
+                Create First NCD
               </Button>
             </div>
           ) : (
@@ -199,7 +199,7 @@ export default function AdminBonds() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Bond Name</th>
+                    <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">NCD Name</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Principal</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">IRR</th>
                     <th className="text-left py-4 px-6 text-xs font-medium text-gray-500 uppercase">Units</th>
@@ -271,7 +271,7 @@ export default function AdminBonds() {
                                 onClick={() => handleDeactivateBond(bond.id)}
                                 className="text-etihad-gold-600 hover:text-etihad-gold-700 hover:bg-etihad-gold-50"
                                 data-testid={`deactivate-bond-${bond.id}`}
-                                title="Deactivate bond"
+                                title="Deactivate NCD"
                               >
                                 <Clock className="h-4 w-4" />
                               </Button>
@@ -281,7 +281,7 @@ export default function AdminBonds() {
                               size="sm"
                               onClick={() => setEditingBond(bond)}
                               data-testid={`edit-bond-${bond.id}`}
-                              title="Edit bond"
+                              title="Edit NCD"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -291,7 +291,7 @@ export default function AdminBonds() {
                               onClick={() => handleDelete(bond.id, bond.name)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               data-testid={`delete-bond-${bond.id}`}
-                              title="Delete bond"
+                              title="Delete NCD"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -326,7 +326,7 @@ export default function AdminBonds() {
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Verify Bond Pricing</h2>
+                <h2 className="text-xl font-bold text-gray-800">Verify NCD Pricing</h2>
                 <p className="text-sm text-gray-500">{verifyingBond.name} ({verifyingBond.bond_code})</p>
               </div>
               <button 
@@ -349,7 +349,7 @@ export default function AdminBonds() {
                   <li>• Upload an Excel file with pricing data for the next 2 months</li>
                   <li>• Excel should have columns: <strong>Date</strong> and <strong>Price</strong> (or Expected Price)</li>
                   <li>• System will compare each date&apos;s calculated price with your expected price</li>
-                  <li>• <strong>All prices must match exactly</strong> for the bond to be activated</li>
+                  <li>• <strong>All prices must match exactly</strong> for the NCD to be activated</li>
                 </ul>
               </div>
 

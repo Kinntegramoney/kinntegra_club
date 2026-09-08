@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { 
   ArrowLeft, Download, Loader2, TrendingUp, TrendingDown, 
-  PieChart, BarChart3, Wallet, Users, ChevronDown, ChevronUp, Eye
+  PieChart, BarChart3, Wallet, Users, ChevronDown, ChevronUp, Eye,
+  Receipt, Search, Filter, AlertTriangle
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -13,9 +15,13 @@ const AnalysisDashboard = () => {
   const { analysisId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [showAllHoldings, setShowAllHoldings] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
+  const [transactionFilter, setTransactionFilter] = useState('');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
 
   useEffect(() => {
     document.title = "Kinntegraa | Analysis Dashboard";
@@ -57,31 +63,107 @@ const AnalysisDashboard = () => {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (allPans = false) => {
     try {
-      const response = await fetch(`${API}/api/analysis/${analysisId}/download`, {
+      setDownloading(true);
+      toast.info('Generating report... This may take 30-60 seconds.', { duration: 5000 });
+      
+      const url = allPans 
+        ? `${API}/api/analysis/${analysisId}/download?all_pans=true`
+        : `${API}/api/analysis/${analysisId}/download`;
+      
+      const response = await fetch(url, {
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `GapSheet_${analysis?.filename?.replace('.pdf', '')}.zip`;
+        a.href = downloadUrl;
+        const suffix = allPans ? '_AllPANs' : `_${analysis?.client_pan || ''}`;
+        a.download = `CAS_Reports${suffix}.zip`;
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
+        window.URL.revokeObjectURL(downloadUrl);
         a.remove();
         toast.success('Report downloaded!');
       } else {
+        const errorText = await response.text();
+        console.error('Download failed:', response.status, errorText);
         toast.error('Failed to download report');
       }
     } catch (error) {
       console.error('Error downloading:', error);
       toast.error('Error downloading report');
+    } finally {
+      setDownloading(false);
     }
   };
+
+  // Get all transactions from the analysis data
+  const allTransactions = useMemo(() => {
+    // Transactions are stored in parsed_data.transactions
+    const transactions = analysis?.parsed_data?.transactions || analysis?.transactions || [];
+    // Filter by client_pan if available
+    const clientPan = analysis?.client_pan?.toUpperCase();
+    if (clientPan) {
+      return transactions.filter(t => t.pan?.toUpperCase() === clientPan);
+    }
+    return transactions;
+  }, [analysis]);
+
+  // Filter transactions
+  const filteredTransactions = useMemo(() => {
+    let filtered = allTransactions;
+    
+    // Filter by search term
+    if (transactionFilter) {
+      const search = transactionFilter.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.scheme?.toLowerCase().includes(search) ||
+        t.transaction_type?.toLowerCase().includes(search) ||
+        t.folio?.toLowerCase().includes(search) ||
+        t.date?.toLowerCase().includes(search)
+      );
+    }
+    
+    // Filter by transaction type
+    if (transactionTypeFilter !== 'all') {
+      filtered = filtered.filter(t => {
+        const type = t.transaction_type?.toLowerCase() || '';
+        switch(transactionTypeFilter) {
+          case 'purchase':
+            return type.includes('purchase') || type.includes('sip');
+          case 'redemption':
+            return type.includes('redemption') || type.includes('switch out');
+          case 'switch':
+            return type.includes('switch');
+          case 'dividend':
+            return type.includes('dividend') || type.includes('idcw');
+          case 'other':
+            return !type.includes('purchase') && !type.includes('redemption') && 
+                   !type.includes('switch') && !type.includes('dividend') && 
+                   !type.includes('sip') && !type.includes('idcw');
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [allTransactions, transactionFilter, transactionTypeFilter]);
+
+  // Get unique transaction types for filter
+  const transactionTypes = useMemo(() => {
+    const types = new Set();
+    allTransactions.forEach(t => {
+      if (t.transaction_type) {
+        types.add(t.transaction_type);
+      }
+    });
+    return Array.from(types).sort();
+  }, [allTransactions]);
 
   if (loading) {
     return (
@@ -113,17 +195,241 @@ const AnalysisDashboard = () => {
               )}
             </div>
           </div>
-          <Button onClick={handleDownload} className="bg-green-600 hover:bg-green-700">
-            <Download className="h-4 w-4 mr-2" />
-            Download Report
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="group relative">
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => handleDownload(false)} 
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={downloading}
+                  title={`Download reports for ${analysis?.client_pan || 'this client'} only`}
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download (This PAN)
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={() => handleDownload(true)} 
+                  variant="outline"
+                  className="border-green-600 text-green-600 hover:bg-green-50"
+                  disabled={downloading}
+                  title="Download reports for ALL PANs in the CAS file"
+                >
+                  {downloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Users className="h-4 w-4 mr-2" />
+                      Download (All PANs)
+                    </>
+                  )}
+                </Button>
+              </div>
+              {/* Report Contents Tooltip */}
+              <div className="absolute right-0 top-full mt-2 w-80 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-4">
+                <h4 className="font-semibold text-gray-800 mb-2 text-sm">Reports Included in ZIP:</h4>
+                <div className="space-y-2 text-xs text-gray-600">
+                  <div className="border-b pb-2">
+                    <p className="font-medium text-gray-700">Consolidated Reports:</p>
+                    <ul className="list-disc list-inside ml-1 mt-1 space-y-0.5">
+                      <li>GapSheet_Consolidated.xlsx</li>
+                      <li>PotentialSellReport_Consolidated.xlsx</li>
+                      <li>Stocklist_Consolidated.xlsx</li>
+                      <li>Benchmark_Comparison.xlsx</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">PAN-wise Folders:</p>
+                    <p className="text-gray-500 ml-1 mt-1">Each PAN gets a separate folder with:</p>
+                    <ul className="list-disc list-inside ml-1 mt-1 space-y-0.5">
+                      <li>GapSheet_[PAN].xlsx</li>
+                      <li>PotentialSellReport_[PAN].xlsx</li>
+                      <li>Stocklist_[PAN].xlsx</li>
+                      <li>Benchmark_Comparison_[PAN].xlsx</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Dashboard Content */}
       <div className="max-w-6xl mx-auto p-6">
-        {dashboardData ? (
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'summary' 
+                ? 'border-etihad-gold-500 text-etihad-gold-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <PieChart className="h-4 w-4 inline mr-2" />
+            Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('transactions')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'transactions' 
+                ? 'border-etihad-gold-500 text-etihad-gold-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Receipt className="h-4 w-4 inline mr-2" />
+            Transactions ({allTransactions.length})
+          </button>
+        </div>
+
+        {/* Transactions Tab */}
+        {activeTab === 'transactions' && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by scheme, folio, date..."
+                    value={transactionFilter}
+                    onChange={(e) => setTransactionFilter(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="min-w-[150px]">
+                <select
+                  value={transactionTypeFilter}
+                  onChange={(e) => setTransactionTypeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-etihad-gold-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="purchase">Purchase/SIP</option>
+                  <option value="redemption">Redemption</option>
+                  <option value="switch">Switch</option>
+                  <option value="dividend">Dividend/IDCW</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Transaction Stats */}
+            <div className="flex gap-4 mb-4 text-sm text-gray-600">
+              <span>Showing {filteredTransactions.length} of {allTransactions.length} transactions</span>
+            </div>
+
+            {/* Transactions Table with 6 Fixed Columns */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead className="bg-gray-900 text-white sticky top-0">
+                  <tr>
+                    <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider border-r border-gray-700">Date</th>
+                    <th className="text-left py-3 px-3 text-xs font-semibold uppercase tracking-wider border-r border-gray-700">Transaction</th>
+                    <th className="text-right py-3 px-3 text-xs font-semibold uppercase tracking-wider border-r border-gray-700">Amount (INR)</th>
+                    <th className="text-right py-3 px-3 text-xs font-semibold uppercase tracking-wider border-r border-gray-700">Units</th>
+                    <th className="text-right py-3 px-3 text-xs font-semibold uppercase tracking-wider border-r border-gray-700">Price (INR)</th>
+                    <th className="text-right py-3 px-3 text-xs font-semibold uppercase tracking-wider">Unit Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-gray-500">
+                        {allTransactions.length === 0 
+                          ? "No transactions found in this analysis" 
+                          : "No transactions match your filters"}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTransactions.slice(0, 500).map((trans, idx) => (
+                      <React.Fragment key={idx}>
+                        {/* Scheme header row when scheme changes */}
+                        {(idx === 0 || trans.scheme !== filteredTransactions[idx - 1]?.scheme) && (
+                          <tr className="bg-blue-50">
+                            <td colSpan={6} className="py-2 px-3 text-sm font-semibold text-blue-800">
+                              {trans.scheme || 'Unknown Scheme'} 
+                              <span className="ml-2 text-xs font-normal text-blue-600">
+                                (Folio: {trans.folio || 'N/A'})
+                              </span>
+                            </td>
+                          </tr>
+                        )}
+                        {/* Transaction row */}
+                        <tr className={`hover:bg-gray-50 ${trans.is_redemption ? 'bg-red-50/30' : ''}`}>
+                          <td className="py-2 px-3 text-sm font-mono border-r border-gray-100">
+                            {trans.date || '-'}
+                          </td>
+                          <td className="py-2 px-3 text-sm border-r border-gray-100">
+                            <span className={`${
+                              trans.is_redemption ? 'text-red-600' : 
+                              trans.transaction_type?.toLowerCase().includes('purchase') ? 'text-green-600' : 
+                              'text-gray-700'
+                            }`}>
+                              {trans.transaction_type || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-sm font-mono text-right border-r border-gray-100">
+                            {trans.amount != null && trans.amount !== 0 
+                              ? `₹${trans.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` 
+                              : <span className="text-gray-300">-</span>}
+                          </td>
+                          <td className="py-2 px-3 text-sm font-mono text-right border-r border-gray-100">
+                            {trans.units != null && trans.units !== 0 
+                              ? trans.units.toLocaleString('en-IN', {minimumFractionDigits: 3, maximumFractionDigits: 3}) 
+                              : <span className="text-gray-300">-</span>}
+                          </td>
+                          <td className="py-2 px-3 text-sm font-mono text-right border-r border-gray-100">
+                            {trans.nav != null && trans.nav !== 0 
+                              ? `₹${trans.nav.toLocaleString('en-IN', {minimumFractionDigits: 4, maximumFractionDigits: 4})}` 
+                              : <span className="text-gray-300">-</span>}
+                          </td>
+                          <td className="py-2 px-3 text-sm font-mono text-right font-semibold">
+                            {trans.balance != null && trans.balance !== 0 
+                              ? trans.balance.toLocaleString('en-IN', {minimumFractionDigits: 3, maximumFractionDigits: 3}) 
+                              : <span className="text-gray-300">-</span>}
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              {filteredTransactions.length > 500 && (
+                <div className="text-center py-4 text-sm text-gray-500 bg-gray-50 border-t">
+                  Showing first 500 transactions. Download the report for complete data.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Summary Tab */}
+        {activeTab === 'summary' && dashboardData && (
           <div className="space-y-6">
+            {/* No Active Holdings Message */}
+            {dashboardData.summary?.active_schemes === 0 && dashboardData.summary?.total_current_value === 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">No Active Holdings</h3>
+                <p className="text-amber-600">
+                  This client has no active mutual fund holdings. All investments appear to have been redeemed.
+                </p>
+                <p className="text-amber-500 text-sm mt-2">
+                  Switch to the "Transactions" tab to view historical transaction data.
+                </p>
+              </div>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
@@ -312,7 +618,10 @@ const AnalysisDashboard = () => {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* No Dashboard Data State */}
+        {activeTab === 'summary' && !dashboardData && (
           <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
             <p className="text-gray-500">Dashboard data not available for this analysis</p>
           </div>

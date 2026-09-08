@@ -117,8 +117,8 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
               <FileSpreadsheet className="h-5 w-5 text-etihad-gold-700" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">Bulk Upload Clients</h2>
-              <p className="text-sm text-gray-500">Import clients from Excel file</p>
+              <h2 className="text-lg font-semibold text-gray-800">Bulk Upload Investors</h2>
+              <p className="text-sm text-gray-500">Import investors from Excel file</p>
             </div>
           </div>
           <button
@@ -221,7 +221,7 @@ export default function BulkUploadModal({ onClose, onSuccess }) {
                   <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded">+ more...</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  <span className="text-blue-600">Partner Code</span> is optional - if provided, clients will be auto-linked to the corresponding sub-broker.
+                  <span className="text-blue-600">Partner Code</span> is optional - if provided, investors will be auto-linked to the corresponding MFD/RIA.
                 </p>
               </div>
             </>

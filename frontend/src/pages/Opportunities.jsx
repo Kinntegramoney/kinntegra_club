@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
-import EditBondModal from "@/components/EditBondModal";
+import CreateNCDModal from "@/components/CreateNCDModal";
 import HorizontalPaymentTimeline from "@/components/HorizontalPaymentTimeline";
-import BondPdfViewer from "@/components/BondPdfViewer";
+import ClientKYCModal from "@/components/ClientKYCModal";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, MapPin, TrendingUp, Plus, Pencil, Share2, Eye, Users, Lock, Download, X, Calculator, Trash2, Heart, UserCheck, Coins, TrendingDown, ChevronDown, FileText } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Building2, MapPin, TrendingUp, Plus, Pencil, Share2, Eye, Users, Lock, Download, X, Calculator, Trash2, Heart, UserCheck, Coins, TrendingDown, ChevronDown, ChevronLeft, ChevronRight, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -72,112 +73,175 @@ const calculateXIRR = (cashflows) => {
   return Math.round(rate * 10000) / 100;
 };
 
-// Calculate Expected XIRR for a property
-const calculatePropertyXIRR = (opp) => {
-  if (!opp.payment_schedule || !opp.estimated_sell_date || !opp.expected_sale_rate || !opp.total_area) {
-    return null;
-  }
-  
-  const cashflows = [];
-  const totalCost = opp.total_cost || 0;
-  
-  // Add DLD + Admin fee as first outflow (paid at booking)
-  const dldAdminFee = (opp.dld_fee || 0) + (opp.admin_fee || 0);
-  if (dldAdminFee > 0) {
-    const bookingDate = opp.payment_schedule[0]?.date || opp.created_at;
-    cashflows.push({
-      date: new Date(bookingDate),
-      amount: -dldAdminFee
+// Unified Real-Estate XIRR — same logic as View Details > XIRR Calculator so
+// the value shown on the card matches what's rendered inside when opening the
+// modal with default Sale Settings (estimated_sell_date / expected_sale_rate /
+// eligible_to_sell_after_percentage).
+//
+// Logic rules (mirrors RealEstateDetails.calculateXIRRWithParams):
+//  * Base price is `unit_price` (NOT total_cost)
+//  * `saleStagePercent` defaults to `eligible_to_sell_after_percentage` (or 100)
+//  * Payments on/after the sale date are NOT paid; the unpaid portion is
+//    treated as "outstanding" and deducted from gross sale proceeds
+//  * Payments up to saleStagePercent are paid in full; a milestone crossing
+//    the stage is partially counted
+//  * First included payment date carries DLD + Admin fees
+//  * Sale proceeds = (saleRate * total_area) − sellingFee − outstanding
+const _buildRealEstateXirrCashflows = (opp, saleStagePercent, saleDateStr, saleRatePerSqft) => {
+  if (!opp || !opp.unit_price || !opp.payment_schedule || opp.payment_schedule.length === 0) return null;
+  if (!saleRatePerSqft || !opp.total_area || !saleDateStr) return null;
+
+  const sortedSchedule = [...opp.payment_schedule]
+    .filter(p => p.date && p.percentage)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (sortedSchedule.length === 0) return null;
+
+  const cashFlows = [];
+  const unitPrice = opp.unit_price;
+  const upfrontFees = (opp.dld_fee || 0) + (opp.admin_fee || 0);
+  const saleDate = new Date(saleDateStr);
+
+  // 1) DLD + Admin fees — paid up-front at booking. Always included as a
+  //    separate, dated outflow so they cannot be accidentally dropped.
+  if (upfrontFees > 0) {
+    const firstDate = new Date(sortedSchedule[0].date);
+    cashFlows.push({
+      date: firstDate,
+      amount: -upfrontFees,
+      description: `DLD Fee + Admin Fee (₹${(opp.dld_fee || 0).toLocaleString()} + ₹${(opp.admin_fee || 0).toLocaleString()})`,
+      type: 'outflow',
     });
   }
-  
-  // Add all installment payments as outflows
-  // Calculate amount from percentage if not provided
-  for (const payment of opp.payment_schedule || []) {
-    if (payment.date) {
-      const amount = payment.amount || (totalCost * (payment.percentage || 0) / 100);
-      if (amount > 0) {
-        cashflows.push({
-          date: new Date(payment.date),
-          amount: -amount
-        });
-      }
+
+  let totalPaidTowardsUnit = 0;
+  let cumulativePercent = 0;
+
+  sortedSchedule.forEach(milestone => {
+    const pct = parseFloat(milestone.percentage) || 0;
+    const prevCumulative = cumulativePercent;
+    const milestoneDate = new Date(milestone.date);
+
+    if (milestoneDate >= saleDate) {
+      // Milestone falls on/after sale — treat as outstanding
+      cumulativePercent += pct;
+      return;
     }
-  }
-  
-  // Add expected sale proceeds as final inflow
-  const expectedSaleProceeds = opp.expected_sale_rate * opp.total_area;
-  cashflows.push({
-    date: new Date(opp.estimated_sell_date),
-    amount: expectedSaleProceeds
+
+    cumulativePercent += pct;
+    if (prevCumulative < saleStagePercent) {
+      let effectivePct = pct;
+      if (cumulativePercent > saleStagePercent) {
+        effectivePct = saleStagePercent - prevCumulative;
+      }
+      const paymentAmount = unitPrice * effectivePct / 100;
+      totalPaidTowardsUnit += paymentAmount;
+
+      cashFlows.push({
+        date: milestoneDate,
+        amount: -paymentAmount,
+        description: milestone.description || `Payment (${effectivePct}%)`,
+        percentage: effectivePct,
+        type: 'outflow',
+      });
+    }
   });
-  
-  // Sort by date
-  cashflows.sort((a, b) => a.date - b.date);
-  
-  return calculateXIRR(cashflows);
+
+  if (cashFlows.length === 0) return null;
+
+  const grossSaleValue = parseFloat(saleRatePerSqft) * opp.total_area;
+  const sellingFee = grossSaleValue * (opp.unit_selling_fee_percentage || 0) / 100;
+  const outstandingAmount = Math.max(0, unitPrice - totalPaidTowardsUnit);
+  const netSaleProceeds = grossSaleValue - sellingFee - outstandingAmount;
+
+  cashFlows.push({
+    date: saleDate,
+    amount: netSaleProceeds,
+    description: 'Sale Proceeds (Net)',
+    grossSale: grossSaleValue,
+    sellingFee,
+    outstandingDeducted: outstandingAmount,
+    type: 'inflow',
+  });
+
+  cashFlows.sort((a, b) => a.date - b.date);
+  return { cashFlows, totalPaidTowardsUnit, upfrontFees, grossSaleValue, sellingFee, outstandingAmount, netSaleProceeds };
 };
 
-// Get detailed cashflows for XIRR calculation display
-const getXirrCashflowsBreakdown = (opp) => {
-  if (!opp.payment_schedule || !opp.estimated_sell_date || !opp.expected_sale_rate || !opp.total_area) {
-    return null;
-  }
-  
-  const cashflows = [];
-  const totalCost = opp.total_cost || 0;
-  
-  // Add DLD + Admin fee as first outflow
-  const dldFee = opp.dld_fee || 0;
-  const adminFee = opp.admin_fee || 0;
-  const dldAdminFee = dldFee + adminFee;
-  
-  if (dldAdminFee > 0) {
-    const bookingDate = opp.payment_schedule[0]?.date || opp.created_at;
-    cashflows.push({
-      date: new Date(bookingDate),
-      amount: -dldAdminFee,
-      description: `DLD Fee (${dldFee.toLocaleString()}) + Admin Fee (${adminFee.toLocaleString()})`,
-      type: 'outflow'
-    });
-  }
-  
-  // Add all installment payments - calculate amount from percentage if not provided
-  for (const payment of opp.payment_schedule || []) {
-    if (payment.date) {
-      const amount = payment.amount || (totalCost * (payment.percentage || 0) / 100);
-      if (amount > 0) {
-        cashflows.push({
-          date: new Date(payment.date),
-          amount: -amount,
-          description: payment.description || `Installment (${payment.percentage}%)`,
-          type: 'outflow'
-        });
-      }
+// Find the cumulative payment-schedule percentage paid up to (and including)
+// the **last installment before "on completion"**.
+//
+//  * The final milestone of a Real_Estate_Master payment schedule is
+//    typically tagged "on completion" / "completion" / "handover" /
+//    "possession". That portion is paid only when the asset is handed over
+//    at the end of the build cycle — it is NOT paid by an investor who sells
+//    before completion.
+//  * This function therefore returns the cumulative % of every milestone
+//    that appears before such a row (date-sorted).
+//  * If no completion row is tagged, falls back to the total cumulative %.
+//
+// Example — Hyde Residences apt 2001 has "60% On Completion". The
+// pre-completion cumulative is 40%, so XIRR is computed at saleStage = 40%.
+const getPreHandoverSaleStage = (opp) => {
+  const schedule = (opp?.payment_schedule || [])
+    .filter(p => p.date && p.percentage)
+    .slice()
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (schedule.length === 0) return 100;
+
+  const isCompletion = (m) => {
+    const label = `${m.description || ''} ${m.name || ''} ${m.milestone || ''}`.toLowerCase();
+    return (
+      label.includes('on completion') ||
+      label.includes('completion') ||
+      label.includes('handover') ||
+      label.includes('hand-over') ||
+      label.includes('possession')
+    );
+  };
+
+  let cumulative = 0;
+  let preCompletionCumulative = null;
+  for (const m of schedule) {
+    const pct = parseFloat(m.percentage) || 0;
+    if (isCompletion(m)) {
+      preCompletionCumulative = cumulative; // percent BEFORE the completion row
+      break;
     }
+    cumulative += pct;
   }
-  
-  // Add expected sale proceeds
-  const expectedSaleProceeds = opp.expected_sale_rate * opp.total_area;
-  cashflows.push({
-    date: new Date(opp.estimated_sell_date),
-    amount: expectedSaleProceeds,
-    description: `Sale Proceeds (${opp.expected_sale_rate.toLocaleString()} × ${opp.total_area.toLocaleString()} sqft)`,
-    type: 'inflow'
-  });
-  
-  // Sort by date
-  cashflows.sort((a, b) => a.date - b.date);
-  
-  const xirr = calculateXIRR(cashflows.map(cf => ({ date: cf.date, amount: cf.amount })));
-  
+
+  if (preCompletionCumulative === null) {
+    // No explicit completion row → fall back to total cumulative (often 100%)
+    return cumulative || 100;
+  }
+  return preCompletionCumulative || 100;
+};
+
+// Calculate Expected XIRR for a property (used on the Opportunities card)
+const calculatePropertyXIRR = (opp) => {
+  if (!opp) return null;
+  const saleStage = getPreHandoverSaleStage(opp);
+  const built = _buildRealEstateXirrCashflows(opp, saleStage, opp.estimated_sell_date, opp.expected_sale_rate);
+  if (!built) return null;
+  return calculateXIRR(built.cashFlows.map(cf => ({ date: cf.date, amount: cf.amount })));
+};
+
+// Get detailed cashflows for XIRR calculation display (modal popup from the card)
+const getXirrCashflowsBreakdown = (opp) => {
+  if (!opp) return null;
+  const saleStage = getPreHandoverSaleStage(opp);
+  const built = _buildRealEstateXirrCashflows(opp, saleStage, opp.estimated_sell_date, opp.expected_sale_rate);
+  if (!built) return null;
+  const xirr = calculateXIRR(built.cashFlows.map(cf => ({ date: cf.date, amount: cf.amount })));
+
   return {
     property: opp.building_name,
     unit: opp.unit_no,
-    cashflows,
+    cashflows: built.cashFlows,
     xirr,
-    totalOutflow: cashflows.filter(cf => cf.amount < 0).reduce((sum, cf) => sum + Math.abs(cf.amount), 0),
-    totalInflow: cashflows.filter(cf => cf.amount > 0).reduce((sum, cf) => sum + cf.amount, 0)
+    saleStagePercent: saleStage,
+    totalOutflow: built.cashFlows.filter(cf => cf.amount < 0).reduce((sum, cf) => sum + Math.abs(cf.amount), 0),
+    totalInflow: built.cashFlows.filter(cf => cf.amount > 0).reduce((sum, cf) => sum + cf.amount, 0),
   };
 };
 
@@ -189,11 +253,18 @@ export default function Opportunities() {
   const [realEstateOpps, setRealEstateOpps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRealEstateModal, setShowRealEstateModal] = useState(false);
+  const [showNCDModal, setShowNCDModal] = useState(false);
   const [editingBond, setEditingBond] = useState(null);
   const [editingRealEstate, setEditingRealEstate] = useState(null);
   const [clientInvestments, setClientInvestments] = useState([]); // Track which properties client has invested in
   const [xirrModalData, setXirrModalData] = useState(null); // For XIRR calculation popup
   const [interestModal, setInterestModal] = useState(null); // For client interest modal {type: 'bond'/'real_estate', opportunity: {...}}
+  
+  // Client profile state for KYC and passport info
+  const [clientProfile, setClientProfile] = useState(null);
+  const [kycStatus, setKycStatus] = useState(null);
+  const [requestingKyc, setRequestingKyc] = useState(false);
+  const [showKycModal, setShowKycModal] = useState(false);
   
   // Currency state for payment schedule display
   const [selectedCurrency, setSelectedCurrency] = useState("AED");
@@ -204,6 +275,25 @@ export default function Opportunities() {
   });
   const [projectedRates, setProjectedRates] = useState(null);
   const [loadingRates, setLoadingRates] = useState(false);
+  
+  // Scroll refs for arrow navigation
+  const availableREScrollRef = useRef(null);
+  const availableBondsScrollRef = useRef(null);
+  const fundedREScrollRef = useRef(null);
+  const fundedBondsScrollRef = useRef(null);
+  const closedREScrollRef = useRef(null);
+  const closedBondsScrollRef = useRef(null);
+  
+  // Scroll handler for arrow buttons
+  const handleScroll = (ref, direction) => {
+    if (ref.current) {
+      const scrollAmount = 400; // Scroll by one card width approximately
+      ref.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
   
   // Share percentage for payment calculations - same options as View Details
   const presetPercentages = [12.5, 25, 37.5, 50];
@@ -257,14 +347,22 @@ export default function Opportunities() {
         : (realEstateRes.data?.data || []);
       setRealEstateOpps(realEstateData);
       
-      // For clients, also fetch their investments to determine access level
-      if (currentUser?.role === 'client' && currentUser?.client_id) {
+      // For clients, fetch profile (for passport type, KYC status) and investments
+      if (currentUser?.role === 'client') {
         try {
-          const investmentsRes = await axios.get(`${API}/holdings/client/${currentUser.client_id}`, { headers });
-          const investedPropertyIds = (investmentsRes.data?.real_estate_holdings || []).map(h => h.property_id);
-          setClientInvestments(investedPropertyIds);
+          // Fetch client profile for KYC status and passport info
+          const profileRes = await axios.get(`${API}/client/profile`, { headers });
+          setClientProfile(profileRes.data?.client);
+          setKycStatus(profileRes.data?.kyc_status);
+          
+          // Fetch investments
+          if (currentUser?.client_id) {
+            const investmentsRes = await axios.get(`${API}/holdings/client/${currentUser.client_id}`, { headers });
+            const investedPropertyIds = (investmentsRes.data?.real_estate_holdings || []).map(h => h.property_id);
+            setClientInvestments(investedPropertyIds);
+          }
         } catch (err) {
-          console.error("Error fetching client investments:", err);
+          console.error("Error fetching client profile:", err);
         }
       }
       
@@ -339,7 +437,7 @@ export default function Opportunities() {
   const handleShare = (item, type) => {
     let shareText = "";
     if (type === 'bond') {
-      shareText = `Investment Opportunity: ${item.name}\n\nPrincipal: ₹${item.principal_amount?.toLocaleString()}\nIRR: ${item.secondary_irr}%\nUnits Available: ${(item.total_units || 1) - (item.units_sold || 0)}\n\nView details and calculate returns!`;
+      shareText = `Investment Opportunity: ${item.name}\n\nPrincipal: ₹${item.principal_amount?.toLocaleString()}\nIRR: ${item.secondary_irr}%\nUnits Available: ${(item.total_units || 1) - (item.units_sold || 0)}\n\nView details and calculate returns on our NCD platform!`;
     } else {
       shareText = `Real Estate Opportunity: ${item.building_name}\n\nUnit: ${item.unit_no}\nPrice: ${item.total_cost ? `AED ${item.total_cost.toLocaleString()}` : 'Contact for details'}\nType: ${item.unit_type || 'N/A'}\n\nView details!`;
     }
@@ -355,9 +453,9 @@ export default function Opportunities() {
     }
   };
 
-  // Delete bond functionality for broker
+  // Delete NCD functionality for broker
   const handleDeleteBond = async (bondId) => {
-    if (!window.confirm("Are you sure you want to delete this bond? This action cannot be undone.")) {
+    if (!window.confirm("Are you sure you want to delete this NCD? This action cannot be undone.")) {
       return;
     }
     
@@ -366,15 +464,15 @@ export default function Opportunities() {
       await axios.delete(`${API}/bonds/${bondId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Bond deleted successfully");
+      toast.success("NCD deleted successfully");
       // Refresh the bonds list
       const response = await axios.get(`${API}/bonds`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setBonds(response.data.data || []);
     } catch (error) {
-      console.error("Error deleting bond:", error);
-      toast.error(error.response?.data?.detail || "Failed to delete bond");
+      console.error("Error deleting NCD:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete NCD");
     }
   };
 
@@ -419,12 +517,57 @@ export default function Opportunities() {
     }
   };
 
-  // Categorize by status
-  const availableBonds = bonds.filter(b => b.status === 'available');
-  const fundedBonds = bonds.filter(b => b.status === 'funded');
-  const closedBonds = bonds.filter(b => b.status === 'closed');
+  // Handle KYC completion request
+  const handleRequestKycCompletion = async () => {
+    setRequestingKyc(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API}/client/request-kyc-completion`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("KYC completion request sent to your broker. They will contact you shortly.");
+    } catch (error) {
+      console.error("Error requesting KYC:", error);
+      toast.error(error.response?.data?.detail || "Failed to send KYC request");
+    } finally {
+      setRequestingKyc(false);
+    }
+  };
 
-  // Real Estate: available OR partially_invested should show in "Available" section
+  // Check if client can see NCD opportunities
+  // Indian passport + Indian residency = Both RE & NCD
+  // Foreign passport = Only RE
+  const canSeeNcdOpportunities = () => {
+    if (user?.role !== 'client') return true; // Brokers and sub-brokers see all
+    if (!clientProfile) return true; // Loading state, show all
+    
+    const passportType = clientProfile?.passport_type?.toLowerCase();
+    const residency = clientProfile?.country_of_residency?.toLowerCase() || '';
+    
+    // Indian passport AND Indian residency = can see NCDs
+    if (passportType === 'indian' && residency === 'india') {
+      return true;
+    }
+    
+    // Foreign passport = cannot see NCDs (only RE)
+    return false;
+  };
+
+  // Check if KYC is complete
+  const isKycComplete = () => {
+    if (user?.role !== 'client') return true; // Not applicable for non-clients
+    return kycStatus?.complete === true;
+  };
+
+  // Filter bonds based on passport type for clients
+  const filteredBonds = canSeeNcdOpportunities() ? bonds : [];
+
+  // Categorize by status
+  const availableBonds = filteredBonds.filter(b => b.status === 'available');
+  const fundedBonds = filteredBonds.filter(b => b.status === 'funded');
+  const closedBonds = filteredBonds.filter(b => b.status === 'closed');
+
+  // Real Estate: available OR partially_invested should show in "Open" section
   const availableRE = realEstateOpps.filter(r => r.status === 'available' || r.status === 'partially_invested');
   const investedRE = realEstateOpps.filter(r => r.status === 'fully_invested');
   const closedRE = realEstateOpps.filter(r => r.status === 'closed' || r.status === 'sold');
@@ -447,7 +590,7 @@ export default function Opportunities() {
     return `${prefix}/real-estate/${id}`;
   };
 
-  // Bond Card - Same layout for all roles (matching Real Estate card style)
+  // NCD Card - Same layout for all roles (matching Real Estate card style)
   const BondCard = ({ bond, status }) => {
     const unitsAvailable = (bond.total_units || 1) - (bond.units_sold || 0);
     const daysToMaturity = Math.ceil((new Date(bond.end_date) - new Date()) / (1000 * 60 * 60 * 24));
@@ -460,7 +603,9 @@ export default function Opportunities() {
     
     // Calculate today's price per unit using secondary IRR
     // Price = NPV of remaining cashflows discounted at secondary IRR
-    // Uses cutoff_days logic: only include payments more than cutoff_days from today
+    // Uses cutoff_days logic: payments are included when the record date
+    // (payment_date - cutoff_days) is on or after today. Investors on the
+    // register on the record date itself still receive that payment.
     const calculateTodayPrice = () => {
       // Use date-only (no time component) to match backend calculator
       const now = new Date();
@@ -479,9 +624,12 @@ export default function Opportunities() {
           const recordDate = new Date(cfDate);
           recordDate.setDate(recordDate.getDate() - cutoffDays);
           
-          // Only include cashflows where record date is AFTER today
-          // (payment goes to buyer only if they're on register by record date)
-          if (recordDate > today) {
+          // Include cashflow only if the record date has NOT yet strictly
+          // passed today. Investors on the register on the record date
+          // itself still receive that payment, so `recordDate >= today`
+          // must include the payment (matches backend
+          // `calculate_secondary_market_price_and_units` at server.py:11461).
+          if (recordDate >= today) {
             const daysFromToday = Math.floor((cfDate - today) / (1000 * 60 * 60 * 24));
             const yearsToPayment = daysFromToday / 365;
             const totalCashflow = (cf.interest_per_unit || cf.interest || 0) + (cf.principal_per_unit || cf.principal || 0);
@@ -514,7 +662,10 @@ export default function Opportunities() {
       
       for (let i = 1; i <= totalPayments; i++) {
         const yearsToPayment = i / paymentsPerYear;
-        if (yearsToPayment * 365 > cutoffDays) { // Apply cutoff
+        // Include the payment when the record date has not yet strictly
+        // passed today: (days_to_payment - cutoffDays) >= 0. This is the
+        // same inclusive boundary the backend uses (`record_date >= today`).
+        if (yearsToPayment * 365 >= cutoffDays) { // Apply cutoff (inclusive boundary)
           npv += paymentAmount / Math.pow(1 + secondaryIRR, yearsToPayment);
         }
       }
@@ -535,56 +686,11 @@ export default function Opportunities() {
     const startDate = new Date(bond.start_date);
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-5 hover:border-etihad-gold-500 transition-colors">
-        {/* Presentation PDF - Using BondPdfViewer OR blank placeholder */}
-        <div className="mb-3 -mx-5 -mt-5">
-          {bond.presentations && bond.presentations.length > 0 ? (
-            <div className="relative">
-              <BondPdfViewer 
-                url={`${BACKEND_URL}${bond.presentations[0].url}`}
-                filename={bond.presentations[0].original_filename || bond.presentations[0].original_name || 'Presentation'}
-              />
-              
-              {/* Document count badge */}
-              {bond.presentations.length > 1 && (
-                <div className="absolute top-12 right-2 bg-amber-600/90 text-white text-[10px] px-2 py-0.5 rounded-full z-10 shadow">
-                  +{bond.presentations.length - 1} more
-                </div>
-              )}
-              
-              {/* Multiple docs - show list */}
-              {bond.presentations.length > 1 && (
-                <div className="bg-gray-50 border-t border-gray-200 px-3 py-2">
-                  <p className="text-[10px] text-gray-500 mb-1.5">More documents:</p>
-                  <div className="flex gap-1.5 overflow-x-auto">
-                    {bond.presentations.slice(1).map((pres, idx) => (
-                      <a
-                        key={idx}
-                        href={`${BACKEND_URL}${pres.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-shrink-0 px-2 py-1 bg-white border border-gray-200 text-[9px] text-gray-600 rounded shadow-sm hover:bg-amber-50 hover:border-amber-200 transition-colors truncate max-w-[120px]"
-                        title={pres.original_filename || `Document ${idx + 2}`}
-                      >
-                        {pres.original_filename || `Doc ${idx + 2}`}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Blank placeholder when no documents available */
-            <div className="h-64 rounded-t-lg bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-              <div className="text-center text-gray-400">
-                <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                <p className="text-xs">No documents available</p>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="bg-white border border-gray-200 rounded-lg hover:border-etihad-gold-500 transition-colors flex flex-col h-full">
+        {/* Card Content - Removed image/presentation section */}
+        <div className="p-5 flex-1 flex flex-col">
         
-        {/* Header - Bond Name */}
+        {/* Header - NCD Name */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-etihad-gold-100 rounded-lg flex items-center justify-center">
@@ -595,9 +701,9 @@ export default function Opportunities() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-etihad-gold-100 text-etihad-gold-700 hover:bg-etihad-gold-100">Bond</Badge>
+            <Badge className="bg-etihad-gold-100 text-etihad-gold-700 hover:bg-etihad-gold-100">NCD</Badge>
             {status === 'available' && (
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
+              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Open</span>
             )}
             {status === 'closed' && (
               <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">Matured</span>
@@ -618,22 +724,52 @@ export default function Opportunities() {
         </div>
 
         {/* Price/Unit OR Repayment Count - Full Width */}
-        {(status === 'funded' || status === 'closed') && bond.total_cashflows_count > 0 ? (
-          <div className="bg-emerald-50 rounded-lg p-3 mb-4">
-            <p className="text-xs text-gray-500 mb-1">Repayment Progress</p>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-emerald-700 text-lg">
-                {bond.repaid_cashflows_count || 0} / {bond.total_cashflows_count} Repaid
-              </p>
-              <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
-                <div 
-                  className="bg-emerald-500 h-2 rounded-full transition-all" 
-                  style={{ width: `${((bond.repaid_cashflows_count || 0) / bond.total_cashflows_count) * 100}%` }}
-                ></div>
+        {(status === 'funded' || status === 'closed') && bond.total_cashflows_count > 0 ? (() => {
+          const repaid = bond.repaid_cashflows_count || 0;
+          const expected = bond.total_cashflows_count;
+          const ratio = expected > 0 ? repaid / expected : 0;
+          // Color + width tier: under < 50% red, 50-99% amber, 100% green,
+          // > 100% (prepayment overshoot) indigo. Bar caps at 100% width with
+          // a small "prepaid" badge so the width still represents completion.
+          const tier =
+            ratio > 1   ? 'overshoot' :
+            ratio >= 1  ? 'done'      :
+            ratio >= 0.5 ? 'mid'       :
+            ratio > 0   ? 'low'       : 'zero';
+          const palette = {
+            overshoot: { wrap: 'bg-indigo-50',  label: 'text-indigo-700', bar: 'bg-indigo-500' },
+            done:      { wrap: 'bg-emerald-50', label: 'text-emerald-700', bar: 'bg-emerald-500' },
+            mid:       { wrap: 'bg-amber-50',   label: 'text-amber-700',  bar: 'bg-amber-500' },
+            low:       { wrap: 'bg-rose-50',    label: 'text-rose-700',   bar: 'bg-rose-500' },
+            zero:      { wrap: 'bg-gray-50',    label: 'text-gray-600',   bar: 'bg-gray-400' },
+          }[tier];
+          const barWidth = Math.min(100, Math.max(0, ratio * 100));
+          return (
+            <div className={`${palette.wrap} rounded-lg p-3 mb-4`} data-testid="repayment-progress">
+              <p className="text-xs text-gray-500 mb-1">Repayment Progress</p>
+              <div className="flex items-center gap-2">
+                <p className={`font-semibold ${palette.label} text-lg whitespace-nowrap`}>
+                  {repaid} / {expected} Repaid
+                </p>
+                {tier === 'overshoot' && (
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wide bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded"
+                    title={`Received ${repaid - expected} more than originally expected (prepayments)`}
+                    data-testid="prepaid-badge"
+                  >
+                    +{repaid - expected} Prepaid
+                  </span>
+                )}
+                <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2 overflow-hidden">
+                  <div
+                    className={`${palette.bar} h-2 rounded-full transition-all`}
+                    style={{ width: `${barWidth}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
+          );
+        })() : (
           <div className="bg-etihad-gold-50 rounded-lg p-3 mb-4">
             <p className="text-xs text-gray-500 mb-1">
               Price/Unit ({todayDateStr})
@@ -642,7 +778,7 @@ export default function Opportunities() {
           </div>
         )}
 
-        {/* Bond Info Grid - Row 1 */}
+        {/* NCD Info Grid - Row 1 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {/* Face Value */}
           <div className="bg-gray-50 rounded-lg p-3">
@@ -815,18 +951,31 @@ export default function Opportunities() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
-            <Eye className="h-4 w-4 mr-1" />
-            View Details
-          </Button>
+        <div className="flex gap-2 mt-auto">
+          {isClient && !isKycComplete() ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => setShowKycModal(true)}
+              data-testid="complete-kyc-btn"
+            >
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Complete KYC
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/bonds/${bond.id}`)}>
+              <Eye className="h-4 w-4 mr-1" />
+              View Details
+            </Button>
+          )}
           {canEditBond && (
             <Button 
               variant="outline" 
               size="sm" 
               className="px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
               onClick={(e) => { e.stopPropagation(); setEditingBond(bond); }}
-              title="Edit Bond"
+              title="Edit NCD"
             >
               <Pencil className="h-4 w-4" />
             </Button>
@@ -837,7 +986,7 @@ export default function Opportunities() {
               size="sm" 
               className="px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
               onClick={(e) => { e.stopPropagation(); handleDeleteBond(bond.id); }}
-              title="Delete Bond"
+              title="Delete NCD"
               data-testid={`delete-bond-${bond.id}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -866,6 +1015,7 @@ export default function Opportunities() {
               Interested
             </Button>
           )}
+        </div>
         </div>
       </div>
     );
@@ -1007,7 +1157,11 @@ export default function Opportunities() {
               <Building2 className="h-5 w-5 text-teal-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-800">{opp.building_name}</h3>
+              <h3 className="text-lg font-semibold text-gray-800 whitespace-nowrap" title={opp.building_name}>
+                {(opp.building_name || '')
+                  .replace(/Hyde Residences Dubai Hills/i, 'Hyde Residences')
+                  .replace(/25\s*HOURS?\s*HEIMAT\s*DUBAI/i, '25H Heimat')}
+              </h3>
               <p className="text-sm text-gray-500">Unit {opp.unit_no} • Floor {opp.floor}</p>
               {opp.unit_type && (
                 <p className="text-xs text-teal-600 font-medium">{opp.unit_type}</p>
@@ -1015,9 +1169,19 @@ export default function Opportunities() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">Off-Plan</Badge>
+            {(() => {
+              const pt = (opp.property_type || 'off_plan').toLowerCase();
+              const map = {
+                off_plan:  { label: 'Off-Plan',  cls: 'bg-purple-100 text-purple-700 hover:bg-purple-100' },
+                ready:     { label: 'Ready',     cls: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' },
+                secondary: { label: 'Secondary', cls: 'bg-blue-100 text-blue-700 hover:bg-blue-100' },
+                rental:    { label: 'Rental',    cls: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
+              };
+              const m = map[pt] || map.off_plan;
+              return <Badge className={m.cls} data-testid={`property-type-badge-${opp.id}`}>{m.label}</Badge>;
+            })()}
             {status === 'available' && (
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Available</span>
+              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Open</span>
             )}
             {status === 'invested' && (
               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Invested</span>
@@ -1065,19 +1229,98 @@ export default function Opportunities() {
 
         {/* Price & Returns Info - Second Row */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {/* Price per sqft */}
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Price/sqft</p>
-            <p className="font-semibold text-blue-700">{formatCurrency(opp.price_per_sqft || (opp.total_cost / opp.total_area), 'AED')}</p>
-          </div>
+          {/* Price per sqft with calculation tooltip (portal-rendered so it isn't clipped by card/scroll container) */}
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="bg-blue-50 rounded-lg p-3 cursor-help" data-testid={`price-per-sqft-${opp.id}`}>
+                  <p className="text-xs text-gray-500 mb-1">Price/sqft</p>
+                  <p className="font-semibold text-blue-700">{formatCurrency(opp.price_per_sqft || (opp.total_cost / opp.total_area), 'AED')}</p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start" className="bg-gray-900 text-white border-0 p-3 w-64">
+                <p className="font-medium mb-2 text-gray-200">How it's derived</p>
+                {opp.price_per_sqft ? (
+                  <>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-gray-400">Entered directly</span>
+                      <span>{formatCurrency(opp.price_per_sqft, 'AED')}/sqft</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1.5 leading-snug">Set on the property; not derived from Total Cost ÷ Area.</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-gray-400">Total Cost</span>
+                      <span>{formatCurrency(opp.total_cost, 'AED')}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-gray-400">÷ Total Area</span>
+                      <span>{opp.total_area?.toLocaleString() || 0} sqft</span>
+                    </div>
+                    <div className="border-t border-gray-700 mt-2 pt-2 flex justify-between font-medium">
+                      <span>= Price/sqft</span>
+                      <span>{formatCurrency(opp.total_cost / (opp.total_area || 1), 'AED')}/sqft</span>
+                    </div>
+                  </>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
-          {/* Expected Sale Price */}
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">Expected Sale/sqft</p>
-            <p className="font-semibold text-green-700">
-              {opp.expected_sale_rate ? formatCurrency(opp.expected_sale_rate, 'AED') : 'TBD'}
-            </p>
-          </div>
+          {/* Expected Sale Price - hover to see total sale value + projected profit */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="bg-green-50 rounded-lg p-3 cursor-help">
+                  <p className="text-xs text-gray-500 mb-1">Expected Sale/sqft</p>
+                  <p className="font-semibold text-green-700">
+                    {opp.expected_sale_rate ? formatCurrency(opp.expected_sale_rate, 'AED') : 'TBD'}
+                  </p>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-gray-900 text-white p-3 rounded-lg shadow-xl border border-gray-700 max-w-xs">
+                {(() => {
+                  const totalCost = opp.total_cost || 0;
+                  const expectedSale = (opp.expected_sale_rate || 0) * (opp.total_area || 0);
+                  const projectedProfit = expectedSale - totalCost;
+                  const hasSale = opp.expected_sale_rate && opp.total_area;
+                  return (
+                    <div className="space-y-1.5 text-xs">
+                      <p className="font-semibold text-amber-400 border-b border-gray-700 pb-1 mb-1">
+                        Sale Projection
+                      </p>
+                      {hasSale ? (
+                        <>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-400">Expected Sale:</span>
+                            <span className="font-mono text-green-400">AED {formatCurrency(expectedSale, 'AED')}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-400">Total Cost:</span>
+                            <span className="font-mono text-red-400">-AED {formatCurrency(totalCost, 'AED')}</span>
+                          </div>
+                          <div className="flex justify-between gap-4 border-t border-gray-700 pt-1 mt-1">
+                            <span className="text-gray-300 font-medium">Expected Profit:</span>
+                            <span className={`font-mono font-bold ${projectedProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {projectedProfit >= 0 ? '+' : ''}AED {formatCurrency(Math.abs(projectedProfit), 'AED')}
+                            </span>
+                          </div>
+                          {opp.estimated_sell_date && (
+                            <p className="text-[10px] text-gray-500 pt-1">
+                              Est. sale date: {new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-gray-400">Sale details not yet set.</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Sale & Returns Info - Third Row */}
@@ -1177,18 +1420,24 @@ export default function Opportunities() {
           </div>
         )}
         
-        {/* For funded/invested - Show participants as filled */}
+        {/* For funded/invested - Show participants in the same Confirmed column style as Available */}
         {(status === 'invested' || status === 'funded') && canSeeDetails && (
-          <div className="flex items-center justify-center mb-4 py-2 bg-emerald-50 rounded-lg border border-emerald-200">
-            <UserCheck className="h-4 w-4 text-emerald-600 mr-2" />
-            <p className="text-sm font-medium text-emerald-700">
-              Fully Invested • {opp.current_investors || 4} participants • 100% committed
-            </p>
+          <div className="flex items-center justify-center mb-4 py-3 border-t border-b border-gray-100">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <UserCheck className="h-3 w-3 text-emerald-500" />
+                <p className="text-xs text-gray-500">Confirmed</p>
+              </div>
+              <p className="font-bold text-emerald-600">
+                {opp.current_investors || 4} <span className="text-gray-400 font-normal">participants</span>
+              </p>
+              <p className="text-[10px] text-emerald-500 font-medium">Fully Invested • 100% committed</p>
+            </div>
           </div>
         )}
 
-        {/* Payment Schedule Timeline - only show for AVAILABLE opportunities */}
-        {canSeeDetails && status === 'available' && opp.payment_schedule && opp.payment_schedule.length > 0 && (
+        {/* Payment Schedule Timeline - show for AVAILABLE, FUNDED and INVESTED */}
+        {canSeeDetails && (status === 'available' || status === 'funded' || status === 'invested') && opp.payment_schedule && opp.payment_schedule.length > 0 && (
           <div className="mb-3">
             {/* Currency & Share Selector Header */}
             <div className="flex items-center justify-between text-xs mb-1.5">
@@ -1402,105 +1651,6 @@ export default function Opportunities() {
         {/* Projected Future Value - only for FUNDED opportunities */}
         {canSeeDetails && (status === 'invested' || status === 'funded') && (
           <div className="mb-3">
-            {/* Currency Selector - filtered by participant payment currencies */}
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-gray-500 text-[10px] font-medium">Outstanding Payments</span>
-              <div className="flex items-center gap-1">
-                <div className="relative">
-                  <select
-                    value={selectedCurrency}
-                    onChange={(e) => handleCurrencyChange(e.target.value)}
-                    className="appearance-none bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-[9px] font-medium text-gray-600 cursor-pointer hover:bg-gray-100 pr-4"
-                    data-testid="funded-currency-selector"
-                  >
-                    {/* Show only currencies based on participant payment modes */}
-                    <option value="AED">AED</option>
-                    {(opp.participant_currencies || ['INR']).includes('INR') && <option value="INR">INR ₹</option>}
-                    {(opp.participant_currencies || []).includes('USD') && <option value="USD">USD $</option>}
-                    {(opp.participant_currencies || []).includes('EUR') && <option value="EUR">EUR €</option>}
-                    {(opp.participant_currencies || []).includes('GBP') && <option value="GBP">GBP £</option>}
-                    {(opp.participant_currencies || []).includes('SGD') && <option value="SGD">SGD S$</option>}
-                  </select>
-                  <ChevronDown className="absolute right-0.5 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
-                </div>
-                {loadingRates && (
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Timeline showing outstanding payments - considers participant payment status */}
-            {opp.payment_schedule && opp.payment_schedule.length > 0 && (() => {
-              const today = new Date();
-              const totalParticipants = opp.current_investors || 4;
-              
-              // Process milestones with outstanding calculation
-              const milestonesWithOutstanding = opp.payment_schedule.map((p, idx) => {
-                const paymentDate = new Date(p.date);
-                const isPastDue = paymentDate < today;
-                
-                // Get payment status from participant data if available
-                // participant_payments: { payment_idx: { paid_count: X, total: Y } }
-                const participantPayments = opp.participant_payments?.[idx] || {};
-                const paidCount = participantPayments.paid_count || (isPastDue ? totalParticipants : 0);
-                const outstandingCount = totalParticipants - paidCount;
-                
-                // Calculate outstanding amount for this milestone
-                const milestoneAmount = (p.percentage / 100) * (opp.total_cost || 0);
-                const outstandingAmount = (outstandingCount / totalParticipants) * milestoneAmount;
-                
-                return {
-                  date: p.date,
-                  description: p.description || `Payment ${idx + 1}`,
-                  percentage: p.percentage,
-                  amount: milestoneAmount,
-                  outstandingAmount: outstandingAmount,
-                  outstandingCount: outstandingCount,
-                  paidCount: paidCount,
-                  totalParticipants: totalParticipants,
-                  isPaid: outstandingCount === 0,  // Fully paid if no outstanding
-                  isPastDue: isPastDue,
-                  isFuture: !isPastDue
-                };
-              });
-              
-              // Filter to show only milestones with outstanding amounts OR future payments
-              const outstandingMilestones = milestonesWithOutstanding.filter(m => 
-                m.outstandingAmount > 0 || m.isFuture
-              );
-              
-              if (outstandingMilestones.length === 0) {
-                return (
-                  <div className="text-center py-2 bg-emerald-50 rounded border border-emerald-200">
-                    <span className="text-[10px] text-emerald-700 font-medium">All payments completed</span>
-                  </div>
-                );
-              }
-              
-              return (
-                <HorizontalPaymentTimeline 
-                  milestones={outstandingMilestones.map(m => ({
-                    date: m.date,
-                    description: m.isPastDue && m.outstandingCount > 0 
-                      ? `${m.description} (${m.outstandingCount}/${m.totalParticipants} pending)`
-                      : m.description,
-                    percentage: m.percentage,
-                    amount: m.isFuture ? m.amount : m.outstandingAmount,  // Show full amount for future, outstanding for past
-                    isPaid: m.isPaid,
-                    isPastDue: m.isPastDue
-                  }))}
-                  totalAmount={opp.total_cost || 0}
-                  showShareValues={true}
-                  sharePercent={100}
-                  compact={true}
-                  currency={selectedCurrency}
-                  conversionRate={currencyRates[selectedCurrency] || 1}
-                />
-              );
-            })()}
-            
             {/* Projected Sale Value & Profit */}
             {(() => {
               const totalCost = opp.total_cost || 0;
@@ -1541,27 +1691,6 @@ export default function Opportunities() {
               
               return (
                 <div className="space-y-1.5 mt-2">
-                  {/* Projected Sale Value */}
-                  {opp.expected_sale_rate && opp.estimated_sell_date && (
-                    <div className="flex items-center justify-between bg-green-50 rounded px-2 py-1.5 border border-green-200">
-                      <div>
-                        <span className="text-[9px] text-green-700 font-medium">Expected Sale</span>
-                        <span className="text-[8px] text-green-600 ml-1">
-                          ({new Date(opp.estimated_sell_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })})
-                        </span>
-                      </div>
-                      <span className="text-xs font-bold text-green-700">{currencySymbol} {formatValue(convertedSaleValue)}</span>
-                    </div>
-                  )}
-                  
-                  {/* Projected Profit */}
-                  {projectedProfit > 0 && (
-                    <div className="flex items-center justify-between bg-purple-50 rounded px-2 py-1.5 border border-purple-200">
-                      <span className="text-[9px] text-purple-700 font-medium">Projected Profit</span>
-                      <span className="text-xs font-bold text-purple-700">{currencySymbol} {formatValue(convertedProfit)}</span>
-                    </div>
-                  )}
-                  
                   {/* Currency Gain/Loss - only show for non-AED currencies */}
                   {selectedCurrency !== 'AED' && projectedRateForSaleYear && Math.abs(currencyGainLoss) > 0 && (
                     <div className={`rounded px-2 py-1.5 border ${
@@ -1599,15 +1728,28 @@ export default function Opportunities() {
         )}
 
         <div className="flex gap-2 mt-auto">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1" 
-            onClick={() => navigate(getDetailPath('real-estate', opp.id))}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            View Details
-          </Button>
+          {isClient && !isKycComplete() ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => setShowKycModal(true)}
+              data-testid="complete-kyc-btn-re"
+            >
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Complete KYC
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1" 
+              onClick={() => navigate(getDetailPath('real-estate', opp.id))}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              View Details
+            </Button>
+          )}
           {canEditRealEstate && (
             <Button 
               variant="outline" 
@@ -1677,17 +1819,18 @@ export default function Opportunities() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800" data-testid="page-title">Opportunities</h1>
-              <p className="text-sm text-gray-500 mt-1">All investment opportunities - Bonds and Real Estate</p>
+              <p className="text-sm text-gray-500 mt-1">All investment opportunities - NCD and Real Estate</p>
             </div>
             {(canCreateBond || canCreateRealEstate) && (
               <div className="flex items-center gap-3">
                 {canCreateBond && (
                   <Button 
-                    onClick={() => navigate("/bonds/create")} 
+                    onClick={() => setShowNCDModal(true)} 
                     className="bg-etihad-gold-500 hover:bg-etihad-gold-600 text-white gap-2"
+                    data-testid="add-ncd-btn"
                   >
                     <Plus className="h-4 w-4" />
-                    Add Bonds
+                    Add NCD
                   </Button>
                 )}
                 {canCreateRealEstate && (
@@ -1712,11 +1855,11 @@ export default function Opportunities() {
           </div>
         </div>
 
-        {/* Edit Bond Modal */}
+        {/* Edit NCD — reuses the Add NCD modal shell with a `bond` prop */}
         {editingBond && (
-          <EditBondModal 
+          <CreateNCDModal
             bond={editingBond}
-            onClose={() => setEditingBond(null)} 
+            onClose={() => setEditingBond(null)}
             onSuccess={() => { setEditingBond(null); fetchData(user); }}
           />
         )}
@@ -1725,6 +1868,14 @@ export default function Opportunities() {
         {showRealEstateModal && (
           <CreateRealEstateModal 
             onClose={() => setShowRealEstateModal(false)} 
+            onSuccess={() => fetchData(user)}
+          />
+        )}
+
+        {/* NCD Modal */}
+        {showNCDModal && (
+          <CreateNCDModal
+            onClose={() => setShowNCDModal(false)}
             onSuccess={() => fetchData(user)}
           />
         )}
@@ -1738,83 +1889,248 @@ export default function Opportunities() {
           />
         )}
 
-        {/* Tabs by Status */}
+        {/* Tabs by Asset Type: NCD | Real Estate */}
         <div className="p-8">
-          <Tabs defaultValue="available" className="w-full">
+          <Tabs defaultValue="ncd" className="w-full">
             <TabsList className="mb-6">
-              <TabsTrigger value="available" className="px-8" data-testid="tab-available">
-                Available ({availableCount})
+              <TabsTrigger value="ncd" className="px-8" data-testid="tab-ncd">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                NCD ({availableBonds.length})
               </TabsTrigger>
-              <TabsTrigger value="funded" className="px-8" data-testid="tab-funded">
-                Funded/Invested ({fundedCount})
-              </TabsTrigger>
-              <TabsTrigger value="closed" className="px-8" data-testid="tab-closed">
-                Closed/Exited ({closedCount})
+              <TabsTrigger value="real-estate" className="px-8" data-testid="tab-real-estate">
+                <Building2 className="h-4 w-4 mr-2" />
+                Real Estate ({availableRE.length})
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="available">
+            {/* Real Estate Tab Content */}
+            <TabsContent value="real-estate">
               {loading ? (
                 <p className="text-center text-gray-500 py-12">Loading...</p>
-              ) : availableCount === 0 ? (
+              ) : (availableRE.length + investedRE.length + closedRE.length) === 0 ? (
                 <div className="text-center py-12">
                   <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-4">No available opportunities</p>
-                  {(canCreateBond || canCreateRealEstate) && (
-                    <>
-                      {canCreateBond && <Button onClick={() => navigate("/bonds/create")} className="mr-2">Add Bond</Button>}
-                      {canCreateRealEstate && <Button onClick={() => setShowRealEstateModal(true)} variant="outline">Add Real Estate</Button>}
-                    </>
+                  <p className="text-gray-500 mb-4">No real estate opportunities</p>
+                  {canCreateRealEstate && (
+                    <Button onClick={() => setShowRealEstateModal(true)} variant="outline">Add Real Estate</Button>
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {availableBonds.map(bond => (
-                    <BondCard key={bond.id} bond={bond} status="available" />
-                  ))}
-                  {availableRE.map(opp => (
-                    <RealEstateCard key={opp.id} opp={opp} status="available" />
-                  ))}
+                <div className="space-y-10">
+                  {/* Open Real Estate - First */}
+                  {availableRE.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-green-50 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Open ({availableRE.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(availableREScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(availableREScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={availableREScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {availableRE.map(opp => (
+                              <div key={opp.id} className="w-[380px] flex-shrink-0">
+                                <RealEstateCard opp={opp} status="available" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Funded/Invested Real Estate - Second */}
+                  {investedRE.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-blue-50 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Funded ({investedRE.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(fundedREScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(fundedREScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={fundedREScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {investedRE.map(opp => (
+                              <div key={opp.id} className="w-[380px] flex-shrink-0">
+                                <RealEstateCard opp={opp} status="invested" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Closed Real Estate - Third */}
+                  {closedRE.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-gray-100 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Closed ({closedRE.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(closedREScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(closedREScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={closedREScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {closedRE.map(opp => (
+                              <div key={opp.id} className="w-[380px] flex-shrink-0">
+                                <RealEstateCard opp={opp} status="closed" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="funded">
+            {/* NCD Tab Content */}
+            <TabsContent value="ncd">
               {loading ? (
                 <p className="text-center text-gray-500 py-12">Loading...</p>
-              ) : fundedCount === 0 ? (
+              ) : (availableBonds.length + fundedBonds.length + closedBonds.length) === 0 ? (
                 <div className="text-center py-12">
-                  <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No funded/invested opportunities yet</p>
+                  <TrendingUp className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">No NCD opportunities</p>
+                  {canCreateBond && (
+                    <Button onClick={() => setShowNCDModal(true)}>Add NCD</Button>
+                  )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {fundedBonds.map(bond => (
-                    <BondCard key={bond.id} bond={bond} status="funded" />
-                  ))}
-                  {investedRE.map(opp => (
-                    <RealEstateCard key={opp.id} opp={opp} status="invested" />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
+                <div className="space-y-10">
+                  {/* Open NCDs - First */}
+                  {availableBonds.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-green-50 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Open ({availableBonds.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(availableBondsScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(availableBondsScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={availableBondsScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {availableBonds.map(bond => (
+                              <div key={bond.id} className="w-[380px] flex-shrink-0">
+                                <BondCard bond={bond} status="available" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Funded NCDs - Second */}
+                  {fundedBonds.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-blue-50 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Funded ({fundedBonds.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(fundedBondsScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(fundedBondsScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={fundedBondsScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {fundedBonds.map(bond => (
+                              <div key={bond.id} className="w-[380px] flex-shrink-0">
+                                <BondCard bond={bond} status="funded" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-            <TabsContent value="closed">
-              {loading ? (
-                <p className="text-center text-gray-500 py-12">Loading...</p>
-              ) : closedCount === 0 ? (
-                <div className="text-center py-12">
-                  <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No closed opportunities yet</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {closedBonds.map(bond => (
-                    <BondCard key={bond.id} bond={bond} status="closed" />
-                  ))}
-                  {closedRE.map(opp => (
-                    <RealEstateCard key={opp.id} opp={opp} status="closed" />
-                  ))}
+                  {/* Closed NCDs - Third */}
+                  {closedBonds.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-4 bg-gradient-to-r from-gray-100 to-transparent py-3 px-4 rounded-lg">
+                        <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <h3 className="text-xl font-bold text-gray-800">Closed ({closedBonds.length})</h3>
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={() => handleScroll(closedBondsScrollRef, 'left')}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleScroll(closedBondsScrollRef, 'right')}
+                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all border border-gray-200"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-600" />
+                        </button>
+                        <div ref={closedBondsScrollRef} className="overflow-x-auto pb-4 scrollbar-hide px-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                          <div className="flex gap-6" style={{ minWidth: 'max-content' }}>
+                            {closedBonds.map(bond => (
+                              <div key={bond.id} className="w-[380px] flex-shrink-0">
+                                <BondCard bond={bond} status="closed" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -2025,6 +2341,14 @@ export default function Opportunities() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Client KYC Modal */}
+      <ClientKYCModal
+        isOpen={showKycModal}
+        onClose={() => setShowKycModal(false)}
+        clientProfile={clientProfile}
+        onSuccess={() => fetchData(user)}
+      />
     </div>
   );
 }

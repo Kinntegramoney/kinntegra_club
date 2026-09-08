@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import CreateRealEstateModal from "@/components/CreateRealEstateModal";
-import { Plus, Building2, Search, Edit2, Trash2, Eye, MapPin, Upload } from "lucide-react";
+import { Plus, Building2, Search, Edit2, Trash2, Eye, MapPin, Upload, Users, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -91,6 +92,21 @@ export default function AdminRealEstate() {
     }
   };
 
+  const handleToggleVisibility = async (opportunityId, currentVisibility) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API}/real-estate-opportunities/${opportunityId}/visibility?visible_to_all_sub_brokers=${!currentVisibility}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Property ${!currentVisibility ? 'now visible' : 'hidden'} to all sub-brokers`);
+      fetchOpportunities();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to update visibility");
+    }
+  };
+
   const filteredOpportunities = opportunities.filter(opp =>
     opp.building_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     opp.unit_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -166,7 +182,7 @@ export default function AdminRealEstate() {
                     <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Type</th>
                     <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Total Cost</th>
                     <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Investors</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Payment Progress</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Created By</th>
                     <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
                     <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -224,20 +240,27 @@ export default function AdminRealEstate() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {opp.payment_schedule && opp.payment_schedule.length > 0 ? (
-                          <div className="w-24">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span>{opp.total_payment_percentage_completed || 0}%</span>
+                        {opp.created_by_sub_broker ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="h-3.5 w-3.5 text-orange-500" />
+                              <span className="text-sm font-medium text-orange-700">
+                                {opp.created_by_sub_broker.name}
+                              </span>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1.5">
-                              <div 
-                                className="bg-teal-500 h-1.5 rounded-full" 
-                                style={{ width: `${opp.total_payment_percentage_completed || 0}%` }}
+                            <div className="flex items-center gap-2">
+                              <Globe className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">Share with all</span>
+                              <Switch
+                                checked={opp.visible_to_all_sub_brokers || false}
+                                onCheckedChange={() => handleToggleVisibility(opp.id, opp.visible_to_all_sub_brokers)}
+                                className="scale-75"
+                                data-testid={`visibility-toggle-${opp.id}`}
                               />
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">No schedule</span>
+                          <span className="text-sm text-gray-500">You (Broker)</span>
                         )}
                       </td>
                       <td className="px-6 py-4">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import CreateClientModal from "@/components/CreateClientModal";
@@ -33,6 +33,7 @@ const API = `${BACKEND_URL}/api`;
 
 export default function SubBrokerClients() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
@@ -41,6 +42,9 @@ export default function SubBrokerClients() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [resendingCredentials, setResendingCredentials] = useState(false);
+  
+  // Pre-fill data from URL params (for creating investor from CAS analysis)
+  const [prefillData, setPrefillData] = useState(null);
   
   // Permission checks
   const canCreateClient = hasPermission("user_client", "create");
@@ -52,13 +56,37 @@ export default function SubBrokerClients() {
   const [uploadType, setUploadType] = useState("indian");
   const [uploading, setUploading] = useState(false);
 
+  // Check URL params for create action with pre-filled data
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const pan = searchParams.get('pan');
+    const name = searchParams.get('name');
+    const passportType = searchParams.get('passport_type');
+    const country = searchParams.get('country');
+    
+    if (action === 'create') {
+      // Set prefill data for the modal
+      setPrefillData({
+        pan_number: pan || '',
+        name: name ? decodeURIComponent(name) : '',
+        passport_type: passportType || 'indian', // Default to indian (disables foreign)
+        force_indian: passportType === 'indian', // Flag to disable foreign passport option
+        country_of_residency: country ? decodeURIComponent(country) : ''
+      });
+      setShowCreateModal(true);
+      
+      // Clear URL params after reading
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+
   // Log user activity
   useEffect(() => {
     logUserActivity('clients');
   }, []);
 
   useEffect(() => {
-    document.title = "Kinntegraa | My Clients";
+    document.title = "Kinntegraa | Private Investors";
   }, []);
 
   useEffect(() => {
@@ -111,7 +139,7 @@ export default function SubBrokerClients() {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.post(
-        `${API}/clients/${client.id}/resend-credentials`,
+        `${API}/private-investors/${client.id}/resend-credentials`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -128,7 +156,7 @@ export default function SubBrokerClients() {
   const handleDownloadTemplate = async (type) => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = type === "indian" ? "/bulk/template/clients-indian" : "/bulk/template/clients-foreign";
+      const endpoint = type === "indian" ? "/bulk/template/private-investors-indian" : "/bulk/template/private-investors-foreign";
       
       const response = await axios.get(`${API}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -164,8 +192,8 @@ export default function SubBrokerClients() {
       formData.append("file", uploadFile);
       
       const endpoint = uploadType === "indian" 
-        ? "/sub-broker/bulk/clients-indian" 
-        : "/sub-broker/bulk/clients-foreign";
+        ? "/sub-broker/bulk/private-investors-indian" 
+        : "/sub-broker/bulk/private-investors-foreign";
       
       const response = await axios.post(`${API}${endpoint}`, formData, {
         headers: { 
@@ -238,10 +266,10 @@ export default function SubBrokerClients() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="subbroker-clients-title">
-                My Clients
+                Private Investors
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Manage your linked clients ({filteredClients.length} total)
+                Manage your private investors ({filteredClients.length} total)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -250,7 +278,7 @@ export default function SubBrokerClients() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search clients..."
+                  placeholder="Search investors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 w-[200px]"
@@ -267,7 +295,8 @@ export default function SubBrokerClients() {
               {canBulkUpload && (
                 <Button
                   variant="outline"
-                  onClick={() => setShowBulkUploadModal(true)}
+                  onClick={() => navigate('/sub-broker/bulk-upload')}
+                  className="border-etihad-gold-300 text-etihad-gold-700 hover:bg-etihad-gold-50"
                   data-testid="bulk-upload-btn"
                 >
                   <Upload className="h-4 w-4 mr-2" />
@@ -281,7 +310,7 @@ export default function SubBrokerClients() {
                   data-testid="create-client-btn"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Client
+                  Add Investor
                 </Button>
               )}
             </div>
@@ -302,11 +331,11 @@ export default function SubBrokerClients() {
                 {canCreateClient && (
                   <Button onClick={() => setShowCreateModal(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Client
+                    Add Your First Investor
                   </Button>
                 )}
                 {canBulkUpload && (
-                  <Button variant="outline" onClick={() => setShowBulkUploadModal(true)}>
+                  <Button variant="outline" onClick={() => navigate('/sub-broker/bulk-upload')}>
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
                   </Button>
@@ -370,7 +399,7 @@ export default function SubBrokerClients() {
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {client.opportunities?.includes('bonds') && (
-                              <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded">Bonds</span>
+                              <span className="px-2 py-0.5 bg-etihad-gold-100 text-etihad-gold-700 text-xs rounded">NCD</span>
                             )}
                             {client.opportunities?.includes('real_estate') && (
                               <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs rounded">Real Estate</span>
@@ -421,10 +450,11 @@ export default function SubBrokerClients() {
       {/* Create Client Modal - Reuse the broker's modal */}
       {showCreateModal && (
         <CreateClientModal
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => { setShowCreateModal(false); setPrefillData(null); }}
           onSuccess={handleClientCreated}
           subbrokers={[]}
           isSubBrokerMode={true}
+          prefillData={prefillData}
         />
       )}
 

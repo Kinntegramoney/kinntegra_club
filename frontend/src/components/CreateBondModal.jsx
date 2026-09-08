@@ -56,7 +56,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
 
   const generateInterestSchedule = () => {
     if (!formData.start_date || !formData.end_date || !formData.principal_amount || !formData.coupon_rate) {
-      toast.error("Please fill in bond details first");
+      toast.error("Please fill in NCD details first");
       return;
     }
 
@@ -187,7 +187,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
     if (!formData.name || !formData.start_date || !formData.end_date || 
         !formData.principal_amount || !formData.coupon_rate || 
         !formData.primary_irr || !formData.secondary_irr) {
-      toast.error("Please fill in all bond details");
+      toast.error("Please fill in all NCD details");
       return;
     }
 
@@ -322,10 +322,10 @@ export default function CreateBondModal({ onClose, onSuccess }) {
           <form onSubmit={handleSubmit} id="bond-form">
             {activeTab === "basic" && (
               <div className="space-y-6">
-                {/* Bond Name & Code */}
+                {/* NCD Name & Code */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Bond Name *</Label>
+                    <Label htmlFor="name">NCD Name *</Label>
                     <Input
                       id="name"
                       name="name"
@@ -336,7 +336,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="bond_code">Bond Code</Label>
+                    <Label htmlFor="bond_code">NCD Code</Label>
                     <Input
                       id="bond_code"
                       name="bond_code"
@@ -657,7 +657,7 @@ export default function CreateBondModal({ onClose, onSuccess }) {
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> Presentations will be uploaded after the bond is created. You can also add or manage presentations later from the Edit Bond modal.
+                    <strong>Note:</strong> Presentations will be uploaded after the NCD is created. You can also add or manage presentations later from the Edit NCD modal.
                   </p>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Calculator, TrendingUp, DollarSign, Trash2, Upload, ShoppingCart, FileCheck, FileText, Eye, X, Download } from "lucide-react";
+import { ArrowLeft, Calculator, TrendingUp, DollarSign, Trash2, Upload, ShoppingCart, FileCheck, FileText, Eye, X, Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ export default function BondDetails() {
   const [user, setUser] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [paymentProof, setPaymentProof] = useState(null);
@@ -92,7 +93,9 @@ export default function BondDetails() {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await axios.get(`${API}/clients`, {
+      // NCDs are India-domiciled — pull the client list straight from the
+      // Private_Investor_Indian_Passport collection (PAN-holding investors).
+      const response = await axios.get(`${API}/clients/indian-passport`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClients(response.data);
@@ -477,11 +480,11 @@ export default function BondDetails() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success("Bond deleted successfully");
+      toast.success("NCD deleted successfully");
       navigate("/broker/admin/bonds");
     } catch (error) {
-      console.error("Error deleting bond:", error);
-      toast.error(error.response?.data?.detail || "Failed to delete bond");
+      console.error("Error deleting NCD:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete NCD");
     } finally {
       setDeleting(false);
     }
@@ -490,7 +493,7 @@ export default function BondDetails() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center" data-testid="loading-bond-details">
-        <p className="text-muted-foreground">Loading bond details...</p>
+        <p className="text-muted-foreground">Loading NCD details...</p>
       </div>
     );
   }
@@ -499,7 +502,7 @@ export default function BondDetails() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-destructive mb-4">Bond not found</p>
+          <p className="text-destructive mb-4">NCD not found</p>
           <Button onClick={() => navigate("/")}>Back to Dashboard</Button>
         </div>
       </div>
@@ -674,6 +677,7 @@ export default function BondDetails() {
                 <a
                   key={pres.id}
                   href={`${BACKEND_URL}/api/bonds/${bondData.id}/presentations/${pres.id}`}
+                  download={pres.original_filename}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors group"
@@ -710,7 +714,7 @@ export default function BondDetails() {
               <div>
                 <p className="text-sm font-medium text-gray-600">No Presentations</p>
                 <p className="text-xs text-gray-400">
-                  {user?.role === 'broker' ? 'Use Edit Bond to upload presentations' : 'No presentations available for this bond'}
+                  {user?.role === 'broker' ? 'Use Edit NCD to upload presentations' : 'No presentations available for this NCD'}
                 </p>
               </div>
             </div>
@@ -718,7 +722,7 @@ export default function BondDetails() {
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Bond Summary */}
+          {/* NCD Summary */}
           <div className="lg:col-span-3">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="metric-card rounded-md">
@@ -751,12 +755,12 @@ export default function BondDetails() {
                 <div>
                   {isClosed ? (
                     <>
-                      <h2 className="text-xl font-semibold">Bond Closed</h2>
-                      <p className="text-sm text-etihad-gold-600">This bond has matured (end date: {format(new Date(bondData.end_date), "MMM dd, yyyy")}). No more investments can be made.</p>
+                      <h2 className="text-xl font-semibold">NCD Closed</h2>
+                      <p className="text-sm text-etihad-gold-600">This NCD has matured (end date: {format(new Date(bondData.end_date), "MMM dd, yyyy")}). No more investments can be made.</p>
                     </>
                   ) : (
                     <>
-                      <h2 className="text-xl font-semibold">Bond Fully Funded</h2>
+                      <h2 className="text-xl font-semibold">NCD Fully Funded</h2>
                       <p className="text-sm text-etihad-gold-600">All {totalUnits} units have been sold. No more investments can be made.</p>
                     </>
                   )}
@@ -779,7 +783,7 @@ export default function BondDetails() {
             <div className="bg-gradient-to-r from-blue-50 to-etihad-maroon-50 rounded-lg p-4 mb-4 border border-blue-200">
               <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Calculator className="h-4 w-4" />
-                Bond Price Calculator (Proposed IRR: {bondData.secondary_irr}%)
+                NCD Price Calculator (Proposed IRR: {bondData.secondary_irr}%)
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1004,15 +1008,47 @@ export default function BondDetails() {
                           <SelectValue placeholder="Choose a client..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {clients.length === 0 ? (
-                            <SelectItem value="none" disabled>No clients available</SelectItem>
-                          ) : (
-                            clients.map(client => (
+                          {/* Search bar — sticks at the top of the dropdown */}
+                          <div className="sticky top-0 z-10 bg-white p-2 border-b border-gray-200">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                              <Input
+                                autoFocus
+                                placeholder="Search by name or PAN…"
+                                value={clientSearch}
+                                onChange={(e) => setClientSearch(e.target.value)}
+                                onKeyDown={(e) => { e.stopPropagation(); }}
+                                className="pl-7 h-8 text-xs"
+                                data-testid="client-search-input"
+                              />
+                            </div>
+                          </div>
+                          {(() => {
+                            const q = clientSearch.trim().toLowerCase();
+                            const filtered = clients
+                              .filter(c => {
+                                if (!q) return true;
+                                return (
+                                  (c.name || '').toLowerCase().includes(q) ||
+                                  (c.pan || c.pan_number || '').toLowerCase().includes(q)
+                                );
+                              })
+                              .sort((a, b) =>
+                                (a.name || '').localeCompare((b.name || ''), undefined, { sensitivity: 'base' })
+                              );
+
+                            if (clients.length === 0) {
+                              return <SelectItem value="none" disabled>No clients available</SelectItem>;
+                            }
+                            if (filtered.length === 0) {
+                              return <SelectItem value="no-match" disabled>No clients match "{clientSearch}"</SelectItem>;
+                            }
+                            return filtered.map(client => (
                               <SelectItem key={client.id} value={client.id}>
-                                {client.name} ({client.pan_number})
+                                {client.name} ({client.pan || client.pan_number})
                               </SelectItem>
-                            ))
-                          )}
+                            ));
+                          })()}
                         </SelectContent>
                       </Select>
                     </div>

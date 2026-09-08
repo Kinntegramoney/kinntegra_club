@@ -66,7 +66,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
     opportunities: [],
     
     // Step 4: Additional Fields
-    // For Bonds - Indian Bank Details
+    // For NCD - Indian Bank Details
     demat_account_no: "",
     bank_name: "",
     account_number: "",
@@ -161,7 +161,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
     if (uccList.length < 5) {
       setUccList([...uccList, ""]);
     } else {
-      toast.error("Maximum 5 UCCs allowed per client");
+      toast.error("Maximum 5 UCCs allowed per investor");
     }
   };
 
@@ -197,7 +197,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
   const getAvailableOpportunities = () => {
     if (formData.passport_type === "indian") {
       return [
-        { id: "bonds", label: "Bonds / NCD", description: "Corporate debt instruments" },
+        { id: "bonds", label: "NCD", description: "Corporate debt instruments" },
         { id: "real_estate", label: "Real Estate", description: "Property investments" }
       ];
     } else if (formData.passport_type === "foreign") {
@@ -245,16 +245,16 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
         linked_subbroker_id: formData.linked_subbroker_id || null
       };
       
-      await axios.put(`${API}/clients/${client.id}`, submitData, {
+      await axios.put(`${API}/private-investors/${client.id}`, submitData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success("Client updated successfully!");
+      toast.success("Investor updated successfully!");
       onSuccess();
       
     } catch (error) {
-      console.error("Error updating client:", error);
-      toast.error(error.response?.data?.detail || "Failed to update client");
+      console.error("Error updating investor:", error);
+      toast.error(error.response?.data?.detail || "Failed to update investor");
     } finally {
       setLoading(false);
     }
@@ -274,7 +274,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-etihad-gold-50">
-          <h2 className="text-xl font-bold text-gray-800">Edit Client - {client?.name}</h2>
+          <h2 className="text-xl font-bold text-gray-800">Edit Investor - {client?.name}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
@@ -378,7 +378,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                       </div>
                       <div>
                         <p className="font-semibold">Indian Passport</p>
-                        <p className="text-xs text-gray-500">PAN required, access to Bonds & Real Estate</p>
+                        <p className="text-xs text-gray-500">PAN required, access to NCD & Real Estate</p>
                       </div>
                     </div>
                   </button>
@@ -558,11 +558,11 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
                 </div>
               </div>
 
-              {/* Bonds: UCCs & Indian Bank Details */}
+              {/* NCD: UCCs & Indian Bank Details */}
               {formData.opportunities.includes("bonds") && (
                 <div className="space-y-4 pt-4 border-t">
                   <h4 className="font-medium text-gray-700 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" /> Bond Investment Details
+                    <Building2 className="h-4 w-4" /> NCD Investment Details
                   </h4>
                   
                   {/* UCCs */}
@@ -990,7 +990,7 @@ export default function EditClientModal({ client, onClose, onSuccess, subbrokers
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                 <p className="text-sm text-green-800">
-                  <strong>Ready to Save:</strong> Review the information above and click "Save Changes" to update the client profile.
+                  <strong>Ready to Save:</strong> Review the information above and click "Save Changes" to update the investor profile.
                 </p>
               </div>
             </div>

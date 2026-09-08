@@ -41,7 +41,7 @@ export default function ClientProfile() {
   const fetchProfile = async (clientId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/clients/${clientId}`, {
+      const response = await axios.get(`${API}/private-investors/${clientId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClientDetails(response.data);

@@ -283,9 +283,13 @@ export default function ClientHoldings() {
             tds_amount: 0,
             net_amount: 0,
             investment_amount: 0,
+            expected_gross: 0,
+            expected_net: 0,
+            variance: 0,
             transactions: [],
             is_prepaid: false,
-            is_repaid: cf.is_repaid
+            is_repaid: cf.is_repaid,
+            source: cf.source
           };
         }
         
@@ -300,8 +304,18 @@ export default function ClientHoldings() {
           byDate[cfDate].gross_amount += cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0));
           byDate[cfDate].tds_amount += cf.tds_amount || 0;
           byDate[cfDate].net_amount += cf.net_amount || 0;
+          // Track expected values and variance from backend
+          byDate[cfDate].expected_gross += cf.expected_gross || cf.gross_amount || 0;
+          byDate[cfDate].expected_net += cf.expected_net || cf.net_amount || 0;
+          byDate[cfDate].variance += cf.variance || 0;
           if (cf.is_prepaid) byDate[cfDate].is_prepaid = true;
           if (cf.type === 'maturity') byDate[cfDate].type = 'maturity';
+          if (cf.type === 'prepayment') byDate[cfDate].type = 'prepayment';
+          // Mark as repaid if source indicates actual payment received
+          if (cf.is_repaid || ['email_auto_approval', 'auto_tag', 'email', 'historical_upload', 'manual_entry', 'actual_repayment'].includes(cf.source)) {
+            byDate[cfDate].is_repaid = true;
+            byDate[cfDate].source = cf.source || byDate[cfDate].source;
+          }
         }
         
         byDate[cfDate].transactions.push({
@@ -309,7 +323,8 @@ export default function ClientHoldings() {
           units: trade.units,
           investment_date: trade.investment_date,
           is_prepaid: cf.is_prepaid,
-          type: cf.type
+          type: cf.type,
+          source: cf.source
         });
       });
     });
@@ -323,6 +338,15 @@ export default function ClientHoldings() {
       if (!amt || amt === 0) return '₹0.00';
       return `₹${Math.abs(amt).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
+
+    // Calculate payment status
+    const hasPrepayments = actualCashflows.some(cf => 
+      cf.type === 'prepayment' || 
+      (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+    ) || (holdingData.prepaid_count || 0) > 0 || (holdingData.prepaid_amount || 0) > 0;
+    
+    const paymentStatus = hasPrepayments ? 'Partly Prepaid' : 'On Time';
+    const statusColor = hasPrepayments ? '#d97706' : '#059669';
 
     const expInvestments = expectedCashflows.filter(cf => cf.type === 'investment');
     const expInflows = expectedCashflows.filter(cf => cf.type !== 'investment');
@@ -387,11 +411,11 @@ export default function ClientHoldings() {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
           <thead>
             <tr>
-              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Bond Name</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">NCD Name</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Units</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Total Investment</th>
               <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Expected XIRR</th>
-              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Actual XIRR</th>
+              <th style="border: 1px solid #999; background-color: #f5f5f5; padding: 10px 12px; text-align: center; font-size: 10px; font-weight: bold; color: #333;">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -400,7 +424,7 @@ export default function ClientHoldings() {
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${holdingData.total_units || holdingData.units || '-'}</td>
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #000;">${formatAmount(expTotalInvestment)}</td>
               <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #059669;">${holdingData.xirr?.toFixed(2) || '-'}%</td>
-              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: #7c3aed;">${holdingData.actual_xirr?.toFixed(2) || '-'}%</td>
+              <td style="border: 1px solid #999; padding: 12px; text-align: center; font-size: 11px; font-weight: bold; color: ${statusColor};">${paymentStatus}</td>
             </tr>
           </tbody>
         </table>
@@ -526,6 +550,14 @@ export default function ClientHoldings() {
       const actTotalGross = actInflows.reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
       const actProfit = actTotalGross - actTotalInvestment;
       
+      // Calculate payment status
+      const hasPrepayments = actualCashflows.some(cf => 
+        cf.type === 'prepayment' || 
+        (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+      ) || (holdingData.prepaid_count || 0) > 0 || (holdingData.prepaid_amount || 0) > 0;
+      
+      const paymentStatus = hasPrepayments ? 'Partly Prepaid' : 'On Time';
+      
       let csv = '';
       csv += `Cashflow Report - ${holdingData.bond_name}\n`;
       csv += `Units,${holdingData.total_units || holdingData.units || ''},,,,,,,,,\n`;
@@ -564,7 +596,7 @@ export default function ClientHoldings() {
       csv += `Expected Total Investment,${expTotalInvestment},,,,,,,,Actual Total Investment,${actTotalInvestment}\n`;
       csv += `Expected Total Returns,${expTotalGross},,,,,,,,Actual Total Returns,${actTotalGross}\n`;
       csv += `Expected Profit,${expProfit},,,,,,,,Actual Profit,${actProfit}\n`;
-      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%,,,,,,,,Actual XIRR,${holdingData.actual_xirr?.toFixed(2) || '-'}%\n`;
+      csv += `Expected XIRR,${holdingData.xirr?.toFixed(2) || '-'}%,,,,,,,,Status,${paymentStatus}\n`;
       
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
@@ -659,7 +691,7 @@ export default function ClientHoldings() {
               data-testid="tab-bonds"
             >
               <Wallet className="h-4 w-4" />
-              Bonds ({holdings?.holdings?.length || 0})
+              NCD ({holdings?.holdings?.length || 0})
             </button>
             <button 
               onClick={() => setMainTab("real-estate")}
@@ -677,19 +709,19 @@ export default function ClientHoldings() {
         </div>
 
         <div className="p-6">
-          {/* Bonds Tab Content */}
+          {/* NCD Tab Content */}
           {mainTab === "bonds" && (
             <>
               {!holdings || holdings.holdings?.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-xl border">
                   <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 font-medium">No bond holdings yet</p>
-                  <p className="text-sm text-gray-400 mt-2">Your bond investments will appear here</p>
+                  <p className="text-gray-500 font-medium">No NCD holdings yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Your NCD investments will appear here</p>
                   <Button
                     className="mt-4 bg-teal-600 hover:bg-teal-700"
                     onClick={() => navigate("/client/opportunities")}
                   >
-                    Browse Bond Opportunities
+                    Browse NCD Opportunities
                   </Button>
                 </div>
               ) : (
@@ -812,7 +844,7 @@ export default function ClientHoldings() {
                           <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Gross Expected</th>
                           <th className="text-right py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Profit</th>
                           <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Expected XIRR</th>
-                          <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Actual XIRR</th>
+                          <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Status</th>
                           <th className="text-center py-2 px-2 text-[10px] font-medium text-gray-500 uppercase">Action</th>
                         </tr>
                       </thead>
@@ -850,6 +882,15 @@ export default function ClientHoldings() {
                           const displayGross = actualGross > 0 ? actualGross : expectedGross;
                           const displayProfit = actualGross > 0 ? actualProfit : expectedProfit;
                           
+                          // Check if this holding has prepayments
+                          const holdingHasPrepayments = allActualCashflows.some(cf => 
+                            cf.type === 'prepayment' || 
+                            (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                          ) || (holding.prepaid_count || 0) > 0 || (holding.prepaid_amount || 0) > 0;
+                          
+                          const holdingStatus = holdingHasPrepayments ? 'Partly Prepaid' : 'On Time';
+                          const holdingStatusColor = holdingHasPrepayments ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50';
+                          
                           return (
                             <tr key={holding.bond_id} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-2 px-2 sticky left-0 bg-white">
@@ -875,11 +916,9 @@ export default function ClientHoldings() {
                                 )}
                               </td>
                               <td className="py-2 px-2 text-center">
-                                {holding.actual_xirr !== null && holding.actual_xirr !== undefined ? (
-                                  <span className="font-mono text-xs">{holding.actual_xirr.toFixed(2)}%</span>
-                                ) : (
-                                  <span className="text-gray-400 text-[10px]">-</span>
-                                )}
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${holdingStatusColor}`}>
+                                  {holdingStatus}
+                                </span>
                               </td>
                               <td className="py-2 px-2 text-center">
                                 <button 
@@ -1202,39 +1241,72 @@ export default function ClientHoldings() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Expected</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actual</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Variance</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {(() => {
                               const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
-                              return actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => (
-                                cf.type === 'investment' ? (
+                              return actualCashflows.length > 0 ? actualCashflows.map((cf, idx) => {
+                                const actualAmount = cf.type === 'investment' 
+                                  ? -Math.abs(cf.investment_amount || cf.gross_amount || 0)
+                                  : (cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)));
+                                const expectedAmount = cf.expected_gross || actualAmount;
+                                const variance = actualAmount - expectedAmount;
+                                
+                                return cf.type === 'investment' ? (
                                   <tr key={idx} className="bg-red-50">
-                                    <td className="py-3 px-4 font-mono text-sm text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                    <td className="py-3 px-4 text-right font-mono text-sm font-semibold text-red-600">
-                                      -{formatAbsoluteINR(Math.abs(cf.investment_amount || cf.gross_amount || 0))}
+                                    <td className="py-2 px-3 font-mono text-xs text-red-700">{format(new Date(cf.date), "dd MMM yyyy")}</td>
+                                    <td className="py-2 px-3 text-right font-mono text-xs text-red-600">
+                                      -{formatAbsoluteINR(Math.abs(expectedAmount))}
                                     </td>
-                                  </tr>
-                                ) : cf.type === 'maturity' ? (
-                                  <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                    <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                    <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
+                                    <td className="py-2 px-3 text-right font-mono text-xs font-semibold text-red-600">
+                                      -{formatAbsoluteINR(Math.abs(actualAmount))}
                                     </td>
+                                    <td className="py-2 px-3 text-right font-mono text-xs text-gray-500">-</td>
                                   </tr>
                                 ) : (
-                                  <tr key={idx} className={cf.is_repaid ? "bg-green-50" : "bg-yellow-50"}>
-                                    <td className={`py-3 px-4 font-mono text-sm ${cf.is_repaid ? "text-green-700" : "text-yellow-700"}`}>{format(new Date(cf.date), "dd MMM yyyy")}</td>
-                                    <td className={`py-3 px-4 text-right font-mono text-sm font-semibold ${cf.is_repaid ? "text-green-600" : "text-yellow-600"}`}>
-                                      {formatAbsoluteINR(cf.gross_amount || ((cf.principal_component || 0) + (cf.interest_component || 0)))}
-                                    </td>
-                                  </tr>
-                                )
-                              )) : (
+                                  (() => {
+                                    // Determine if this is a received payment (green) or pending (yellow)
+                                    // Green: is_repaid=true OR source is email/historical
+                                    const isReceived = cf.is_repaid || 
+                                      cf.source === 'email_auto_approval' || 
+                                      cf.source === 'auto_tag' || 
+                                      cf.source === 'email' ||
+                                      cf.source === 'historical_upload' ||
+                                      cf.source === 'manual_entry' ||
+                                      cf.source === 'actual_repayment';
+                                    const bgColor = isReceived ? "bg-green-50" : "bg-yellow-50";
+                                    const textColor = isReceived ? "text-green-700" : "text-yellow-700";
+                                    const amountColor = isReceived ? "text-green-600" : "text-yellow-600";
+                                    
+                                    return (
+                                      <tr key={idx} className={bgColor}>
+                                        <td className={`py-2 px-3 font-mono text-xs ${textColor}`}>
+                                          {format(new Date(cf.date), "dd MMM yyyy")}
+                                          {cf.type === 'maturity' && <span className="ml-1 text-purple-600">(M)</span>}
+                                          {cf.type === 'prepayment' && <span className="ml-1 text-orange-600">(P)</span>}
+                                          {isReceived && <span className="ml-1 text-green-500">✓</span>}
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-mono text-xs text-gray-600">
+                                          {formatAbsoluteINR(expectedAmount)}
+                                        </td>
+                                        <td className={`py-2 px-3 text-right font-mono text-xs font-semibold ${amountColor}`}>
+                                          {formatAbsoluteINR(actualAmount)}
+                                        </td>
+                                        <td className={`py-2 px-3 text-right font-mono text-xs font-medium ${variance > 0 ? "text-green-600" : variance < 0 ? "text-red-600" : "text-gray-500"}`}>
+                                          {variance !== 0 ? (variance > 0 ? '+' : '') + formatAbsoluteINR(variance) : '-'}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })()
+                                );
+                              }) : (
                                 <tr>
-                                  <td colSpan="2" className="py-8 text-center text-gray-500">
+                                  <td colSpan="4" className="py-8 text-center text-gray-500">
                                     <p className="text-sm">No actual cashflow yet</p>
                                   </td>
                                 </tr>
@@ -1248,20 +1320,46 @@ export default function ClientHoldings() {
                       <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-auto">
                         <div className="flex justify-between items-center">
                           <div>
-                            <span className="text-sm text-gray-600">Profits:</span>
-                            <span className="font-mono font-bold ml-2 text-green-600">
+                            <span className="text-sm text-gray-600">Variance:</span>
+                            <span className={`font-mono font-bold ml-2 ${
+                              (() => {
+                                const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
+                                const expectedCashflows = getExpectedCashflowsByDate(selectedHolding.trades);
+                                const actualTotal = actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                                const expectedTotal = expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                                return actualTotal - expectedTotal >= 0 ? 'text-green-600' : 'text-red-600';
+                              })()
+                            }`}>
                               {(() => {
                                 const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
-                                const profit = actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0) -
-                                  actualCashflows.filter(cf => cf.type === 'investment').reduce((sum, cf) => sum + Math.abs(cf.investment_amount || cf.gross_amount || 0), 0);
-                                return formatAbsoluteINR(profit);
+                                const expectedCashflows = getExpectedCashflowsByDate(selectedHolding.trades);
+                                const actualTotal = actualCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                                const expectedTotal = expectedCashflows.filter(cf => cf.type !== 'investment').reduce((sum, cf) => sum + (cf.gross_amount || (cf.principal_component || 0) + (cf.interest_component || 0)), 0);
+                                const variance = actualTotal - expectedTotal;
+                                return (variance >= 0 ? '+' : '') + formatAbsoluteINR(variance);
                               })()}
                             </span>
                           </div>
                           <div className="text-right">
-                            <span className="text-sm text-gray-600">XIRR:</span>
-                            <span className="font-mono font-bold ml-2 text-green-700">
-                              {selectedHolding.actual_xirr !== null && selectedHolding.actual_xirr !== undefined ? `${selectedHolding.actual_xirr.toFixed(2)}%` : '-'}
+                            <span className="text-sm text-gray-600">Status:</span>
+                            <span className={`font-semibold ml-2 px-2 py-0.5 rounded-full text-xs ${
+                              (() => {
+                                const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
+                                const hasPrepayments = actualCashflows.some(cf => 
+                                  cf.type === 'prepayment' || 
+                                  (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                                ) || (selectedHolding.prepaid_count || 0) > 0;
+                                return hasPrepayments ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50';
+                              })()
+                            }`}>
+                              {(() => {
+                                const actualCashflows = getActualCashflowsByDate(selectedHolding.trades);
+                                const hasPrepayments = actualCashflows.some(cf => 
+                                  cf.type === 'prepayment' || 
+                                  (cf.type !== 'investment' && (cf.principal_component || 0) > 0 && (cf.interest_component || 0) === 0)
+                                ) || (selectedHolding.prepaid_count || 0) > 0;
+                                return hasPrepayments ? 'Partly Prepaid' : 'On Time';
+                              })()}
                             </span>
                           </div>
                         </div>

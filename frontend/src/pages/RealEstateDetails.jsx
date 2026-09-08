@@ -5,11 +5,12 @@ import * as XLSX from 'xlsx';
 import Sidebar from "@/components/Sidebar";
 import SubBrokerSidebar from "@/components/SubBrokerSidebar";
 import ClientSidebar from "@/components/ClientSidebar";
+import REBrokerSidebar from "@/components/REBrokerSidebar";
 import { 
   Building2, MapPin, ArrowLeft, Calendar, Users, Check, User,
   DollarSign, Ruler, Car, CheckCircle2, Clock, Plus, Upload, FileText, X, CreditCard, TrendingUp,
   Calculator, Heart, UserPlus, Info, Download, Send, Bell, Eye, Settings, BarChart3, Edit2, Trash2, RefreshCw,
-  Search, Mail, Image, ChevronLeft, ChevronRight, Lock, ExternalLink
+  Search, Mail, Image, ChevronLeft, ChevronRight, Lock, ExternalLink, Video, Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,55 @@ const getDocumentUrl = (url) => {
   }
   // Default: prepend BACKEND_URL and /api
   return `${BACKEND_URL}/api${url}`;
+};
+
+// Open an auth-protected API endpoint in a new tab. We can't just
+// `window.open(apiUrl)` because the new tab won't carry the Bearer token
+// from localStorage and the endpoint returns 403. Instead we fetch the
+// file with the Authorization header, wrap the response in a Blob, and
+// open the resulting object URL.
+const openAuthedDocument = async (apiPath, fallbackFilename = 'document') => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${BACKEND_URL}${apiPath}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], {
+      type: res.headers['content-type'] || 'application/octet-stream',
+    });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, '_blank');
+    if (!win) {
+      // Popup blocked — fall back to triggering a download instead
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fallbackFilename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    // Revoke after a delay so the new tab has time to load
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  } catch (err) {
+    const status = err?.response?.status;
+    let detail = err?.response?.data;
+    // axios returns blob on error too — try to parse JSON detail
+    if (detail instanceof Blob) {
+      try { detail = JSON.parse(await detail.text())?.detail; } catch { detail = null; }
+    } else if (typeof detail === 'object') {
+      detail = detail?.detail;
+    }
+    if (status === 409) {
+      toast.error(detail || 'PDF is not attached for this row yet.');
+    } else if (status === 404) {
+      toast.error(detail || 'Document not found.');
+    } else if (status === 403) {
+      toast.error('You are not authorized to view this document.');
+    } else {
+      toast.error(detail || 'Failed to open document.');
+    }
+  }
 };
 
 export default function RealEstateDetails() {
@@ -77,6 +127,11 @@ export default function RealEstateDetails() {
   const [deleting, setDeleting] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Video upload state
+  const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   
   // Passport Preview Modal state
   const [showPassportPreviewModal, setShowPassportPreviewModal] = useState(false);
@@ -146,10 +201,21 @@ export default function RealEstateDetails() {
   const [xirrSaleRate, setXirrSaleRate] = useState(""); // per sqft
   const [currencyProjectionsMissing, setCurrencyProjectionsMissing] = useState(false);
 
-  // Update xirrSaleStage to eligible percentage when opportunity loads
+  // Link XIRR calculator inputs to Real_Estate_Master "Sale Settings" by default:
+  // * Sale Date  <- estimated_sell_date
+  // * Sale Rate  <- expected_sale_rate (per sqft)
+  // * Sale Stage <- eligible_to_sell_after_percentage ("Eligible to sell after")
   useEffect(() => {
-    if (opportunity?.eligible_to_sell_after_percentage) {
+    if (!opportunity) return;
+    if (opportunity.eligible_to_sell_after_percentage) {
       setXirrSaleStage(opportunity.eligible_to_sell_after_percentage);
+    }
+    if (opportunity.estimated_sell_date) {
+      // date input expects YYYY-MM-DD
+      setXirrSaleDate(String(opportunity.estimated_sell_date).slice(0, 10));
+    }
+    if (opportunity.expected_sale_rate !== undefined && opportunity.expected_sale_rate !== null) {
+      setXirrSaleRate(String(opportunity.expected_sale_rate));
     }
   }, [opportunity]);
 
@@ -238,13 +304,8 @@ export default function RealEstateDetails() {
     return null;
   }, [opportunity?.investors, targetClientId]);
 
-  // Auto-show payment schedule modal when coming from holdings with a specific client
-  useEffect(() => {
-    if (isFromHoldings && holdingsClientInvestor && opportunity) {
-      // Auto-open payment schedule modal for the specific client when coming from holdings
-      setShowPaymentScheduleModal(true);
-    }
-  }, [isFromHoldings, holdingsClientInvestor, opportunity]);
+  // NOTE: Removed auto-show payment schedule modal when coming from holdings
+  // Users should manually click to view payment schedule if needed
 
   const fetchData = useCallback(async () => {
     try {
@@ -278,6 +339,69 @@ export default function RealEstateDetails() {
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  // Video upload handler
+  const handleVideoUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    const currentVideos = opportunity?.videos?.length || 0;
+    if (currentVideos + files.length > 5) {
+      toast.error(`Maximum 5 videos allowed. Currently have ${currentVideos}.`);
+      return;
+    }
+    
+    // Validate file sizes (100MB max each)
+    for (const file of files) {
+      if (file.size > 100 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 100MB limit`);
+        return;
+      }
+    }
+    
+    setUploadingVideo(true);
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('files', file);
+      }
+      
+      await axios.post(`${API}/real-estate-opportunities/${id}/videos`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      toast.success(`Successfully uploaded ${files.length} video(s)`);
+      await fetchData(); // Refresh data
+      setShowVideoUploadModal(false);
+    } catch (error) {
+      console.error("Error uploading video:", error);
+      toast.error(error.response?.data?.detail || "Failed to upload video");
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  // Video delete handler
+  const handleDeleteVideo = async (videoId) => {
+    if (!window.confirm("Are you sure you want to delete this video?")) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/real-estate-opportunities/${id}/videos/${videoId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success("Video deleted successfully");
+      await fetchData(); // Refresh data
+      setCurrentVideoIndex(0);
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      toast.error(error.response?.data?.detail || "Failed to delete video");
     }
   };
 
@@ -516,12 +640,24 @@ export default function RealEstateDetails() {
     const adminFee = opp.admin_fee || 0;
     const upfrontFees = dldFee + adminFee;
     const saleDate = new Date(saleDateStr);
-    
+
+    // DLD + Admin — always included as its own up-front outflow so the
+    // breakdown shows it explicitly and it cannot be lost even when the
+    // first payment gets clipped by the sale-stage cap.
+    if (upfrontFees > 0) {
+      cashFlows.push({
+        date: new Date(sortedSchedule[0].date),
+        amount: -upfrontFees,
+        description: `DLD Fee + Admin Fee (${dldFee.toLocaleString()} + ${adminFee.toLocaleString()})`,
+        percentage: 0,
+        isOutflow: true,
+      });
+    }
+
     // Track total paid towards unit price
     let totalPaidTowardsUnit = 0;
     let cumulativePercent = 0;
-    let isFirstPayment = true;
-    
+
     sortedSchedule.forEach(milestone => {
       const pct = parseFloat(milestone.percentage) || 0;
       const prevCumulative = cumulativePercent;
@@ -546,18 +682,14 @@ export default function RealEstateDetails() {
         
         const paymentAmount = unitPrice * effectivePct / 100;
         totalPaidTowardsUnit += paymentAmount;
-        
-        // First payment includes DLD + Admin fees (upfront costs)
-        const totalOutflow = isFirstPayment ? paymentAmount + upfrontFees : paymentAmount;
-        
-        cashFlows.push({ 
-          date: milestoneDate, 
-          amount: -totalOutflow,
-          description: isFirstPayment ? `${milestone.description || 'Booking'} + DLD + Admin` : (milestone.description || `Payment`),
+
+        cashFlows.push({
+          date: milestoneDate,
+          amount: -paymentAmount,
+          description: milestone.description || `Payment (${effectivePct}%)`,
           percentage: effectivePct,
           isOutflow: true
         });
-        isFirstPayment = false;
       }
     });
 
@@ -759,8 +891,12 @@ export default function RealEstateDetails() {
   // Broker: can view all investors
   // Sub-broker: can only view their linked clients
   // Client: can only view their OWN details
+  // When navigated from Holdings with a specific client, scope strictly to
+  // that client (even for brokers) so the property detail page mirrors the
+  // single-investor view the broker clicked into.
   const canViewInvestorDetails = (investorClientId) => {
     if (!user) return false;
+    if (isFromHoldings && targetClientId) return investorClientId === targetClientId;
     if (user.role === 'broker') return true;
     if (user.role === 'sub_broker') return isSubBrokerLinkedClient(investorClientId);
     if (user.role === 'client') return user.client_id === investorClientId || user.id === investorClientId;
@@ -826,24 +962,28 @@ export default function RealEstateDetails() {
   // Determine correct sidebar and navigation paths based on user role
   const SidebarComponent = user.role === 'broker' ? Sidebar : 
                           user.role === 'sub_broker' ? SubBrokerSidebar : 
+                          user.role === 're_broker' ? REBrokerSidebar :
                           ClientSidebar;
   
   const getBackPath = () => {
     // If coming from holdings, go back to holdings with the appropriate tab
     if (isFromHoldings) {
-      const rolePrefix = user.role === 'sub_broker' ? '/sub-broker' : user.role === 'client' ? '/client' : '/broker';
+      const rolePrefix = user.role === 'sub_broker' ? '/sub-broker' : 
+                        user.role === 'client' ? '/client' : 
+                        user.role === 're_broker' ? '/re-broker' : '/broker';
       const tabParam = holdingsTab === 'bonds' ? '?tab=bonds' : '?tab=real-estate';
       return `${rolePrefix}/holdings${tabParam}`;
     }
     // Default: go back to opportunities
     if (user.role === 'sub_broker') return '/sub-broker/opportunities';
     if (user.role === 'client') return '/client/opportunities';
+    if (user.role === 're_broker') return '/re-broker/opportunities';
     return '/broker/opportunities';
   };
   
   const getBackLabel = () => {
     if (isFromHoldings) {
-      return holdingsTab === 'bonds' ? 'Back to Holdings (Bonds)' : 'Back to Holdings (Real Estate)';
+      return holdingsTab === 'bonds' ? 'Back to Holdings (NCD)' : 'Back to Holdings (Real Estate)';
     }
     return 'Back to Opportunities';
   };
@@ -966,91 +1106,204 @@ export default function RealEstateDetails() {
         </div>
 
         <div className="p-8 space-y-6">
-          {/* Property Images */}
-          {opp.images && opp.images.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-teal-600" />
-                Property Images
-                <span className="text-sm font-normal text-gray-500 ml-2">({opp.images.length} photos)</span>
+          {/* Property Media Section - Photos & Videos Combined */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Image className="h-5 w-5 text-teal-600" />
+                Property Media
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({opp.images?.length || 0} photos, {opp.videos?.length || 0} videos)
+                </span>
               </h2>
-              
-              {/* Main Image Slider */}
-              <div className="relative">
-                {/* Main Image Display */}
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
-                  {(() => {
-                    const img = opp.images[currentImageIndex];
-                    const imgSrc = img?.data 
-                      ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
-                      : (img?.url || img);
-                    return (
-                      <img 
-                        src={imgSrc}
-                        alt={`${opp.building_name} - Image ${currentImageIndex + 1}`}
-                        className="w-full h-full object-cover"
-                        data-testid="main-slider-image"
-                      />
-                    );
-                  })()}
+              {(user?.role === 'broker' || user?.role === 'sub_broker' || user?.role === 're_broker') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowVideoUploadModal(true)}
+                  disabled={opp.videos?.length >= 5}
+                  className="flex items-center gap-2"
+                  data-testid="upload-video-btn"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload Video
+                </Button>
+              )}
+            </div>
+            
+            {/* Photos Section */}
+            {opp.images && opp.images.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Photos ({opp.images.length})
+                </h3>
+                <div className="relative">
+                  {/* Main Image Display */}
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
+                    {(() => {
+                      const img = opp.images[currentImageIndex];
+                      const imgSrc = img?.data 
+                        ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
+                        : (img?.url || img);
+                      return (
+                        <img 
+                          src={imgSrc}
+                          alt={`${opp.building_name} - Image ${currentImageIndex + 1}`}
+                          className="w-full h-full object-cover"
+                          data-testid="main-slider-image"
+                        />
+                      );
+                    })()}
+                    
+                    {/* Navigation Arrows */}
+                    {opp.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentImageIndex(prev => prev === 0 ? opp.images.length - 1 : prev - 1)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                          data-testid="slider-prev-btn"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => setCurrentImageIndex(prev => prev === opp.images.length - 1 ? 0 : prev + 1)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                          data-testid="slider-next-btn"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-700" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {/* Image Counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                      {currentImageIndex + 1} / {opp.images.length}
+                    </div>
+                  </div>
                   
-                  {/* Navigation Arrows */}
+                  {/* Thumbnail Strip */}
                   {opp.images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setCurrentImageIndex(prev => prev === 0 ? opp.images.length - 1 : prev - 1)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                        data-testid="slider-prev-btn"
-                      >
-                        <ChevronLeft className="h-6 w-6 text-gray-700" />
-                      </button>
-                      <button
-                        onClick={() => setCurrentImageIndex(prev => prev === opp.images.length - 1 ? 0 : prev + 1)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                        data-testid="slider-next-btn"
-                      >
-                        <ChevronRight className="h-6 w-6 text-gray-700" />
-                      </button>
-                    </>
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                      {opp.images.map((img, idx) => {
+                        const imgSrc = img.data 
+                          ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
+                          : (img.url || img);
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentImageIndex(idx)}
+                            className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                              idx === currentImageIndex 
+                                ? 'border-teal-500 ring-2 ring-teal-200' 
+                                : 'border-transparent hover:border-gray-300'
+                            }`}
+                            data-testid={`thumbnail-${idx}`}
+                          >
+                            <img 
+                              src={imgSrc}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
+                </div>
+              </div>
+            )}
+            
+            {/* Videos Section */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Videos ({opp.videos?.length || 0}/5)
+              </h3>
+              
+              {opp.videos && opp.videos.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Main Video Player */}
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
+                    <video
+                      key={opp.videos[currentVideoIndex]?.id}
+                      src={`${BACKEND_URL}${opp.videos[currentVideoIndex]?.url}`}
+                      controls
+                      className="w-full h-full"
+                      data-testid="main-video-player"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                    
+                    {/* Video Navigation */}
+                    {opp.videos.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentVideoIndex(prev => prev === 0 ? opp.videos.length - 1 : prev - 1)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                          data-testid="video-prev-btn"
+                        >
+                          <ChevronLeft className="h-6 w-6 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => setCurrentVideoIndex(prev => prev === opp.videos.length - 1 ? 0 : prev + 1)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                          data-testid="video-next-btn"
+                        >
+                          <ChevronRight className="h-6 w-6 text-gray-700" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {/* Video Counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                      {currentVideoIndex + 1} / {opp.videos.length}
+                    </div>
+                  </div>
                   
-                  {/* Image Counter */}
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
-                    {currentImageIndex + 1} / {opp.images.length}
+                  {/* Video Thumbnails/List */}
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {opp.videos.map((video, idx) => (
+                      <div
+                        key={video.id}
+                        className={`flex-shrink-0 relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                          idx === currentVideoIndex 
+                            ? 'border-purple-500 ring-2 ring-purple-200' 
+                            : 'border-transparent hover:border-gray-300'
+                        }`}
+                        onClick={() => setCurrentVideoIndex(idx)}
+                      >
+                        <div className="w-32 h-20 bg-gray-800 flex items-center justify-center">
+                          <Play className="h-8 w-8 text-white/80" />
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 truncate">
+                          {video.filename}
+                        </div>
+                        {/* Delete button for broker */}
+                        {(user?.role === 'broker' || user?.role === 'sub_broker') && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteVideo(video.id); }}
+                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`delete-video-${idx}`}
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                
-                {/* Thumbnail Strip */}
-                {opp.images.length > 1 && (
-                  <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                    {opp.images.map((img, idx) => {
-                      const imgSrc = img.data 
-                        ? (img.data.startsWith('data:') ? img.data : `data:${img.content_type || 'image/jpeg'};base64,${img.data}`)
-                        : (img.url || img);
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setCurrentImageIndex(idx)}
-                          className={`flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                            idx === currentImageIndex 
-                              ? 'border-teal-500 ring-2 ring-teal-200' 
-                              : 'border-transparent hover:border-gray-300'
-                          }`}
-                          data-testid={`thumbnail-${idx}`}
-                        >
-                          <img 
-                            src={imgSrc}
-                            alt={`Thumbnail ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
+                  <Video className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No videos uploaded yet</p>
+                  {(user?.role === 'broker' || user?.role === 'sub_broker' || user?.role === 're_broker') && (
+                    <p className="text-xs mt-1 text-gray-400">Upload property walkthrough videos to attract more investors</p>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Presentations Section - Downloadable by clients/sub-brokers */}
           {opp.presentations && opp.presentations.length > 0 && (
@@ -1185,39 +1438,60 @@ export default function RealEstateDetails() {
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-teal-600" />
               Financial Summary
+              {isFromHoldings && holdingsClientInvestor && (
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  (Your share: {holdingsClientInvestor.share_percentage || 0}% — {holdingsClientInvestor.client_name})
+                </span>
+              )}
             </h2>
+            {(() => {
+              const share = isFromHoldings && holdingsClientInvestor
+                ? (holdingsClientInvestor.share_percentage || 0) / 100
+                : 1;
+              const showShare = isFromHoldings && holdingsClientInvestor && share > 0;
+              const unitPriceDisp = (opp.unit_price || 0) * share;
+              const totalCostDisp = (opp.total_cost || 0) * share;
+              const dldDisp = (opp.dld_fee || 0) * share;
+              const adminDisp = (opp.admin_fee || 0) * share;
+              const brokerDisp = (opp.broker_fee || 0) * share;
+              const otherDisp = (opp.other_fees || 0) * share;
+              return (
+            <>
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="bg-orange-50 rounded-lg p-5 border border-orange-200">
-                <p className="text-sm text-orange-600 mb-1">Unit Price</p>
-                <p className="text-3xl font-bold text-orange-800">AED {formatCurrency(opp.unit_price)}</p>
+                <p className="text-sm text-orange-600 mb-1">Unit Price{showShare ? ' (Your Share)' : ''}</p>
+                <p className="text-3xl font-bold text-orange-800">AED {formatCurrency(unitPriceDisp)}</p>
               </div>
               <div className="bg-teal-50 rounded-lg p-5 border border-teal-200">
-                <p className="text-sm text-teal-600 mb-1">Total Cost (incl. all fees)</p>
-                <p className="text-3xl font-bold text-teal-800">AED {formatCurrency(opp.total_cost)}</p>
+                <p className="text-sm text-teal-600 mb-1">Total Cost (incl. all fees){showShare ? ' — Your Share' : ''}</p>
+                <p className="text-3xl font-bold text-teal-800">AED {formatCurrency(totalCostDisp)}</p>
               </div>
             </div>
             
             {/* Fee Breakdown */}
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Fee Breakdown{showShare ? ' (Your Share)' : ''}</h3>
             <div className="grid grid-cols-4 gap-3 text-sm">
               <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                 <p className="text-orange-600 font-medium">DLD Fee</p>
-                <p className="text-lg font-bold text-orange-800">AED {formatCurrency(opp.dld_fee)}</p>
+                <p className="text-lg font-bold text-orange-800">AED {formatCurrency(dldDisp)}</p>
                 <p className="text-xs text-orange-500">({opp.dld_fee_percentage}%)</p>
               </div>
               <div className="bg-green-50 rounded-lg p-3 border border-green-100">
                 <p className="text-green-600 font-medium">Admin Fee</p>
-                <p className="text-lg font-bold text-green-800">AED {formatCurrency(opp.admin_fee)}</p>
+                <p className="text-lg font-bold text-green-800">AED {formatCurrency(adminDisp)}</p>
               </div>
               <div className="bg-etihad-gold-50 rounded-lg p-3 border border-etihad-gold-100">
                 <p className="text-etihad-gold-600 font-medium">Brokerage</p>
-                <p className="text-lg font-bold text-etihad-gold-800">AED {formatCurrency(opp.broker_fee)}</p>
+                <p className="text-lg font-bold text-etihad-gold-800">AED {formatCurrency(brokerDisp)}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                 <p className="text-gray-600 font-medium">Other Fees</p>
-                <p className="text-lg font-bold text-gray-800">AED {formatCurrency(opp.other_fees)}</p>
+                <p className="text-lg font-bold text-gray-800">AED {formatCurrency(otherDisp)}</p>
               </div>
             </div>
+            </>
+              );
+            })()}
           </div>
 
           {/* Sale Returns Section - Only shown for closed/sold properties */}
@@ -1353,7 +1627,13 @@ export default function RealEstateDetails() {
                           
                           {/* Amount */}
                           <td className="py-4 px-3 text-right">
-                            <p className="font-bold text-gray-800">AED {formatCurrency(opp.unit_price * milestone.percentage / 100)}</p>
+                            {(() => {
+                              const share = isFromHoldings && holdingsClientInvestor
+                                ? (holdingsClientInvestor.share_percentage || 0) / 100
+                                : 1;
+                              const amt = (opp.unit_price * milestone.percentage / 100) * share;
+                              return <p className="font-bold text-gray-800">AED {formatCurrency(amt)}</p>;
+                            })()}
                           </td>
                           
                           {/* Progress Bars */}
@@ -1413,9 +1693,13 @@ export default function RealEstateDetails() {
                             const investorShare = investor.share_percentage || (100 / totalInvestors);
                             const investorAmount = (opp.unit_price * milestone.percentage / 100) * (investorShare / 100);
                             
-                            // Sequential workflow: Invoice → SWIFT (verify) → Receipt (approve)
-                            const canUploadSwift = hasInvoice && !hasSwift;
-                            const canUploadReceipt = hasSwift && isVerified && !hasReceipt; // Only after SWIFT is uploaded AND verified
+                            // Workflow: Invoice (optional) → SWIFT → Receipt.
+                            // Invoice is no longer a hard prerequisite for the
+                            // SWIFT upload; the SWIFT slot is open from the start.
+                            // The Receipt slot only opens once the SWIFT has been
+                            // uploaded.
+                            const canUploadSwift = !hasSwift;
+                            const canUploadReceipt = hasSwift && !hasReceipt;
                             
                             return (
                               <td key={invIdx} className="py-2 px-2 text-center border-l border-gray-100">
@@ -1427,7 +1711,7 @@ export default function RealEstateDetails() {
                                       {hasInvoice ? (
                                         <>
                                           <span className="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Check className="h-3 w-3" /></span>
-                                          <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, '_blank')}>View</button>
+                                          <button className="text-[8px] text-blue-600 hover:text-blue-800 font-medium" onClick={() => openAuthedDocument(`/api/real-estate-opportunities/${opp.id}/invoices/${invoice.id}`, invoice.original_filename || `invoice-${invoice.invoice_number || invoice.id}.pdf`)}>View</button>
                                         </>
                                       ) : canManageInvestorPayment(investor.client_id) ? (
                                         <>
@@ -1491,7 +1775,7 @@ export default function RealEstateDetails() {
                                           <span className={`w-6 h-6 rounded flex items-center justify-center ${receiptApproved ? 'bg-purple-100 text-purple-600' : 'bg-etihad-gold-100 text-etihad-gold-600'}`}>
                                             {receiptApproved ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                           </span>
-                                          <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => window.open(`${process.env.REACT_APP_BACKEND_URL}/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, '_blank')}>View</button>
+                                          <button className="text-[8px] text-purple-600 hover:text-purple-800 font-medium" onClick={() => openAuthedDocument(`/api/real-estate-opportunities/${opp.id}/developer-receipt/${payment.id}`, `receipt-${payment.id}.pdf`)}>View</button>
                                           {!receiptApproved && user?.role === 'broker' && (
                                             <button 
                                               className="text-[8px] text-green-600 hover:text-green-800 font-medium"
@@ -1666,9 +1950,13 @@ export default function RealEstateDetails() {
                               const isPending = hasSwift && !isVerified;
                               const receiptApproved = invDldAdmin.receipt_approved;
                               
-                              // Sequential workflow: Invoice → SWIFT (verify) → Receipt (approve)
-                              const canUploadSwiftDld = hasInvoice && !hasSwift;
-                              const canUploadReceiptDld = hasSwift && isVerified && !hasReceipt;
+                              // Workflow: Invoice (optional) → SWIFT → Receipt.
+                              // Invoice is no longer a hard prerequisite for the
+                              // SWIFT upload; the SWIFT slot is open from the start.
+                              // The Receipt slot only opens once the SWIFT has been
+                              // uploaded.
+                              const canUploadSwiftDld = !hasSwift;
+                              const canUploadReceiptDld = hasSwift && !hasReceipt;
                               
                               // Check if user can manage this investor's payment
                               const canManageThisInvestor = canManageInvestorPayment(investor.client_id);
@@ -1876,7 +2164,7 @@ export default function RealEstateDetails() {
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-                {opp.investors.map((investor, idx) => {
+                {opp.investors.filter(inv => canViewInvestorDetails(inv.client_id)).map((investor, idx) => {
                   const canViewDetails = canViewInvestorDetails(investor.client_id);
                   const isOwnProfile = isCurrentUserInvestor(investor.client_id);
                   
@@ -2103,22 +2391,35 @@ export default function RealEstateDetails() {
                         
                         if (!summary) return <p className="text-gray-500">Unable to calculate</p>;
                         
+                        // Scale amounts to client's share when navigated from Holdings
+                        // (XIRR % itself is share-invariant).
+                        const share = isFromHoldings && holdingsClientInvestor
+                          ? (holdingsClientInvestor.share_percentage || 0) / 100
+                          : 1;
+                        const scale = (v) => (v || 0) * share;
+                        const showShareLabel = isFromHoldings && holdingsClientInvestor && share > 0 && share < 1;
+                        
                         return (
                           <>
+                            {showShareLabel && (
+                              <p className="text-[11px] text-indigo-600 -mt-2 mb-2">
+                                Showing {holdingsClientInvestor.share_percentage}% share ({holdingsClientInvestor.client_name})
+                              </p>
+                            )}
                             {/* Investment Summary */}
                             <div className="space-y-2 text-sm">
                               <p className="font-medium text-gray-700 border-b pb-1">Investment (Outflows)</p>
                               <div className="flex justify-between">
                                 <span className="text-gray-500">Unit Price Paid ({xirrSaleStage}%)</span>
-                                <span className="text-red-600">-AED {formatCurrency(summary.unitPricePaid)}</span>
+                                <span className="text-red-600">-AED {formatCurrency(scale(summary.unitPricePaid))}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-500">DLD + Admin (Upfront)</span>
-                                <span className="text-red-600">-AED {formatCurrency(summary.upfrontFees)}</span>
+                                <span className="text-red-600">-AED {formatCurrency(scale(summary.upfrontFees))}</span>
                               </div>
                               <div className="flex justify-between font-medium border-t pt-1">
                                 <span>Total Invested</span>
-                                <span className="text-red-700">-AED {formatCurrency(summary.totalInvested)}</span>
+                                <span className="text-red-700">-AED {formatCurrency(scale(summary.totalInvested))}</span>
                               </div>
                             </div>
                             
@@ -2127,19 +2428,19 @@ export default function RealEstateDetails() {
                               <p className="font-medium text-gray-700 border-b pb-1">Sale Proceeds (Inflow)</p>
                               <div className="flex justify-between">
                                 <span className="text-gray-500">Gross Sale ({opp.total_area} sqft)</span>
-                                <span>AED {formatCurrency(summary.grossSaleValue)}</span>
+                                <span>AED {formatCurrency(scale(summary.grossSaleValue))}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-500">Less: Selling Fee ({opp.unit_selling_fee_percentage || 0}%)</span>
-                                <span className="text-red-500">-AED {formatCurrency(summary.sellingFee)}</span>
+                                <span className="text-red-500">-AED {formatCurrency(scale(summary.sellingFee))}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-500">Less: Outstanding ({100 - xirrSaleStage}%)</span>
-                                <span className="text-red-500">-AED {formatCurrency(summary.outstandingAmount)}</span>
+                                <span className="text-red-500">-AED {formatCurrency(scale(summary.outstandingAmount))}</span>
                               </div>
                               <div className="flex justify-between font-medium border-t pt-1">
                                 <span>Net Proceeds</span>
-                                <span className="text-green-700">+AED {formatCurrency(summary.netSaleProceeds)}</span>
+                                <span className="text-green-700">+AED {formatCurrency(scale(summary.netSaleProceeds))}</span>
                               </div>
                             </div>
                             
@@ -2148,7 +2449,7 @@ export default function RealEstateDetails() {
                               <div className="flex justify-between items-center">
                                 <span className="font-medium">Net Profit</span>
                                 <span className={`font-bold text-lg ${summary.netSaleProceeds - summary.totalInvested >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                  AED {formatCurrency(summary.netSaleProceeds - summary.totalInvested)}
+                                  AED {formatCurrency(scale(summary.netSaleProceeds - summary.totalInvested))}
                                 </span>
                               </div>
                             </div>
@@ -2247,7 +2548,7 @@ export default function RealEstateDetails() {
                 <Send className="h-5 w-5 text-teal-600" />
                 Share with Clients
               </h2>
-              <p className="text-gray-600 mb-4">Send this opportunity to your clients. You'll receive a notification when they show interest.</p>
+              <p className="text-gray-600 mb-4">Send this opportunity to your investors. You'll receive a notification when they show interest.</p>
               
               <Button 
                 size="lg" 
@@ -2283,61 +2584,82 @@ export default function RealEstateDetails() {
             </div>
           )}
 
-          {/* Current Investors Section - Visible when not fully allocated */}
-          {(user?.role === 'broker' || user?.role === 'sub_broker') && !isFullyAllocated && opp.investors && opp.investors.length > 0 && (
+          {/* Current Investors Section - Visible for brokers on funded/invested properties */}
+          {(user?.role === 'broker' || user?.role === 'sub_broker' || user?.role === 're_broker') && 
+           (opp.status === 'funded' || opp.status === 'fully_invested' || opp.status === 'partially_invested' || (opp.investors && opp.investors.length > 0)) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <Users className="h-5 w-5 text-blue-600" />
-                  Tagged Investors ({opp.investors.length})
+                  {opp.status === 'funded' || opp.status === 'fully_invested' ? 'Co-Investors' : 'Tagged Investors'} ({opp.investors?.length || 0})
                 </h2>
-                <div className="text-sm text-gray-500">
-                  {opp.invested_percentage?.toFixed(1) || 0}% allocated
+                <div className="flex items-center gap-2">
+                  {(opp.status === 'funded' || opp.status === 'fully_invested') && (
+                    <Badge className="bg-green-100 text-green-700">Fully Funded</Badge>
+                  )}
+                  <span className="text-sm text-gray-500">
+                    {opp.invested_percentage?.toFixed(1) || 0}% allocated
+                  </span>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {opp.investors.map((investor, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-800">{investor.client_name || `Investor ${idx + 1}`}</span>
-                      <Badge variant="outline" className="text-blue-600">{investor.share_percentage || 25}%</Badge>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-3">
-                      Investment: AED {formatCurrency(opp.total_cost * (investor.share_percentage || 25) / 100)}
-                    </p>
-                    
-                    {/* Edit/Remove buttons - ONLY for broker */}
-                    {user?.role === 'broker' && (
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={() => {
-                            setSelectedInvestorForEdit(investor);
-                            setShowEditInvestorModal(true);
-                          }}
-                          data-testid={`edit-investor-btn-${idx}`}
-                        >
-                          <Edit2 className="h-4 w-4 mr-1" />
-                          Edit %
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleRemoveInvestor(investor)}
-                          data-testid={`remove-investor-btn-${idx}`}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
+              {(!opp.investors || opp.investors.length === 0) ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No investors tagged yet</p>
+                  {opp.status !== 'funded' && opp.status !== 'fully_invested' && (
+                    <p className="text-sm text-gray-400 mt-1">Tag investors to this property using the allocation section above</p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {opp.investors.map((investor, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-800">{investor.client_name || investor.name || `Investor ${idx + 1}`}</span>
+                        <Badge variant="outline" className="text-blue-600">{investor.share_percentage || 25}%</Badge>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <p className="text-sm text-gray-500 mb-1">
+                        Investment: AED {formatCurrency((opp.unit_price || opp.total_cost) * (investor.share_percentage || 25) / 100)}
+                      </p>
+                      {investor.contribution && (
+                        <p className="text-xs text-green-600">
+                          Paid: AED {formatCurrency(investor.contribution)}
+                        </p>
+                      )}
+                      
+                      {/* Edit/Remove buttons - ONLY for broker when not funded */}
+                      {user?.role === 'broker' && opp.status !== 'funded' && opp.status !== 'fully_invested' && (
+                        <div className="flex gap-2 mt-3">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => {
+                              setSelectedInvestorForEdit(investor);
+                              setShowEditInvestorModal(true);
+                            }}
+                            data-testid={`edit-investor-btn-${idx}`}
+                          >
+                            <Edit2 className="h-4 w-4 mr-1" />
+                            Edit %
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleRemoveInvestor(investor)}
+                            data-testid={`remove-investor-btn-${idx}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -2460,6 +2782,77 @@ export default function RealEstateDetails() {
         </div>
       )}
 
+      {/* Video Upload Modal */}
+      {showVideoUploadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-full">
+                  <Video className="h-6 w-6 text-purple-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Upload Property Videos</h2>
+              </div>
+              <button
+                onClick={() => setShowVideoUploadModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors">
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/mpeg"
+                  multiple
+                  onChange={(e) => handleVideoUpload(e.target.files)}
+                  className="hidden"
+                  id="video-upload-input"
+                  data-testid="video-upload-input"
+                />
+                <label htmlFor="video-upload-input" className="cursor-pointer">
+                  <Video className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                  <p className="text-gray-600 font-medium">Click to upload videos</p>
+                  <p className="text-sm text-gray-400 mt-1">MP4, WebM, MOV, AVI (max 100MB each)</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {opp?.videos?.length || 0}/5 videos uploaded
+                  </p>
+                </label>
+              </div>
+              
+              {uploadingVideo && (
+                <div className="flex items-center justify-center gap-2 text-purple-600">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span>Uploading videos...</span>
+                </div>
+              )}
+              
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Tips for property videos:</h4>
+                <ul className="text-sm text-gray-500 space-y-1">
+                  <li>• Record walkthrough videos to showcase the property</li>
+                  <li>• Include views from balcony/windows</li>
+                  <li>• Show amenities and common areas</li>
+                  <li>• Keep videos under 2-3 minutes for best engagement</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowVideoUploadModal(false)}
+                disabled={uploadingVideo}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Schedule View Details Modal */}
       {showPaymentScheduleModal && opp.payment_schedule && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -2494,11 +2887,11 @@ export default function RealEstateDetails() {
                     <option value="AUD">AUD (A$)</option>
                     <option value="SGD">SGD (S$)</option>
                     <option value="HKD">HKD (HK$)</option>
-                    <option value="SAR">SAR (﷼)</option>
+                    <option value="SAR">SAR (ريال)</option>
                     <option value="KWD">KWD (د.ك)</option>
-                    <option value="QAR">QAR (﷼)</option>
-                    <option value="BHD">BHD (.د.ب)</option>
-                    <option value="OMR">OMR (﷼)</option>
+                    <option value="QAR">QAR (ريال)</option>
+                    <option value="BHD">BHD (د.ب.)</option>
+                    <option value="OMR">OMR (ريال)</option>
                   </select>
                 </div>
                 <button 
@@ -2510,7 +2903,7 @@ export default function RealEstateDetails() {
               </div>
             </div>
             
-            {/* Content */}
+            {/* Payment Schedule Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -2640,141 +3033,158 @@ export default function RealEstateDetails() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date)).map((milestone, idx) => {
-                        const milestoneAmount = opp.unit_price * milestone.percentage / 100;
+                      {(() => {
+                        const sortedSchedule = [...opp.payment_schedule].sort((a, b) => new Date(a.date) - new Date(b.date));
+                        let cumulativePercentage = 0;
+                        let dldAdminInserted = false;
+                        const rows = [];
                         
-                        return (
-                          <tr key={idx} className="border-b border-gray-100 hover:bg-white">
-                            <td className="py-3 px-4">
-                              <div className="w-7 h-7 rounded-full bg-teal-500 text-white flex items-center justify-center text-sm font-bold">
-                                {idx + 1}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 font-medium text-gray-800">
-                              {milestone.description || `Payment ${idx + 1}`}
-                            </td>
-                            <td className="py-3 px-4 text-center text-gray-600">
-                              {formatDate(milestone.date)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="px-2 py-1 bg-etihad-gold-100 text-etihad-gold-700 rounded-full text-xs font-semibold">
-                                {milestone.percentage}%
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-gray-800">
-                              {convertCurrency(milestoneAmount)}
-                            </td>
-                            {/* Per-user contribution */}
-                            {visibleInvestors.length > 0 ? (
-                              visibleInvestors.map((inv, i) => {
-                                const userContribution = milestoneAmount * (inv.share_percentage / 100);
-                                return (
-                                  <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
-                                    <span className="font-mono text-sm text-blue-700">
-                                      {convertCurrency(userContribution)}
-                                    </span>
-                                  </td>
-                                );
-                              })
-                            ) : (
-                              <td className="py-3 px-3 text-center bg-blue-50/50">
-                                <span className="font-mono text-sm text-blue-700 font-bold">
-                                  {convertCurrency(milestoneAmount * viewingSharePercentage / 100)}
+                        sortedSchedule.forEach((milestone, idx) => {
+                          const milestoneAmount = opp.unit_price * milestone.percentage / 100;
+                          cumulativePercentage += milestone.percentage;
+                          
+                          // Add the milestone row
+                          rows.push(
+                            <tr key={`milestone-${idx}`} className="border-b border-gray-100 hover:bg-white">
+                              <td className="py-3 px-4">
+                                <div className="w-7 h-7 rounded-full bg-teal-500 text-white flex items-center justify-center text-sm font-bold">
+                                  {rows.filter(r => r.key?.startsWith('milestone')).length + 1}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 font-medium text-gray-800">
+                                {milestone.description || `Payment ${idx + 1}`}
+                              </td>
+                              <td className="py-3 px-4 text-center text-gray-600">
+                                {formatDate(milestone.date)}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
+                                  {milestone.percentage}%
                                 </span>
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                      
-                      {/* DLD Fee Row */}
-                      {(opp.dld_fee > 0 || opp.dld_fee_percentage > 0) && (
-                        <tr className="border-b border-gray-100 hover:bg-orange-50/30 bg-orange-50/20">
-                          <td className="py-3 px-4">
-                            <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm font-bold">
-                              D
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-orange-700">
-                            DLD Fee
-                          </td>
-                          <td className="py-3 px-4 text-center text-gray-500 text-sm">
-                            On Registration
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
-                              {opp.dld_fee_percentage || 4}%
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right font-bold text-orange-700">
-                            {convertCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}
-                          </td>
-                          {/* Per-user DLD contribution */}
-                          {visibleInvestors.length > 0 ? (
-                            visibleInvestors.map((inv, i) => {
-                              const dldAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
-                              const userDld = dldAmount * (inv.share_percentage / 100);
-                              return (
-                                <td key={i} className="py-3 px-3 text-center bg-orange-50/50">
-                                  <span className="font-mono text-sm text-orange-700">
-                                    {convertCurrency(userDld)}
+                              <td className="py-3 px-4 text-right font-bold text-gray-800">
+                                {convertCurrency(milestoneAmount)}
+                              </td>
+                              {visibleInvestors.length > 0 ? (
+                                visibleInvestors.map((inv, i) => {
+                                  const userContribution = milestoneAmount * (inv.share_percentage / 100);
+                                  return (
+                                    <td key={i} className="py-3 px-3 text-center bg-blue-50/50">
+                                      <span className="font-mono text-sm text-teal-600">
+                                        {convertCurrency(userContribution)}
+                                      </span>
+                                    </td>
+                                  );
+                                })
+                              ) : (
+                                <td className="py-3 px-3 text-center bg-blue-50/50">
+                                  <span className="font-mono text-sm text-teal-600 font-bold">
+                                    {convertCurrency(milestoneAmount * viewingSharePercentage / 100)}
                                   </span>
                                 </td>
+                              )}
+                            </tr>
+                          );
+                          
+                          // Insert DLD and Admin fees after 20% cumulative payment
+                          if (cumulativePercentage >= 20 && !dldAdminInserted) {
+                            dldAdminInserted = true;
+                            
+                            // DLD Fee Row
+                            if (opp.dld_fee > 0 || opp.dld_fee_percentage > 0) {
+                              rows.push(
+                                <tr key="dld-fee" className="border-b border-gray-100 hover:bg-orange-50/30 bg-orange-50/20">
+                                  <td className="py-3 px-4">
+                                    <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm font-bold">
+                                      D
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 font-medium text-orange-700">
+                                    DLD Fee
+                                  </td>
+                                  <td className="py-3 px-4 text-center text-gray-500 text-sm">
+                                    On Registration
+                                  </td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                                      {opp.dld_fee_percentage || 4}%
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-bold text-orange-700">
+                                    {convertCurrency(opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100))}
+                                  </td>
+                                  {visibleInvestors.length > 0 ? (
+                                    visibleInvestors.map((inv, i) => {
+                                      const dldAmount = opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100);
+                                      const userDld = dldAmount * (inv.share_percentage / 100);
+                                      return (
+                                        <td key={i} className="py-3 px-3 text-center bg-orange-50/50">
+                                          <span className="font-mono text-sm text-orange-700">
+                                            {convertCurrency(userDld)}
+                                          </span>
+                                        </td>
+                                      );
+                                    })
+                                  ) : (
+                                    <td className="py-3 px-3 text-center bg-orange-50/50">
+                                      <span className="font-mono text-sm text-orange-700 font-bold">
+                                        {convertCurrency((opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100)) * viewingSharePercentage / 100)}
+                                      </span>
+                                    </td>
+                                  )}
+                                </tr>
                               );
-                            })
-                          ) : (
-                            <td className="py-3 px-3 text-center bg-orange-50/50">
-                              <span className="font-mono text-sm text-orange-700 font-bold">
-                                {convertCurrency((opp.dld_fee || (opp.unit_price * (opp.dld_fee_percentage || 4) / 100)) * viewingSharePercentage / 100)}
-                              </span>
-                            </td>
-                          )}
-                        </tr>
-                      )}
-                      
-                      {/* Admin Fee Row */}
-                      {opp.admin_fee > 0 && (
-                        <tr className="border-b border-gray-100 hover:bg-green-50/30 bg-green-50/20">
-                          <td className="py-3 px-4">
-                            <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">
-                              A
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-green-700">
-                            Admin Fee
-                          </td>
-                          <td className="py-3 px-4 text-center text-gray-500 text-sm">
-                            On Registration
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                              Fixed
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right font-bold text-green-700">
-                            {convertCurrency(opp.admin_fee)}
-                          </td>
-                          {/* Per-user Admin contribution */}
-                          {visibleInvestors.length > 0 ? (
-                            visibleInvestors.map((inv, i) => {
-                              const userAdmin = opp.admin_fee * (inv.share_percentage / 100);
-                              return (
-                                <td key={i} className="py-3 px-3 text-center bg-green-50/50">
-                                  <span className="font-mono text-sm text-green-700">
-                                    {convertCurrency(userAdmin)}
-                                  </span>
-                                </td>
+                            }
+                            
+                            // Admin Fee Row
+                            if (opp.admin_fee > 0) {
+                              rows.push(
+                                <tr key="admin-fee" className="border-b border-gray-100 hover:bg-green-50/30 bg-green-50/20">
+                                  <td className="py-3 px-4">
+                                    <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">
+                                      A
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 font-medium text-green-700">
+                                    Admin Fee
+                                  </td>
+                                  <td className="py-3 px-4 text-center text-gray-500 text-sm">
+                                    On Registration
+                                  </td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                                      -
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-bold text-green-700">
+                                    {convertCurrency(opp.admin_fee)}
+                                  </td>
+                                  {visibleInvestors.length > 0 ? (
+                                    visibleInvestors.map((inv, i) => {
+                                      const userAdmin = opp.admin_fee * (inv.share_percentage / 100);
+                                      return (
+                                        <td key={i} className="py-3 px-3 text-center bg-green-50/50">
+                                          <span className="font-mono text-sm text-green-700">
+                                            {convertCurrency(userAdmin)}
+                                          </span>
+                                        </td>
+                                      );
+                                    })
+                                  ) : (
+                                    <td className="py-3 px-3 text-center bg-green-50/50">
+                                      <span className="font-mono text-sm text-green-700 font-bold">
+                                        {convertCurrency(opp.admin_fee * viewingSharePercentage / 100)}
+                                      </span>
+                                    </td>
+                                  )}
+                                </tr>
                               );
-                            })
-                          ) : (
-                            <td className="py-3 px-3 text-center bg-green-50/50">
-                              <span className="font-mono text-sm text-green-700 font-bold">
-                                {convertCurrency(opp.admin_fee * viewingSharePercentage / 100)}
-                              </span>
-                            </td>
-                          )}
-                        </tr>
-                      )}
+                            }
+                          }
+                        });
+                        
+                        return rows;
+                      })()}
                     </tbody>
                     <tfoot className="bg-gray-100 font-semibold">
                       {/* Unit Price Subtotal */}
@@ -3997,7 +4407,7 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
             {/* Client Selection with Search */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-sm font-medium">Select Clients</Label>
+                <Label className="text-sm font-medium">Select Investors</Label>
                 <Button type="button" variant="ghost" size="sm" onClick={selectAll} data-testid="select-all-clients-btn">
                   {filteredClients.length > 0 && filteredClients.every(c => selectedClients.includes(c.id)) ? 'Deselect All' : 'Select All'}
                 </Button>
@@ -4052,7 +4462,7 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
               ) : (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
                   <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">No clients found</p>
+                  <p className="text-gray-500 text-sm">No investors found</p>
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-2">
@@ -4110,7 +4520,7 @@ function ShareWithClientsModal({ opportunity, clients, onClose, onSuccess }) {
               <Label htmlFor="share-message">Personal Message (Optional)</Label>
               <Textarea
                 id="share-message"
-                placeholder="Add a personal note for your clients..."
+                placeholder="Add a personal note for your investors..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}

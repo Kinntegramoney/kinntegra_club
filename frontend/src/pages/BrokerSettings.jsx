@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
-import { Settings, Shield, Users, Building2, FileText, Eye, Edit2, Trash2, Plus, RefreshCw, Check, X, ChevronDown, ChevronRight, Save, RotateCcw } from "lucide-react";
+import { 
+  Settings, Shield, Users, Building2, FileText, Eye, Edit2, Trash2, Plus, RefreshCw, 
+  Check, X, ChevronDown, ChevronRight, Save, RotateCcw, LayoutGrid, TrendingUp, 
+  Wallet, Tag, CheckSquare, UserCheck, Upload, BarChart, Database, User, UserPlus,
+  Heart, CreditCard, FileCheck
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -12,18 +17,54 @@ const API = `${BACKEND_URL}/api`;
 
 // Feature categories for organized display
 const FEATURE_CATEGORIES = {
-  "dashboard": { label: "Dashboard", icon: Eye, color: "bg-slate-50 border-slate-200" },
-  "opportunities_bonds": { label: "Bond Opportunities", icon: FileText, color: "bg-blue-50 border-blue-200" },
-  "opportunities_real_estate": { label: "Real Estate Opportunities", icon: Building2, color: "bg-green-50 border-green-200" },
-  "user_sub_broker": { label: "Sub-Broker Management", icon: Users, color: "bg-purple-50 border-purple-200" },
-  "user_client": { label: "Client Management", icon: Users, color: "bg-etihad-gold-50 border-etihad-gold-200" },
-  "holdings": { label: "Holdings", icon: FileText, color: "bg-indigo-50 border-indigo-200" },
+  // Sidebar Menu Items
+  "sidebar_analytics": { label: "Sidebar - Analytics", icon: LayoutGrid, color: "bg-slate-50 border-slate-200" },
+  "sidebar_opportunities": { label: "Sidebar - Opportunities", icon: TrendingUp, color: "bg-blue-50 border-blue-200" },
+  "sidebar_holdings": { label: "Sidebar - Holdings", icon: Wallet, color: "bg-indigo-50 border-indigo-200" },
+  "sidebar_reinv_tag": { label: "Sidebar - Reinvestment Tag", icon: Tag, color: "bg-teal-50 border-teal-200" },
+  "sidebar_approve": { label: "Sidebar - Approve", icon: CheckSquare, color: "bg-amber-50 border-amber-200" },
+  "sidebar_logs": { label: "Sidebar - Logs", icon: FileText, color: "bg-gray-50 border-gray-200" },
+  "sidebar_analysis": { label: "Sidebar - Analysis", icon: BarChart, color: "bg-cyan-50 border-cyan-200" },
+  "sidebar_data_gathering": { label: "Sidebar - Data Gathering", icon: Database, color: "bg-emerald-50 border-emerald-200" },
+  "sidebar_mfd_ria": { label: "Sidebar - MFD/RIA Partners", icon: Users, color: "bg-purple-50 border-purple-200" },
+  "sidebar_re_brokers": { label: "Sidebar - RE Brokers", icon: Building2, color: "bg-teal-50 border-teal-200" },
+  "sidebar_private_investors": { label: "Sidebar - Private Investors", icon: UserCheck, color: "bg-etihad-gold-50 border-etihad-gold-200" },
+  "sidebar_upload": { label: "Sidebar - Upload", icon: Upload, color: "bg-orange-50 border-orange-200" },
+  "sidebar_settings": { label: "Sidebar - Settings", icon: Settings, color: "bg-rose-50 border-rose-200" },
+  
+  // Opportunities Internal Tabs
+  "opportunities_real_estate": { label: "Opportunities - Real Estate Tab", icon: Building2, color: "bg-green-50 border-green-200" },
+  "opportunities_ncd": { label: "Opportunities - NCD Tab", icon: FileText, color: "bg-blue-50 border-blue-200" },
+  
+  // Holdings Internal Tabs
+  "holdings_summary": { label: "Holdings - Summary Tab", icon: Eye, color: "bg-indigo-50 border-indigo-200" },
+  "holdings_trades": { label: "Holdings - Trades Tab", icon: RefreshCw, color: "bg-indigo-50 border-indigo-200" },
+  "holdings_real_estate": { label: "Holdings - Real Estate Tab", icon: Building2, color: "bg-indigo-50 border-indigo-200" },
+  "holdings_profile": { label: "Holdings - Profile Tab", icon: User, color: "bg-indigo-50 border-indigo-200" },
+  
+  // Approve Internal Tabs
+  "approve_private_investors": { label: "Approve - Private Investors Tab", icon: UserPlus, color: "bg-amber-50 border-amber-200" },
+  "approve_interests": { label: "Approve - Interests Tab", icon: Heart, color: "bg-pink-50 border-pink-200" },
+  "approve_re_brokers": { label: "Approve - RE Brokers Tab", icon: Building2, color: "bg-teal-50 border-teal-200" },
+  "approve_mfd_ria": { label: "Approve - MFD/RIA Tab", icon: Users, color: "bg-purple-50 border-purple-200" },
+  "approve_reinvestment_ncd": { label: "Approve - Reinvestment NCD Tab", icon: RefreshCw, color: "bg-blue-50 border-blue-200" },
+  "approve_allotment_ncd": { label: "Approve - Allotment NCD Tab", icon: TrendingUp, color: "bg-green-50 border-green-200" },
+  "approve_payment_real_estate": { label: "Approve - Payment Real Estate Tab", icon: CreditCard, color: "bg-orange-50 border-orange-200" },
+  "approve_kyc_verification": { label: "Approve - KYC Verification Tab", icon: FileCheck, color: "bg-cyan-50 border-cyan-200" },
+  
+  // User Management
+  "user_mfd_ria": { label: "User - MFD/RIA Management", icon: Users, color: "bg-purple-50 border-purple-200" },
+  "user_re_broker": { label: "User - RE Broker Management", icon: Building2, color: "bg-teal-50 border-teal-200" },
+  "user_private_investor": { label: "User - Private Investor Management", icon: UserCheck, color: "bg-etihad-gold-50 border-etihad-gold-200" },
+  
+  // Other Features
   "logs": { label: "Logs", icon: FileText, color: "bg-gray-50 border-gray-200" },
   "reinvestment": { label: "Reinvestment", icon: RefreshCw, color: "bg-teal-50 border-teal-200" },
-  "api_trigger": { label: "API Trigger", icon: Settings, color: "bg-red-50 border-red-200" },
-  "tagged_tab": { label: "Tagged Tab", icon: Eye, color: "bg-pink-50 border-pink-200" },
-  "analysis": { label: "Analysis Dashboard", icon: FileText, color: "bg-cyan-50 border-cyan-200" },
-  "upload": { label: "Bulk Upload", icon: Plus, color: "bg-orange-50 border-orange-200" }
+  "upload_mfd_ria": { label: "Upload - MFD/RIA Partners", icon: Upload, color: "bg-purple-50 border-purple-200" },
+  "upload_private_investors": { label: "Upload - Private Investors", icon: Upload, color: "bg-amber-50 border-amber-200" },
+  "upload_re_brokers": { label: "Upload - RE Brokers", icon: Upload, color: "bg-teal-50 border-teal-200" },
+  "data_gathering": { label: "Data Gathering", icon: Database, color: "bg-emerald-50 border-emerald-200" },
+  "analysis": { label: "Analysis Dashboard", icon: BarChart, color: "bg-cyan-50 border-cyan-200" }
 };
 
 // Action labels for display
@@ -225,11 +266,11 @@ export default function BrokerSettings() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span className="text-sm font-medium">Sub-Broker</span>
+              <span className="text-sm font-medium">MFD/RIA</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-sm font-medium">Client</span>
+              <span className="text-sm font-medium">Private Investor</span>
             </div>
             {hasChanges && (
               <span className="ml-auto text-sm text-etihad-gold-600 font-medium flex items-center gap-1">
@@ -277,8 +318,8 @@ export default function BrokerSettings() {
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Action</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
                           <th className="px-4 py-2 text-center text-xs font-semibold text-etihad-gold-600 uppercase">Broker</th>
-                          <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600 uppercase">Sub-Broker</th>
-                          <th className="px-4 py-2 text-center text-xs font-semibold text-green-600 uppercase">Client</th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold text-blue-600 uppercase">MFD/RIA</th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold text-green-600 uppercase">Private Investor</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -340,15 +381,15 @@ export default function BrokerSettings() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="bg-etihad-gold-50 rounded-lg p-3">
                 <p className="font-semibold text-etihad-gold-700 mb-1">Broker</p>
-                <p className="text-gray-600">Full access to all features. Can manage permissions, users, and all data.</p>
+                <p className="text-gray-600">Full access to all features. Can manage permissions, all users, and all data across the platform.</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3">
-                <p className="font-semibold text-blue-700 mb-1">Sub-Broker</p>
-                <p className="text-gray-600">Can view opportunities, manage tagged clients, and view their assigned holdings.</p>
+                <p className="font-semibold text-blue-700 mb-1">MFD/RIA</p>
+                <p className="text-gray-600">Can view opportunities, manage their tagged private investors, view assigned holdings, and handle interests.</p>
               </div>
               <div className="bg-green-50 rounded-lg p-3">
-                <p className="font-semibold text-green-700 mb-1">Client</p>
-                <p className="text-gray-600">Can view their own data, holdings, and approve/reject tagged requests.</p>
+                <p className="font-semibold text-green-700 mb-1">Private Investor</p>
+                <p className="text-gray-600">Can view their own data, holdings profile, and manage their own account details.</p>
               </div>
             </div>
           </div>

@@ -170,7 +170,7 @@ export default function BrokerProfile() {
             <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                <span className="text-green-100 text-sm">Clients</span>
+                <span className="text-green-100 text-sm">Investors</span>
               </div>
               <p className="text-xl font-bold mt-1">{profile.clients_count || 0}</p>
             </div>

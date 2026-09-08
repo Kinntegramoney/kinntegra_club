@@ -114,7 +114,7 @@ export default function ClientOpportunities() {
                 Investment Opportunities
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Browse available bonds and real estate opportunities
+                Browse available NCD and real estate opportunities
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export default function ClientOpportunities() {
                 <div className="flex items-center gap-4">
                   <div>
                     <p className="text-xl font-bold text-etihad-gold-600">{dashboardSummary?.opportunities?.bonds?.available || 0}</p>
-                    <p className="text-xs text-gray-500">Bonds</p>
+                    <p className="text-xs text-gray-500">NCD</p>
                   </div>
                   <div>
                     <p className="text-xl font-bold text-slate-600">{dashboardSummary?.opportunities?.real_estate?.available || 0}</p>
@@ -161,13 +161,13 @@ export default function ClientOpportunities() {
                 <p className="text-xs text-gray-500">Repayments</p>
               </div>
 
-              {/* Bond AUM */}
+              {/* NCD AUM */}
               <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-1.5 rounded-lg bg-etihad-gold-500/10">
                     <Landmark className="h-4 w-4 text-etihad-gold-500" />
                   </div>
-                  <span className="text-xs text-gray-600">Bond AUM</span>
+                  <span className="text-xs text-gray-600">NCD AUM</span>
                 </div>
                 <p className="text-lg font-bold text-etihad-gold-700">{formatINRCrores(dashboardSummary?.bond_aum?.total_invested || 0)}</p>
                 <p className="text-xs text-gray-500">Invested</p>
@@ -255,7 +255,7 @@ export default function ClientOpportunities() {
                 </div>
               ))}
 
-              {/* Bond Opportunities */}
+              {/* NCD Opportunities */}
               {bonds.map((bond) => (
                 <div
                   key={bond.id}

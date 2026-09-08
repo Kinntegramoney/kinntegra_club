@@ -196,7 +196,12 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             details: {
               yearly_premium: premium,
               upto_year: uptoYear,
-              coverage_amount: coverage
+              coverage_amount: coverage,
+              inflation_percent: ins.inflation_percent ?? 0,
+              step_up_amount: ins.step_up_amount ?? 0,
+              escalation_type: (ins.step_up_amount && parseFloat(ins.step_up_amount) > 0)
+                ? "step_up"
+                : ((ins.inflation_percent && parseFloat(ins.inflation_percent) > 0) ? "inflation" : "none"),
             },
             isNew: false,
             isModified: false
@@ -224,7 +229,31 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
     }
   };
 
-  const skipCategory = (val) => {
+  const skipCategory = async (val) => {
+    // Persist deletion of existing items so the row doesn't reappear after a
+    // tab switch / refresh. Local-only state updates without a backend
+    // delete were causing the "X then comes back" bug reported by users.
+    const config = getCategoryConfig(val);
+    const type = config?.type;
+    const existing = (items[val] || []).filter(i => !i.isNew && i.id);
+    if (existing.length > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        const endpointFor = (id) => {
+          if (type === "loan") return `${API}/data-gathering/family/${family.id}/liability/${id}`;
+          if (type === "insurance") return `${API}/data-gathering/family/${family.id}/insurance/${id}`;
+          return `${API}/data-gathering/family/${family.id}/expense/${id}`;
+        };
+        await Promise.all(existing.map(i =>
+          axios.delete(endpointFor(i.id), { headers: { Authorization: `Bearer ${token}` } })
+        ));
+        toast.success(`Removed ${existing.length} ${config?.label || 'item'}${existing.length > 1 ? 's' : ''}`);
+        onRefresh();
+      } catch {
+        toast.error("Failed to remove. Please retry.");
+        return;
+      }
+    }
     setAddedCategories(prev => prev.filter(c => c !== val));
     setExpandedCategories(prev => ({ ...prev, [val]: false }));
     setItems(prev => ({ ...prev, [val]: [] }));
@@ -243,7 +272,17 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
       details = { monthly_emi: "", num_installments: "" };
       defaultMemberId = members[0]?.id || "";
     } else if (type === "insurance") {
-      details = { yearly_premium: "", upto_year: defaultRetirementYear.toString(), coverage_amount: "" };
+      // Health / Critical Illness / Personal Accident premiums commonly grow
+      // year-over-year. Default escalation_type=none; the broker can switch to
+      // inflation% or a flat step-up ₹.
+      details = {
+        yearly_premium: "",
+        upto_year: defaultRetirementYear.toString(),
+        coverage_amount: "",
+        escalation_type: "none",   // "none" | "inflation" | "step_up"
+        inflation_percent: 0,
+        step_up_amount: 0,
+      };
       defaultMemberId = members[0]?.id || "";
     } else {
       // For expenses, default upto_year to latest member's retirement year and default member to "family"
@@ -318,9 +357,6 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
         if (!item.details.coverage_amount) { toast.error("Enter Coverage Amount"); return; }
       } else {
         if (!item.details.monthly_amount) { toast.error("Enter Monthly Amount"); return; }
-        if (item.details.consider_post_retirement && !item.details.post_retirement_member) {
-          toast.error("Select Post-Retirement Member"); return;
-        }
       }
     }
 
@@ -347,6 +383,18 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             await axios.put(`${API}/data-gathering/family/${family.id}/liability/${item.id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
           }
         } else if (type === "insurance") {
+          // Categories where annual escalation is meaningful (insurer-side
+          // step-ups or general medical-cost inflation): health, critical
+          // illness, personal accident. Other insurance premiums (term, motor
+          // etc.) keep escalation = 0 as before.
+          const ESCALATABLE = ["health", "critical_illness", "personal_accident"];
+          let infl = 0;
+          let stepUp = 0;
+          if (ESCALATABLE.includes(cat)) {
+            const escType = item.details.escalation_type || "none";
+            if (escType === "inflation") infl = parseFloat(item.details.inflation_percent) || 0;
+            else if (escType === "step_up") stepUp = parseFloat(item.details.step_up_amount) || 0;
+          }
           const payload = {
             family_id: family.id,
             member_ids: [item.memberId],
@@ -356,7 +404,8 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
             upto_year: parseInt(item.details.upto_year) || currentYear + 20,
             goal_year: parseInt(item.details.upto_year) || currentYear + 20,
             coverage_amount: parseFloat(item.details.coverage_amount) || 0,
-            inflation_percent: 0
+            inflation_percent: infl,
+            step_up_amount: stepUp,
           };
           if (item.isNew) {
             await axios.post(`${API}/data-gathering/family/${family.id}/insurance`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -514,6 +563,7 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                               </div>
                             ) : type === "insurance" ? (
                               // INSURANCE PREMIUM FORM
+                              <div className="space-y-2">
                               <div className="flex flex-wrap gap-3 items-end">
                                 <div className="flex flex-col min-w-[140px] flex-1 max-w-[180px]">
                                   <span className="text-[10px] text-gray-400 mb-1">Member *</span>
@@ -546,6 +596,69 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
                                 {idx > 0 && (
                                   <button onClick={() => removeItem(cat.value, item.id, item.isNew)} disabled={isReadOnly} className="h-8 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="h-4 w-4" /></button>
                                 )}
+                              </div>
+                              {/* Annual escalation row — only for medical-style premiums */}
+                              {["health", "critical_illness", "personal_accident"].includes(cat.value) && (
+                                <div className="flex flex-wrap gap-3 items-end pt-1 border-t border-teal-100/60">
+                                  <div className="flex flex-col min-w-[160px]">
+                                    <span className="text-[10px] text-gray-400 mb-1">Annual Increase</span>
+                                    <Select
+                                      value={item.details.escalation_type || "none"}
+                                      onValueChange={v => updateItem(cat.value, item.id, "escalation_type", v)}
+                                      disabled={isReadOnly}
+                                    >
+                                      <SelectTrigger className="h-8 w-full text-xs bg-white border-gray-200" data-testid={`escalation-type-${item.id}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="none" className="text-xs">No annual increase</SelectItem>
+                                        <SelectItem value="inflation" className="text-xs">Inflation %</SelectItem>
+                                        <SelectItem value="step_up" className="text-xs">Step-up ₹/year</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {item.details.escalation_type === "inflation" && (
+                                    <div className="flex flex-col min-w-[110px] max-w-[130px]">
+                                      <span className="text-[10px] text-gray-400 mb-1">Inflation %</span>
+                                      <div className="relative">
+                                        <Input
+                                          type="number"
+                                          step="0.1"
+                                          value={item.details.inflation_percent ?? ""}
+                                          onChange={e => updateItem(cat.value, item.id, "inflation_percent", e.target.value)}
+                                          className="h-8 w-full text-xs bg-white border-gray-200 pr-5"
+                                          disabled={isReadOnly}
+                                          data-testid={`inflation-percent-${item.id}`}
+                                        />
+                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {item.details.escalation_type === "step_up" && (
+                                    <div className="flex flex-col min-w-[140px] max-w-[170px]">
+                                      <span className="text-[10px] text-gray-400 mb-1">Step-up Amount / year</span>
+                                      <div className="relative">
+                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                        <Input
+                                          type="number"
+                                          value={item.details.step_up_amount ?? ""}
+                                          onChange={e => updateItem(cat.value, item.id, "step_up_amount", e.target.value)}
+                                          className="h-8 w-full text-xs bg-white border-gray-200 pl-5"
+                                          disabled={isReadOnly}
+                                          data-testid={`step-up-amount-${item.id}`}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {item.details.escalation_type && item.details.escalation_type !== "none" && (
+                                    <p className="text-[10px] text-gray-500 italic flex-1 min-w-[200px]">
+                                      {item.details.escalation_type === "inflation"
+                                        ? `Premium grows by ${parseFloat(item.details.inflation_percent || 0)}% per year.`
+                                        : `Premium increases by ₹${(parseFloat(item.details.step_up_amount || 0)).toLocaleString('en-IN')} every year.`}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                               </div>
                             ) : (
                               // REGULAR EXPENSE FORM - evenly spread across the box

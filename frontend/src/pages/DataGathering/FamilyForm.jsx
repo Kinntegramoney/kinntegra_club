@@ -26,8 +26,7 @@ const LIFE_EXPECTANCY_OPTIONS = [65, 70, 75, 80, 85, 90, 95, 100];
 const TAX_SLAB_OPTIONS = ["0%", "5%", "10%", "15%", "20%", "25%", "30%"];
 
 const PROCEED_OPTIONS = [
-  { value: "data_gathering", label: "Data Gathering" },
-  { value: "account_opening", label: "Account Opening" }
+  { value: "data_gathering", label: "Data Gathering" }
 ];
 
 export default function FamilyForm({ onCancel, onSubmit, user }) {
@@ -116,11 +115,9 @@ export default function FamilyForm({ onCancel, onSubmit, user }) {
     try {
       const token = localStorage.getItem("token");
       
-      // For sub_brokers (MFDs), auto-tag the family to themselves if no associate selected
-      const effectiveSubBrokerId = selectedAssociate || (user?.role === 'sub_broker' ? user.id : null);
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
-        sub_broker_id: effectiveSubBrokerId,
+        sub_broker_id: selectedAssociate || null,
         primary_holder: {
           name: primaryMember.name,
           date_of_birth: primaryMember.dob,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Tag, User, CheckSquare, History, Settings, UserPlus, FileText, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutGrid, TrendingUp, Users, UserCheck, LogOut, ClipboardCheck, Menu, X, Wallet, FileBarChart, Upload, Download, Tag, User, CheckSquare, History, Settings, UserPlus, FileText, ChevronLeft, ChevronRight, Building2, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import NotificationBell from "@/components/NotificationBell";
@@ -35,53 +35,56 @@ export default function Sidebar({ user }) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/");
   };
 
   const isActive = (path) => location.pathname === path;
+  const isPartnersActive = 
+    location.pathname.startsWith("/broker/admin/sub-brokers") || 
+    location.pathname.startsWith("/broker/admin/re-brokers");
+
   const isOpportunitiesActive = location.pathname.startsWith("/broker/admin/bonds") || 
                                 location.pathname.startsWith("/broker/admin/real-estate") ||
                                 location.pathname === "/broker/opportunities" ||
                                 location.pathname === "/sub-broker/opportunities";
-  const isDataGatheringActive = location.pathname.startsWith("/broker/data-gathering") || 
-                                location.pathname.startsWith("/sub-broker/data-gathering");
 
   const isBroker = user?.role === "broker";
   const isSubBroker = user?.role === "sub_broker";
 
-  // Check if dashboard is enabled (from permissions)
-  const dashboardEnabled = hasPermission('dashboard', 'view');
+  // Analytics is always shown for broker and sub-broker
+  const dashboardEnabled = true;
 
-  // Menu items for Broker (dashboard conditionally included)
+  // Menu items for Broker - Arranged as per user request
   const brokerMenuItems = [
-    ...(dashboardEnabled ? [{ path: "/broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
+    { path: "/broker/summary", label: "Dashboard", icon: LayoutGrid },
     { path: "/broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/broker/holdings", label: "Holdings", icon: Wallet },
-    { path: "/broker/data-gathering", label: "Data Gathering", icon: ClipboardList, active: isDataGatheringActive },
-    { path: "/broker/leads", label: "Lead Mgmt", icon: UserPlus },
+    { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
     { path: "/broker/approvals", label: "Approve", icon: CheckSquare },
     { path: "/broker/logs", label: "Logs", icon: FileText },
     { path: "/analysis", label: "Analysis", icon: FileBarChart },
-    { path: "/broker/reinvestment", label: "Reinv Tag", icon: Tag },
-    { path: "/broker/admin/sub-brokers", label: "Sub Broker", icon: Users },
-    { path: "/broker/admin/clients", label: "Client", icon: UserCheck },
+    { path: "/broker/data-gathering", label: "Data Gathering", icon: Database },
+    { path: "/broker/dashboard", label: "Analytics", icon: LayoutGrid },
+    { path: "/broker/admin/sub-brokers", label: "Partners", icon: Users, active: isPartnersActive },
+    { path: "/broker/admin/clients", label: "Private Investors", icon: UserCheck },
     { path: "/broker/bulk-upload", label: "Upload", icon: Upload },
-    { path: "/broker/profile", label: "Profile", icon: User },
+    { path: "/broker/downloads", label: "Downloads", icon: Download },
     { path: "/broker/settings", label: "Settings", icon: Settings },
   ];
 
-  // Menu items for Sub-Broker (dashboard conditionally included)
+  // Menu items for Sub-Broker (MFD/RIA) - Arranged as per user request
   const subBrokerMenuItems = [
-    ...(dashboardEnabled ? [{ path: "/sub-broker/dashboard", label: "Dashboard", icon: LayoutGrid }] : []),
+    { path: "/sub-broker/summary", label: "Dashboard", icon: LayoutGrid },
+    { path: "/sub-broker/dashboard", label: "Analytics", icon: LayoutGrid },
     { path: "/sub-broker/opportunities", label: "Opportunities", icon: TrendingUp, active: isOpportunitiesActive },
     { path: "/sub-broker/holdings", label: "Holdings", icon: Wallet },
-    { path: "/sub-broker/data-gathering", label: "Data Gathering", icon: ClipboardList, active: isDataGatheringActive },
-    { path: "/sub-broker/clients", label: "Clients", icon: UserCheck },
-    { path: "/sub-broker/leads", label: "Lead Mgmt", icon: UserPlus },
     { path: "/sub-broker/reinvestment", label: "Reinv Tag", icon: Tag },
+    { path: "/sub-broker/approvals", label: "Approve", icon: CheckSquare },
     { path: "/sub-broker/logs", label: "Logs", icon: FileText },
     { path: "/sub-broker/analysis", label: "Analysis", icon: FileBarChart },
-    { path: "/sub-broker/profile", label: "Profile", icon: User },
+    { path: "/sub-broker/data-gathering", label: "Data Gathering", icon: Database },
+    { path: "/sub-broker/clients", label: "Private Investors", icon: UserCheck },
+    { path: "/sub-broker/bulk-upload", label: "Upload", icon: Upload },
   ];
 
   // Select menu items based on role
@@ -92,12 +95,16 @@ export default function Sidebar({ user }) {
       {/* Logo */}
       <div className={`p-4 border-b border-gray-200 ${isCollapsed ? 'px-2' : ''}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0" style={{ boxShadow: '0 4px 12px rgba(201, 162, 39, 0.3)' }}>
+          <button 
+            onClick={() => navigate(isBroker ? '/broker/profile' : isSubBroker ? '/sub-broker/profile' : '/')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+            title="Go to Profile"
+          >
+            <div className="w-10 h-10 overflow-hidden flex-shrink-0">
               <img 
                 src="/logo.svg" 
                 alt="Kinntegraa" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   e.target.parentElement.innerHTML = '<span class="text-white text-xl font-bold flex items-center justify-center w-full h-full bg-gradient-to-br from-orange-500 to-etihad-gold-600 rounded-full">K</span>';
                 }}
@@ -109,7 +116,7 @@ export default function Sidebar({ user }) {
                 <p className="text-xs text-gray-500 truncate">{user?.name}</p>
               </div>
             )}
-          </div>
+          </button>
           {/* Notification Bell - only show when expanded */}
           {!isCollapsed && <NotificationBell user={user} />}
         </div>

@@ -380,7 +380,7 @@ export default function ApprovalCenter() {
                       <div className="text-center py-12">
                         <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-3" />
                         <h3 className="text-lg font-medium text-gray-600 mb-1">All Caught Up!</h3>
-                        <p className="text-gray-400 text-sm">No pending client approvals</p>
+                        <p className="text-gray-400 text-sm">No pending investor approvals</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -491,7 +491,7 @@ export default function ApprovalCenter() {
                               <div className="p-4 border-t border-gray-100">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
                                   <div>
-                                    <p className="text-gray-500">Source Bond</p>
+                                    <p className="text-gray-500">Source NCD</p>
                                     <p className="font-medium">{reinvest.source_bond_name || '-'}</p>
                                   </div>
                                   <div>
@@ -586,7 +586,7 @@ export default function ApprovalCenter() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="bond">Bonds</SelectItem>
+                            <SelectItem value="bond">NCD</SelectItem>
                             <SelectItem value="real_estate">Real Estate</SelectItem>
                           </SelectContent>
                         </Select>
@@ -707,7 +707,7 @@ export default function ApprovalCenter() {
                             {/* Type */}
                             <div className="col-span-1 text-center">
                               {lead.opportunity_type === 'bond' ? (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-medium">Bond</span>
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-medium">NCD</span>
                               ) : (
                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded font-medium">Real Estate</span>
                               )}
@@ -779,10 +779,10 @@ export default function ApprovalCenter() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="client">Clients</SelectItem>
+                    <SelectItem value="client">Private Investors</SelectItem>
                     <SelectItem value="trade">Trades</SelectItem>
                     <SelectItem value="reinvestment">Reinvestments</SelectItem>
-                    <SelectItem value="bond">Bonds</SelectItem>
+                    <SelectItem value="bond">NCD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

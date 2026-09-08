@@ -44,7 +44,7 @@ const INDIAN_STATES = [
 
 const RELATIONSHIPS = ["Spouse", "Father", "Mother", "Son", "Daughter", "Brother", "Sister", "Other"];
 
-export default function CreateClientModal({ onClose, onSuccess, subbrokers = [], isSubBrokerMode = false }) {
+export default function CreateClientModal({ onClose, onSuccess, subbrokers = [], isSubBrokerMode = false, leadData = null, prefillData = null }) {
   const [loading, setLoading] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
   const [credentials, setCredentials] = useState({ photo_id: "", password: "", pin: "", name: "", email: "" });
@@ -52,24 +52,28 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
   const [uccList, setUccList] = useState([""]);
   const [currentStep, setCurrentStep] = useState(1);
   
+  // Determine if foreign passport option should be disabled (from CAS analysis flow)
+  const forceIndianPassport = prefillData?.force_indian || false;
+  
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
-    name: "",
-    email: "",
-    mobile: "",
-    country_of_residency: "",
-    passport_type: "", // "indian" or "foreign"
+    name: prefillData?.name || leadData?.name || "",
+    email: leadData?.email || "",
+    mobile: leadData?.phone || "",
+    country_of_residency: prefillData?.country_of_residency || leadData?.country || "",
+    passport_type: prefillData?.passport_type || leadData?.passport_type || "", // "indian" or "foreign"
     
     // Step 2: ID Details
-    pan_number: "",
+    pan_number: prefillData?.pan_number || "",
     passport_number: "",
     emirates_id: "",
+    emirates_id_expiry: "",
     
     // Step 3: Opportunities
-    opportunities: [], // ["bonds", "real_estate", "gift_city"]
+    opportunities: leadData?.opportunities_interested || [], // ["bonds", "real_estate", "gift_city"]
     
     // Step 4: Conditional Fields
-    // For Bonds - Indian Bank Details
+    // For NCD - Indian Bank Details
     demat_account_no: "",
     bank_name: "",
     account_number: "",
@@ -94,12 +98,12 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
     father_husband_name: "",
     
     // Address Details
-    address_line1: "",
+    address_line1: leadData?.address || "",
     address_line2: "",
-    city: "",
-    state: "",
-    country: "",
-    pincode: "",
+    city: leadData?.city || "",
+    state: leadData?.state || "",
+    country: leadData?.country || "",
+    pincode: leadData?.pincode || "",
     
     // Nominee Details
     nominee_name: "",
@@ -108,7 +112,10 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
     nominee_relationship: "",
     
     // Linked Sub-broker
-    linked_subbroker_id: ""
+    linked_subbroker_id: "",
+    
+    // Lead reference
+    crm_lead_id: leadData?.crm_lead_id || ""
   });
 
   // UCC management functions
@@ -116,7 +123,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
     if (uccList.length < 5) {
       setUccList([...uccList, ""]);
     } else {
-      toast.error("Maximum 5 UCCs allowed per client");
+      toast.error("Maximum 5 UCCs allowed per investor");
     }
   };
 
@@ -159,13 +166,12 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
   const getAvailableOpportunities = () => {
     if (formData.passport_type === "indian") {
       return [
-        { id: "bonds", label: "Bonds / NCD", description: "Corporate debt instruments" },
+        { id: "bonds", label: "NCD", description: "Corporate debt instruments" },
         { id: "real_estate", label: "Real Estate", description: "Property investments" }
       ];
     } else if (formData.passport_type === "foreign") {
       return [
-        { id: "real_estate", label: "Real Estate", description: "Property investments in UAE/Dubai" },
-        { id: "gift_city", label: "GIFT City", description: "Gujarat International Finance Tec-City investments" }
+        { id: "real_estate", label: "Real Estate", description: "Property investments in UAE/Dubai" }
       ];
     }
     return [];
@@ -308,7 +314,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
       
       // For sub-broker mode, show pending approval message
       if (isSubBrokerMode) {
-        toast.success("Client created successfully! Pending broker approval.");
+        toast.success("Investor created successfully! Pending broker approval.");
         onSuccess();
         return;
       }
@@ -324,8 +330,8 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
       setShowCredentials(true);
       
     } catch (error) {
-      console.error("Error creating client:", error);
-      toast.error(error.response?.data?.detail || "Failed to create client");
+      console.error("Error creating investor:", error);
+      toast.error(error.response?.data?.detail || "Failed to create investor");
     } finally {
       setLoading(false);
     }
@@ -333,7 +339,13 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
 
   const handleCredentialsClose = () => {
     setShowCredentials(false);
-    onSuccess();
+    // Pass client data back to parent for lead stage update
+    onSuccess({
+      photo_id: credentials.photo_id,
+      name: credentials.name,
+      email: credentials.email,
+      crm_lead_id: formData.crm_lead_id
+    });
   };
 
   // Credentials Modal
@@ -344,7 +356,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 text-white">
             <h2 className="text-xl font-bold flex items-center gap-2">
               <Check className="h-6 w-6" />
-              Client Created Successfully!
+              Investor Created Successfully!
             </h2>
           </div>
 
@@ -434,7 +446,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-etihad-gold-50">
-          <h2 className="text-xl font-bold text-gray-800">Create New Client</h2>
+          <h2 className="text-xl font-bold text-gray-800">Create New Investor</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600" data-testid="close-create-client-modal">
             <X className="h-5 w-5" />
           </button>
@@ -520,6 +532,11 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
 
               <div className="space-y-3 pt-4 border-t">
                 <Label className="text-xs text-gray-500 uppercase">Passport Type *</Label>
+                {forceIndianPassport && (
+                  <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                    PAN detected from CAS - Indian Passport is required for CAS analysis
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
@@ -542,20 +559,25 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                       </div>
                       <div>
                         <p className="font-semibold">Indian Passport</p>
-                        <p className="text-xs text-gray-500">PAN required, access to Bonds & Real Estate</p>
+                        <p className="text-xs text-gray-500">PAN required, access to NCD & Real Estate</p>
                       </div>
                     </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      updateField('passport_type', 'foreign');
-                      updateField('opportunities', []);
+                      if (!forceIndianPassport) {
+                        updateField('passport_type', 'foreign');
+                        updateField('opportunities', []);
+                      }
                     }}
+                    disabled={forceIndianPassport}
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
                       formData.passport_type === 'foreign'
                         ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : forceIndianPassport 
+                          ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                          : 'border-gray-200 hover:border-gray-300'
                     }`}
                     data-testid="passport-type-foreign"
                   >
@@ -567,7 +589,11 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                       </div>
                       <div>
                         <p className="font-semibold">Foreign Passport</p>
-                        <p className="text-xs text-gray-500">Passport required, access to Real Estate & GIFT City</p>
+                        <p className="text-xs text-gray-500">
+                         <p className="text-xs text-gray-500">
+                          {forceIndianPassport ? 'Not available for CAS analysis' : 'Passport required, access to Real Estate'}
+                        </p>
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -627,17 +653,28 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
                 )}
 
                 {isUAEResident() && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-500 uppercase">Emirates ID *</Label>
-                    <Input
-                      value={formData.emirates_id}
-                      onChange={(e) => updateField('emirates_id', e.target.value)}
-                      placeholder="784-XXXX-XXXXXXX-X"
-                      className="font-mono"
-                      data-testid="client-emirates-id"
-                    />
-                    <p className="text-xs text-gray-400">Required for UAE residents</p>
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-500 uppercase">Emirates ID *</Label>
+                      <Input
+                        value={formData.emirates_id}
+                        onChange={(e) => updateField('emirates_id', e.target.value)}
+                        placeholder="784-XXXX-XXXXXXX-X"
+                        className="font-mono"
+                        data-testid="client-emirates-id"
+                      />
+                      <p className="text-xs text-gray-400">Required for UAE residents</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-gray-500 uppercase">Emirates ID Expiry</Label>
+                      <Input
+                        type="date"
+                        value={formData.emirates_id_expiry}
+                        onChange={(e) => updateField('emirates_id_expiry', e.target.value)}
+                        data-testid="client-emirates-id-expiry"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -690,7 +727,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
               {formData.passport_type === "indian" && (
                 <div className="bg-etihad-gold-50 border border-etihad-gold-200 rounded-lg p-4">
                   <p className="text-sm text-etihad-gold-800">
-                    <strong>Indian Passport Holders:</strong> Can invest in Bonds/NCD and Real Estate.
+                    <strong>Indian Passport Holders:</strong> Can invest in NCD and Real Estate.
                   </p>
                 </div>
               )}
@@ -698,7 +735,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
               {formData.passport_type === "foreign" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
-                    <strong>Foreign Passport Holders:</strong> Can invest in Real Estate and GIFT City opportunities.
+                    <strong>Foreign Passport Holders:</strong> Can invest in Real Estate opportunities.
                   </p>
                 </div>
               )}
@@ -708,13 +745,13 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
           {/* Step 4: Conditional Fields */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              {/* For Bonds - Bank & UCC Details */}
+              {/* For NCD - Bank & UCC Details */}
               {formData.opportunities.includes("bonds") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Building2 className="h-5 w-5 text-etihad-gold-600" />
                     <h3 className="text-lg font-semibold text-gray-800">Bank & Investment Details</h3>
-                    <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-1 rounded">Required for Bonds</span>
+                    <span className="text-xs bg-etihad-gold-100 text-etihad-gold-700 px-2 py-1 rounded">Required for NCD</span>
                   </div>
 
                   {/* Indian Bank Details - For Indian Passport holders (both residents and NRIs) */}
@@ -1130,7 +1167,7 @@ export default function CreateClientModal({ onClose, onSuccess, subbrokers = [],
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700" data-testid="create-client-submit">
-              {loading ? "Creating..." : "Create Client"}
+              {loading ? "Creating..." : "Create Investor"}
             </Button>
           )}
         </div>

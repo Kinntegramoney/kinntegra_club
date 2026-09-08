@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
+import PartnersTabs from "@/components/PartnersTabs";
 import CreatePartnerModal from "@/components/CreatePartnerModal";
 import EditPartnerModal from "@/components/EditPartnerModal";
-import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, UserX, Upload, MoreVertical, Mail, KeyRound, UserMinus, Search, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ export default function AdminSubBrokers() {
 
   // Set page title
   useEffect(() => {
-    document.title = "Kinntegraa | Sub-Brokers";
+    document.title = "Kinntegraa | MFD/RIA Partners";
   }, []);
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function AdminSubBrokers() {
   };
 
   const handleDelete = async (partnerId, partnerName) => {
-    if (!window.confirm(`Delete/Deactivate sub-broker "${partnerName}"? Sub-brokers with trades or linked clients will be marked as inactive instead.`)) return;
+    if (!window.confirm(`Delete/Deactivate MFD/RIA "${partnerName}"? Partners with trades or linked clients will be marked as inactive instead.`)) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -78,14 +79,14 @@ export default function AdminSubBrokers() {
       });
       
       if (response.data.soft_delete) {
-        toast.success("Sub-broker marked as inactive (has trades or linked clients)");
+        toast.success("MFD/RIA marked as inactive (has trades or linked clients)");
       } else {
-        toast.success("Sub-broker deleted successfully");
+        toast.success("MFD/RIA deleted successfully");
       }
       fetchPartners();
     } catch (error) {
       console.error("Error deleting partner:", error);
-      toast.error("Failed to delete sub-broker");
+      toast.error("Failed to delete MFD/RIA");
     }
   };
 
@@ -95,11 +96,11 @@ export default function AdminSubBrokers() {
       await axios.post(`${API}/partners/${partnerId}/reactivate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Sub-broker reactivated successfully");
+      toast.success("MFD/RIA reactivated successfully");
       fetchPartners();
     } catch (error) {
       console.error("Error reactivating partner:", error);
-      toast.error("Failed to reactivate sub-broker");
+      toast.error("Failed to reactivate MFD/RIA");
     }
   };
 
@@ -158,6 +159,52 @@ export default function AdminSubBrokers() {
     }
   };
 
+  // Verify bulk-uploaded partner and send password reset email
+  const handleVerifyPartner = async (partner) => {
+    if (!window.confirm(`Verify "${partner.name}" and send password setup email to ${partner.email}?`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/partners/${partner.id}/verify-bulk-upload`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.email_sent) {
+        toast.success(`Partner verified! Password setup email sent to ${partner.email}`);
+      } else {
+        toast.warning(response.data.message || "Partner verified but email may not have been sent");
+      }
+      fetchPartners();
+    } catch (error) {
+      console.error("Error verifying partner:", error);
+      toast.error(error.response?.data?.detail || "Failed to verify partner");
+    }
+  };
+
+  // Verify all pending bulk-uploaded partners
+  const handleVerifyAllPending = async () => {
+    const pendingCount = partners.filter(p => p.status === "pending_verification").length;
+    if (pendingCount === 0) {
+      toast.info("No pending partners to verify");
+      return;
+    }
+    
+    if (!window.confirm(`Verify all ${pendingCount} pending MFD/RIA partners and send password setup emails?`)) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${API}/partners/verify-all-bulk-uploads`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.success(response.data.message);
+      fetchPartners();
+    } catch (error) {
+      console.error("Error verifying all partners:", error);
+      toast.error(error.response?.data?.detail || "Failed to verify partners");
+    }
+  };
+
   // Filter and sort partners
   const filteredPartners = partners
     .filter(partner => {
@@ -211,16 +258,28 @@ export default function AdminSubBrokers() {
         <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Admin - Sub Brokers</h1>
-              <p className="text-sm text-gray-500 mt-1">Manage all sub-broker partners ({filteredPartners.length} of {partners.length})</p>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800" data-testid="admin-subbrokers-title">Partners</h1>
+              <p className="text-sm text-gray-500 mt-1">Manage your MFD/RIA and Real Estate partners</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Verify All Pending Button - Show only if there are pending partners */}
+              {partners.filter(p => p.status === "pending_verification").length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleVerifyAllPending}
+                  className="border-green-500 text-green-600 hover:bg-green-50"
+                  data-testid="verify-all-pending-btn"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Verify All ({partners.filter(p => p.status === "pending_verification").length})
+                </Button>
+              )}
               {/* Search Bar - Inline */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search sub-brokers..."
+                  placeholder="Search MFD/RIA..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 w-[200px]"
@@ -241,11 +300,14 @@ export default function AdminSubBrokers() {
                 data-testid="create-subbroker-btn"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Sub Broker
+                Add MFD/RIA
               </Button>
             </div>
           </div>
         </div>
+
+        {/* Partners Tabs (inside the Partners page, below header) */}
+        <PartnersTabs activeTab="mfd-ria" />
 
         {/* Partners Table */}
         <div className="p-4 md:p-8">
@@ -253,15 +315,15 @@ export default function AdminSubBrokers() {
             <p className="text-center text-gray-500 py-12">Loading...</p>
           ) : partners.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No sub-brokers created yet</p>
+              <p className="text-gray-500 mb-4">No MFD/RIA partners created yet</p>
               <Button onClick={() => setShowCreateModal(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create First Sub Broker
+                Create First MFD/RIA
               </Button>
             </div>
           ) : filteredPartners.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No sub-brokers match your search</p>
+              <p className="text-gray-500 mb-4">No MFD/RIA partners match your search</p>
               <Button variant="outline" onClick={() => setSearchQuery("")}>
                 Clear Search
               </Button>
@@ -338,7 +400,20 @@ export default function AdminSubBrokers() {
                         <td className="py-4 px-4 md:px-6 text-sm hidden md:table-cell truncate max-w-[200px]">{partner.email}</td>
                         <td className="py-4 px-4 md:px-6 text-sm font-mono hidden md:table-cell">{partner.mobile}</td>
                         <td className="py-4 px-4 md:px-6">
-                          {isInactive ? (
+                          {partner.status === "pending_verification" ? (
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Pending</span>
+                              <Button
+                                size="sm"
+                                onClick={() => handleVerifyPartner(partner)}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 h-6"
+                                data-testid={`verify-partner-${partner.id}`}
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Verify
+                              </Button>
+                            </div>
+                          ) : isInactive ? (
                             <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Inactive</span>
                           ) : (
                             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
@@ -381,6 +456,19 @@ export default function AdminSubBrokers() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48">
+                                    {partner.status === "pending_verification" && (
+                                      <>
+                                        <DropdownMenuItem 
+                                          onClick={() => handleVerifyPartner(partner)}
+                                          className="cursor-pointer text-green-600 focus:text-green-600"
+                                          data-testid={`verify-dropdown-${partner.id}`}
+                                        >
+                                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                                          Verify & Send Email
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                      </>
+                                    )}
                                     <DropdownMenuItem 
                                       onClick={() => handleResendCredentials(partner)}
                                       className="cursor-pointer"

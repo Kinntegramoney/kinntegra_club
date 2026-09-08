@@ -342,7 +342,7 @@ export default function ClientTradeVerification() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="text-left py-2 px-3">Bond</th>
+                              <th className="text-left py-2 px-3">NCD</th>
                               <th className="text-center py-2 px-3">Expected Date</th>
                               <th className="text-right py-2 px-3">Net Amount</th>
                               <th className="text-center py-2 px-3">Tag</th>
@@ -380,7 +380,7 @@ export default function ClientTradeVerification() {
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="text-left py-2 px-3">Bond</th>
+                              <th className="text-left py-2 px-3">NCD</th>
                               <th className="text-center py-2 px-3">Expected Date</th>
                               <th className="text-right py-2 px-3">Net Amount</th>
                               <th className="text-center py-2 px-3">Tag</th>

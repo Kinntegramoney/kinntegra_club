@@ -217,7 +217,7 @@ export default function LeadManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="bond">Bonds</SelectItem>
+                    <SelectItem value="bond">NCD</SelectItem>
                     <SelectItem value="real_estate">Real Estate</SelectItem>
                     <SelectItem value="general">Website Signup</SelectItem>
                   </SelectContent>

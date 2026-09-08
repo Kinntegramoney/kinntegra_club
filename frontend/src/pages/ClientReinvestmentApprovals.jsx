@@ -491,7 +491,7 @@ export default function ClientReinvestmentApprovals() {
                         {/* Second level - Individual column headers */}
                         <tr className="bg-gray-50">
                           <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Date of Repayment</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Bond Name</th>
+                          <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">NCD Name</th>
                           <th className="text-right px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Net Amount</th>
                           <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Date of Investment</th>
                           <th className="text-left px-3 py-2 font-medium text-gray-600 border border-gray-200 text-xs">Portfolio</th>
