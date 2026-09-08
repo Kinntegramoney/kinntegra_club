@@ -1172,40 +1172,6 @@ export default function SurplusSection({ family, isReadOnly }) {
       });
       data.push(row);
     });
-            
-            // Apply post-retirement reduction
-            // Check if ANY member associated with this expense has retired
-            const memberIds = exp.member_ids || [];
-            const isFamilyExpense = memberIds.includes('family') || memberIds.length === 0;
-            
-            if (isFamilyExpense) {
-              // For family expenses, check primary member's retirement
-              const primaryMember = members.find(m => m.is_primary);
-              const primaryRetYear = primaryMember?.retirement_year ? parseInt(primaryMember.retirement_year) : endYear;
-              if (year >= primaryRetYear && exp.consider_post_retirement) {
-                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
-                amount = amount * postRetPct / 100;
-              }
-            } else {
-              // For individual expenses, check the specific member's retirement
-              const memberRetYear = memberIds.map(mid => {
-                const m = members.find(mem => mem.id === mid);
-                return m?.retirement_year ? parseInt(m.retirement_year) : endYear;
-              }).reduce((min, yr) => Math.min(min, yr), endYear);
-              
-              if (year >= memberRetYear && exp.consider_post_retirement) {
-                const postRetPct = parseFloat(exp.post_retirement_percent) || 100;
-                amount = amount * postRetPct / 100;
-              }
-            }
-            
-            yearExp += amount;
-          }
-        });
-        row.push(yearExp > 0 ? formatCurrencyINR(Math.round(yearExp)) : '-');
-      });
-      data.push(row);
-    });
     
     // Total Expenses
     const totExpRow = ['TOTAL EXPENSES (B)'];
