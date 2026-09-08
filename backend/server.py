@@ -26117,8 +26117,11 @@ async def get_data_gathering_families(current_user: dict = Depends(get_current_u
         # Broker sees all families
         pass
     elif current_user['role'] == 'sub_broker':
-        # Sub-broker sees only their families
-        query["sub_broker_id"] = current_user['id']
+        # Sub-broker sees families assigned to them OR created by them
+        query["$or"] = [
+            {"sub_broker_id": current_user['id']},
+            {"created_by": current_user['id']}
+        ]
     elif current_user['role'] == 'client':
         # Client sees only their own family
         query["client_user_id"] = current_user['id']
@@ -26137,9 +26140,12 @@ async def get_family_details(family_id: str, current_user: dict = Depends(get_cu
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
-        raise HTTPException(status_code=403, detail="Access denied")
+    # Access control - sub_broker can access families assigned to them OR created by them
+    if current_user['role'] == 'sub_broker':
+        has_access = (family.get('sub_broker_id') == current_user['id'] or 
+                      family.get('created_by') == current_user['id'])
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Access denied")
     elif current_user['role'] == 'client' and family.get('client_user_id') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -26248,9 +26254,12 @@ async def update_family(family_id: str, request: FamilyCreate, current_user: dic
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
-        raise HTTPException(status_code=403, detail="Access denied")
+    # Access control - sub_broker can update families assigned to them OR created by them
+    if current_user['role'] == 'sub_broker':
+        has_access = (family.get('sub_broker_id') == current_user['id'] or 
+                      family.get('created_by') == current_user['id'])
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Access denied")
     
     # Generate new family name if primary holder name changed
     family_name = f"{request.primary_holder.name} & Family"

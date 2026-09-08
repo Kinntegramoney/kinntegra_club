@@ -201,9 +201,11 @@ export default function DataGathering() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
+      // For sub_brokers (MFDs), auto-tag the family to themselves if no associate selected
+      const effectiveSubBrokerId = selectedSubBroker || (user?.role === 'sub_broker' ? user.id : null);
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
-        sub_broker_id: selectedSubBroker || null,
+        sub_broker_id: effectiveSubBrokerId,
         proceed_option: proceedOption,
         primary_holder: {
           name: primaryMember.name,

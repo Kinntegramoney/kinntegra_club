@@ -5,7 +5,7 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## User Personas
 - **Brokers**: Financial advisors who manage multiple client families
-- **Sub-brokers**: Work under brokers to manage specific clients
+- **Sub-brokers (MFDs)**: Work under brokers to manage specific clients
 - **Clients**: End users whose financial data is being gathered
 
 ## Core Requirements
@@ -31,6 +31,12 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## What's Been Implemented
 
+### MFD Access Bug Fix (Sep 2026)
+- ✅ **Auto-tagging**: When MFD creates family, auto-set `sub_broker_id` to their ID
+- ✅ **Access Control**: MFDs can now see families they created OR assigned to them
+- ✅ Backend: Updated `get_data_gathering_families`, `get_family_details`, `update_family` endpoints
+- ✅ Frontend: Updated `index.jsx` and `FamilyForm.jsx` to auto-tag
+
 ### Completed Features (Feb 2026)
 - ✅ Retirement Year field added to Members table
 - ✅ Backend model updated for retirement_year
@@ -41,65 +47,29 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 - ✅ "Lasts till" message with life expectancy warning
 - ✅ Data persistence bug fixes (deleted items reappearing)
 
-### Bug Fixes (Feb 20, 2026)
-- ✅ **Assets Tab**: Added `mutual_fund` and `nps` categories to display MF/NPS from Income tab
-- ✅ **Surplus Tab**: Maturities (Insurance, FD, PPF, EPF, Bonds) now included in cash flow projection
-- ✅ **Excel Export**: Added maturity breakdown section showing year-wise maturity amounts
-- ✅ **Insurance Deduplication**: Reduced duplicate entries from 16 to 6 unique records
-
-### Excel Export Overhaul (Feb 20, 2026)
-- ✅ **Sheet Reordering**: 9 sheets in correct sequence matching UI tabs (Members → Income → Expenses → Goals → Investments → Insurance → Liabilities → Assets → Surplus)
-- ✅ **Expenses Sheet Enhanced**: Now includes Insurance Premiums and Loan EMIs with section headers (per user template)
-- ✅ **Goals Sheet Timeline**: Year-wise inflation-adjusted view with target years as columns
-- ✅ **Currency Formatting**: All amounts use ₹ symbol with Indian comma style (₹ 50,00,000)
-- ✅ **Sheet Protection**: All sheets are non-editable
-
-### Data Migration (Feb 20, 2026)
-- ✅ Migrated "Pradeep Dattatray Prabhu & Family" from old environment
-- Family ID: `869d412b-0cb8-4839-9459-d2a02b2860f1`
-- Includes: 3 members, 9 income items, 8 goals, 12 expenses, 6 insurance (deduplicated), 1 liability
+### Excel Export Overhaul (Feb 2026)
+- ✅ Sheet Reordering: Correct sequence matching UI tabs
+- ✅ Expenses Sheet: Insurance Premiums and Loan EMIs with section headers
+- ✅ Goals Sheet: Year-wise inflation-adjusted view
+- ✅ Currency Formatting: ₹ symbol with Indian comma style
+- ✅ Sheet Protection: All sheets non-editable
+- ✅ Insurance premiums sourced from `family.insurance_premiums`
 
 ---
 
 ## Known Issues (Priority Order)
 
-### P0 - Critical
-1. **Insurance Tab Duplication**: Coverage amounts are duplicated/summed incorrectly
-   - File: `/app/frontend/src/pages/DataGathering/sections/InsuranceSection.jsx`
-   - Function: `getActualCover` needs deduplication logic
-
-2. **Bond Presentation Not Visible**: Ephemeral file storage issue on live server
-
 ### P1 - High Priority
-1. **Excel Export Broken**: `generateExcelExport is not defined` error
-   - File: `/app/frontend/src/pages/DataGathering/sections/SurplusSection.jsx`
-   - Solution: Extract to `/app/frontend/src/utils/exportUtils.js`
-
-2. **"Multi" Display Bug**: Shows "Multi" for single portfolio allocation
-
-3. **Duplicate Reinvestment Emails**: Clients receive multiple approval emails
+1. **Allocation Simulator**: Calculate button not working correctly with maturing income
+2. **Insurance Premium Projection**: Verify premiums appear in Financial Plan expenses
+3. **Excel Export Validation**: Need end-to-end verification of workbook content
 
 ### P2 - Medium Priority
-1. **Expense Section Spacing**: Layout alignment issues
-2. **"Expected Sale Date" Bug**: Date changes unexpectedly
-3. **Missing Data in Excel**: Specific client Excel missing data
-
----
-
-## Prioritized Backlog
-
-### P0 Features
-- Fix Insurance tab deduplication
-- Fix Excel export functionality
-
-### P1 Features  
-- Implement cloud storage for file uploads (AWS S3)
-- Hide 5-year history for pegged currencies
-- Add currency support to "View Details" page
-
-### P2 Features
-- Enhance Bond Presentation viewer with navigation
-- Dashboard UI fixes
+1. **Bond Presentation**: Ephemeral file storage issue on live server
+2. **"Multi" Display Bug**: Shows "Multi" for single portfolio allocation
+3. **Duplicate Reinvestment Emails**: Clients receive multiple approval emails
+4. **Expense Section Spacing**: Layout alignment issues
+5. **"Expected Sale Date" Bug**: Date changes unexpectedly
 
 ---
 
@@ -108,7 +78,7 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 ```
 /app
 ├── backend/
-│   ├── server.py          # Main FastAPI server
+│   ├── server.py          # Main FastAPI server (28k+ lines)
 │   ├── auth.py            # Authentication
 │   └── email_service.py   # Email functionality
 └── frontend/
@@ -116,6 +86,7 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
         └── pages/
             └── DataGathering/
                 ├── index.jsx              # Main container
+                ├── FamilyForm.jsx         # Family creation form
                 └── sections/
                     ├── MembersSection.jsx
                     ├── IncomeSection.jsx
@@ -130,13 +101,13 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 ```
 
 ## Key API Endpoints
-- `GET/PUT /api/data-gathering/family/{family_id}` - Family CRUD
-- `POST /api/data-gathering/family/{family_id}/insurance` - Insurance premiums
+- `GET /api/data-gathering/families` - List families (role-based filtering)
+- `GET /api/data-gathering/family/{family_id}` - Get family details
+- `POST /api/data-gathering/family` - Create family
+- `PUT /api/data-gathering/family/{family_id}` - Update family (Save and Next)
+- `POST /api/data-gathering/family/{family_id}/income` - Add income
+- `POST /api/data-gathering/family/{family_id}/insurance` - Add insurance premiums
 
 ## Database Schema
 - Collection: `data_gathering_families`
-- Key fields: members[], income_details[], expense_details[], goal_details[], insurance_premiums[], liabilities[]
-
-## Test Credentials
-- Broker PAN: `ANVPB5297J`, Password: `Laksh@0208`, PIN: `0516`
-- Test Family: `869d412b-0cb8-4839-9459-d2a02b2860f1`
+- Key fields: `id`, `family_name`, `broker_id`, `sub_broker_id`, `created_by`, `created_by_role`, `members[]`, `income_details[]`, `expense_details[]`, `goal_details[]`, `insurance_premiums[]`, `liabilities[]`

@@ -116,9 +116,11 @@ export default function FamilyForm({ onCancel, onSubmit, user }) {
     try {
       const token = localStorage.getItem("token");
       
+      // For sub_brokers (MFDs), auto-tag the family to themselves if no associate selected
+      const effectiveSubBrokerId = selectedAssociate || (user?.role === 'sub_broker' ? user.id : null);
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
-        sub_broker_id: selectedAssociate || null,
+        sub_broker_id: effectiveSubBrokerId,
         primary_holder: {
           name: primaryMember.name,
           date_of_birth: primaryMember.dob,
