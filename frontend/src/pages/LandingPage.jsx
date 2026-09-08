@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Users, Briefcase, ArrowRight, Shield, TrendingUp, Globe } from "lucide-react";
+import { Building2, Users, TrendingUp, ArrowRight, Shield, Globe, Briefcase } from "lucide-react";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -8,22 +8,24 @@ export default function LandingPage() {
 
   const userTypes = [
     {
-      id: "mfd",
-      title: "MFD / Sub-Broker",
-      subtitle: "Mutual Fund Distributor",
-      description: "Manage your clients, track investments, and grow your distribution business",
-      icon: Users,
-      color: "#C9A227",
-      features: ["Client Portfolio Management", "Investment Tracking", "Commission Reports"]
-    },
-    {
       id: "investor",
       title: "Private Investor",
       subtitle: "Individual Investor",
       description: "Access exclusive investment opportunities in bonds and real estate",
       icon: TrendingUp,
       color: "#2D5A3D",
+      loginPath: "/login?type=investor",
       features: ["NCD Investments", "Real Estate Deals", "Portfolio Analytics"]
+    },
+    {
+      id: "mfd",
+      title: "MFD / RIA",
+      subtitle: "Mutual Fund Distributor / Advisor",
+      description: "Manage your clients, track investments, and grow your distribution business",
+      icon: Users,
+      color: "#C9A227",
+      loginPath: "/login?type=mfd",
+      features: ["Client Portfolio Management", "Investment Tracking", "Commission Reports"]
     },
     {
       id: "broker",
@@ -32,13 +34,16 @@ export default function LandingPage() {
       description: "List properties, manage clients, and close deals efficiently",
       icon: Building2,
       color: "#5B373C",
+      loginPath: "/login?type=broker",
       features: ["Property Listings", "Client Management", "Deal Tracking"]
     }
   ];
 
   const handleContinue = () => {
-    // All roles go to the same login page
-    navigate("/login");
+    const selected = userTypes.find(t => t.id === selectedRole);
+    if (selected) {
+      navigate(selected.loginPath);
+    }
   };
 
   return (
@@ -128,7 +133,7 @@ export default function LandingPage() {
           {/* Role Selection */}
           <div className="w-full max-w-5xl">
             <p className="text-center text-gray-400 mb-8 text-sm uppercase tracking-wider">
-              Select your profile to continue
+              I am a...
             </p>
             
             <div className="grid md:grid-cols-3 gap-6">
