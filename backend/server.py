@@ -26046,18 +26046,22 @@ async def get_bonds(
         bond['in_demand'] = bond['interested_amount'] > available_value and bond['interested_amount'] > 0 and available_value > 0
         
         # Add cashflow repayment counts for funded/closed bonds.
-        # Numerator = actual repayments received (from Ncd_Repayments, IMAP sync).
-        # Denominator = originally-expected repayment dates on the bond
-        # (Ncd_Master.cashflows_per_unit). This deliberately excludes:
-        #   - Investment entries in holding_cashflows (money going out)
-        #   - Prepayment entries in holding_cashflows (actual early pay-downs)
-        # so that a bond like "Nature Residences" with 1 expected repayment and
-        # several actual prepayments shows e.g. "5 / 1" (actual / expected).
+        # Numerator = expected repayment dates that have already passed (based on today's date).
+        # Denominator = all originally-expected repayment dates on the bond.
+        # This ensures the progress bar reflects time-based progress toward maturity.
         expected_cfs = bond.get('cashflows_per_unit') or []
-        expected_dates = {cf.get('date') for cf in expected_cfs if cf.get('date')}
-        repaid_unique_dates = await db.Ncd_Repayments.distinct("repayment_date", {"bond_id": bond['id']})
+        today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        expected_dates = []
+        repaid_dates = []
+        for cf in expected_cfs:
+            cf_date = cf.get('date')
+            if cf_date:
+                expected_dates.append(cf_date)
+                # Count as "repaid" if the date has passed
+                if cf_date <= today_str:
+                    repaid_dates.append(cf_date)
         bond['total_cashflows_count'] = len(expected_dates)
-        bond['repaid_cashflows_count'] = len(repaid_unique_dates)
+        bond['repaid_cashflows_count'] = len(repaid_dates)
     
     total = await db.Ncd_Master.count_documents({})
     
@@ -26162,15 +26166,22 @@ async def get_available_bonds(current_user: dict = Depends(get_current_user)):
         bond['in_demand'] = bond['interested_amount'] > available_value and bond['interested_amount'] > 0 and available_value > 0
         
         # Add cashflow repayment counts for funded/closed bonds.
-        # Numerator = actual repayments received (Ncd_Repayments, IMAP sync).
-        # Denominator = originally-expected repayment dates (Ncd_Master.cashflows_per_unit).
-        # Investment and prepayment rows in holding_cashflows are intentionally
-        # excluded so the ratio reflects original schedule, not mid-course prepayments.
+        # Numerator = expected repayment dates that have already passed (based on today's date).
+        # Denominator = all originally-expected repayment dates on the bond.
+        # This ensures the progress bar reflects time-based progress toward maturity.
         expected_cfs = bond.get('cashflows_per_unit') or []
-        expected_dates = {cf.get('date') for cf in expected_cfs if cf.get('date')}
-        repaid_unique_dates = await db.Ncd_Repayments.distinct("repayment_date", {"bond_id": bond['id']})
+        today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        expected_dates = []
+        repaid_dates = []
+        for cf in expected_cfs:
+            cf_date = cf.get('date')
+            if cf_date:
+                expected_dates.append(cf_date)
+                # Count as "repaid" if the date has passed
+                if cf_date <= today_str:
+                    repaid_dates.append(cf_date)
         bond['total_cashflows_count'] = len(expected_dates)
-        bond['repaid_cashflows_count'] = len(repaid_unique_dates)
+        bond['repaid_cashflows_count'] = len(repaid_dates)
         
         # Only include bonds that are 'available' (not funded or closed)
         if status == 'available':
@@ -40998,8 +41009,11 @@ async def get_data_gathering_families(current_user: dict = Depends(get_current_u
         # Broker sees all families
         pass
     elif current_user['role'] == 'sub_broker':
-        # Sub-broker sees only their families
-        query["sub_broker_id"] = current_user['id']
+        # Sub-broker sees families they created OR are assigned to them
+        query["$or"] = [
+            {"sub_broker_id": current_user['id']},
+            {"created_by": current_user['id']}
+        ]
     elif current_user['role'] == 'client':
         # Client sees only their own family
         query["client_user_id"] = current_user['id']
@@ -41019,8 +41033,10 @@ async def get_family_details(family_id: str, current_user: dict = Depends(get_cu
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
-        raise HTTPException(status_code=403, detail="Access denied")
+    if current_user['role'] == 'sub_broker':
+        # Sub-broker can access families they created OR are assigned to
+        if family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
+            raise HTTPException(status_code=403, detail="Access denied")
     elif current_user['role'] == 'client' and family.get('client_user_id') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -41139,7 +41155,7 @@ async def update_family(family_id: str, request: FamilyCreate, current_user: dic
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Generate new family name if primary holder name changed
@@ -41219,7 +41235,7 @@ async def add_family_member(family_id: str, member: FamilyMemberCreate, current_
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control for sub-broker
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     new_member = {
@@ -41257,7 +41273,7 @@ async def update_family_member(family_id: str, member_id: str, member: FamilyMem
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control for sub-broker
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Find and update the member
@@ -41320,7 +41336,7 @@ async def delete_family_member(family_id: str, member_id: str, current_user: dic
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Cannot delete primary holder
@@ -41354,7 +41370,7 @@ async def add_income_detail(family_id: str, income: IncomeDetailCreate, current_
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     income_entry = {
@@ -41388,7 +41404,7 @@ async def update_income_detail(family_id: str, income_id: str, income: IncomeDet
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     income_details = family.get('income_details', [])
@@ -41426,7 +41442,7 @@ async def delete_income_detail(family_id: str, income_id: str, current_user: dic
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41455,7 +41471,7 @@ async def add_goal_detail(family_id: str, goal: GoalDetailCreate, current_user: 
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     goal_entry = {
@@ -41493,7 +41509,7 @@ async def update_goal_detail(family_id: str, goal_id: str, goal: GoalDetailCreat
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     goal_details = family.get('goal_details', [])
@@ -41535,7 +41551,7 @@ async def delete_goal_detail(family_id: str, goal_id: str, current_user: dict = 
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41564,7 +41580,7 @@ async def add_expense_detail(family_id: str, expense: ExpenseDetailCreate, curre
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     expense_entry = {
@@ -41604,7 +41620,7 @@ async def update_expense_detail(family_id: str, expense_id: str, expense: Expens
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     expense_details = family.get('expense_details', [])
@@ -41648,7 +41664,7 @@ async def delete_expense_detail(family_id: str, expense_id: str, current_user: d
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41677,7 +41693,7 @@ async def add_insurance_premium(family_id: str, insurance: InsurancePremiumCreat
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     insurance_entry = {
@@ -41717,7 +41733,7 @@ async def update_insurance_premium(family_id: str, insurance_id: str, insurance:
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     insurance_premiums = family.get('insurance_premiums', [])
@@ -41761,7 +41777,7 @@ async def delete_insurance_premium(family_id: str, insurance_id: str, current_us
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41790,7 +41806,7 @@ async def add_asset(family_id: str, asset: AssetDetailCreate, current_user: dict
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     asset_entry = {
@@ -41824,7 +41840,7 @@ async def update_asset(family_id: str, asset_id: str, asset: AssetDetailCreate, 
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     asset_details = family.get('asset_details', [])
@@ -41862,7 +41878,7 @@ async def delete_asset(family_id: str, asset_id: str, current_user: dict = Depen
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41891,7 +41907,7 @@ async def add_liability(family_id: str, liability: LiabilityCreate, current_user
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     liability_entry = {
@@ -41929,7 +41945,7 @@ async def update_liability(family_id: str, liability_id: str, liability: Liabili
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     liabilities = family.get('liabilities', [])
@@ -41971,7 +41987,7 @@ async def delete_liability(family_id: str, liability_id: str, current_user: dict
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -41998,7 +42014,7 @@ async def get_surplus_calculation(family_id: str, current_user: dict = Depends(g
         raise HTTPException(status_code=404, detail="Family not found")
     
     # Access control
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     elif current_user['role'] == 'client' and family.get('client_user_id') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -42115,7 +42131,7 @@ async def update_surplus_allocation(family_id: str, surplus_data: dict, current_
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.update_one(
@@ -42146,7 +42162,7 @@ async def update_investments(family_id: str, data: dict, current_user: dict = De
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Process investment details
@@ -42191,7 +42207,7 @@ async def delete_family(family_id: str, current_user: dict = Depends(get_current
     if not family:
         raise HTTPException(status_code=404, detail="Family not found")
     
-    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id']:
+    if current_user['role'] == 'sub_broker' and family.get('sub_broker_id') != current_user['id'] and family.get('created_by') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
     await db.data_gathering_families.delete_one({"id": family_id})

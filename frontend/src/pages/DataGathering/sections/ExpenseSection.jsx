@@ -248,7 +248,9 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
           axios.delete(endpointFor(i.id), { headers: { Authorization: `Bearer ${token}` } })
         ));
         toast.success(`Removed ${existing.length} ${config?.label || 'item'}${existing.length > 1 ? 's' : ''}`);
-        onRefresh();
+        // Wait for backend to process, then refresh
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await onRefresh();
       } catch {
         toast.error("Failed to remove. Please retry.");
         return;
@@ -319,9 +321,12 @@ export default function ExpenseSection({ family, onUpdate, isReadOnly, onRefresh
         }
         await axios.delete(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         toast.success("Deleted");
-        onRefresh();
+        // Wait for backend to process, then refresh to get fresh data
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await onRefresh();
       } catch { toast.error("Failed"); return; }
     }
+    // Update local state after backend delete completes
     const updated = items[cat].filter(i => i.id !== itemId);
     setItems(prev => ({ ...prev, [cat]: updated }));
     if (updated.length === 0) setAddedCategories(prev => prev.filter(c => c !== cat));

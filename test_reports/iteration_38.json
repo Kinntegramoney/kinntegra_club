@@ -1,0 +1,32 @@
+{
+  "summary": "Verified backend fix for NCD 'Repayment Progress' calculation. The /api/bonds and /api/bonds/available endpoints now return total_cashflows_count (all expected cashflow dates from cashflows_per_unit) and repaid_cashflows_count (dates <= today UTC). Seeded a temporary NCD bond with 12 monthly cashflows (9 past+today, 3 future) via /app/backend/tests/seed_test_bond.py and confirmed the API returned total=12, repaid=9, matching the time-based calculation. All 6 pytest cases passed. Test bond cleaned up post-run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/bonds/{bond_id}", "issue": "Detail endpoint (BondWithCalculations model) appears to drop cashflows_per_unit from response payload; not blocking but inconsistent with list endpoint which does include it."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_repayment_progress.py",
+    "/app/backend/tests/seed_test_bond.py",
+    "/app/test_reports/pytest/repayment_progress_tests.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Calculation uses datetime.now(timezone.utc).strftime('%Y-%m-%d') for today comparison and lexicographic string comparison on cf['date']. This works only because cashflow dates are stored as 'YYYY-MM-DD' strings. If any bond stores dates in a different format (e.g. ISO with time, or DD-MM-YYYY), the comparison will silently produce wrong counts. Consider parsing to date objects before comparing.",
+    "The same block of logic is duplicated in /api/bonds and /api/bonds/available (server.py 26048-26064 and 26168-26184). Extract into a helper (e.g., compute_cashflow_progress(bond)) to prevent divergence in future edits.",
+    "Using UTC 'today' may misreport progress for users in IST near midnight; consider computing today in the app timezone if repayment dates are business-day dates in IST."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_repayment_progress.py (new)",
+    "/app/backend/tests/seed_test_bond.py (new, seeds+cleans TEST_BOND_REPAY_PROGRESS)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "test_credentials": "SUPERUSER / kinntegraa123 / PIN 1234 (used)",
+  "seed_data_creation": "Seeded and then deleted Ncd_Master document id=TEST_BOND_REPAY_PROGRESS with 12 monthly cashflows spanning past/future. Script retained at /app/backend/tests/seed_test_bond.py (accepts 'cleanup' arg).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The repayment progress fix is validated end-to-end. If preview DB again has no NCDs, run: python /app/backend/tests/seed_test_bond.py to insert a deterministic bond, then run pytest /app/backend/tests/test_repayment_progress.py, and finally: python /app/backend/tests/seed_test_bond.py cleanup. REACT_APP_BACKEND_URL must be exported before pytest run.",
+  "rca of the issue": "Previous implementation counted rows in Ncd_Repayments as numerator, which does not track time progress toward maturity — a bond with all 12 monthly cashflows but only 9 actual repayment rows would show 9/12 even if only 1 week remained. Fix (server.py 26048-26064, 26168-26184) now counts cashflows_per_unit entries with date<=today for numerator and total entries for denominator, making progress reflect time-to-maturity."
+}

@@ -2356,12 +2356,28 @@ function AllocationSimulator({
     const dbReturnRate = debtReturn / 100;
     
     // Calculate maturities inline (same logic as component-level getMaturitiesByYear)
+    // Skip instruments whose current value is already included in opening assets
+    // to prevent double-counting (e.g., FD included in opening balance + FD maturity in 2028)
     const simMaturitiesByYear = {};
     for (let y = currentYear; y <= endYear; y++) {
       simMaturitiesByYear[y] = { total: 0 };
     }
+    const debtCatsWithMat = ['fd', 'bonds', 'bond', 'rd_pis', 'insurance_income', 'ppf', 'nps'];
+    const selectedAssetMap = allocation?.selectedAssets || {};
     incomeDetails.forEach(inc => {
       const d = inc.details || {};
+      
+      // Check if this instrument is explicitly selected in opening assets
+      // If so, skip adding its maturity to avoid double-counting
+      const hasMat = d.maturity_date || d.maturity_year || d.maturity_amount;
+      const isDebtWithMat = debtCatsWithMat.includes(inc.category) && hasMat;
+      const explicitSel = selectedAssetMap[inc.id];
+      // Default: debt-with-maturity is NOT selected (so maturity IS counted)
+      // If explicitly selected (true), skip maturity to avoid double-counting
+      if (isDebtWithMat && explicitSel === true) {
+        return; // Skip this instrument's maturity since its value is in opening balance
+      }
+      
       let matYr = null;
       if (d.maturity_date) {
         const ds = d.maturity_date;

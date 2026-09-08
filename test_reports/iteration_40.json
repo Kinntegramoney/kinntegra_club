@@ -1,0 +1,32 @@
+{
+  "summary": "Tested Bug 1 (expense delete persistence) via new pytest suite - all 3 tests PASSED, confirming DELETE truly removes expense from Mongo and subsequent GETs never return it, even under create->delete->re-add sequences. Bug 2 (FD maturity double-count) verified via static code review of runSimulation in SurplusSection.jsx - opening-balance inclusion and maturity-year inclusion are guarded by the same `explicitSel === true` predicate so double-counting is structurally impossible. Frontend loads cleanly with no console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_expense_delete_persistence.py",
+    "/app/test_reports/pytest/expense_delete_persistence.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "SurplusSection.jsx runSimulation (line 2358-2409): Bug 2 fix is correct. Debt-with-maturity instruments default to NOT selected in opening (line 2430: `isSel = explicit !== undefined ? explicit : !isDebtWithMaturity`) and default to counted in maturity year (line 2377: skip only if explicit === true). Both branches share the identical predicate, so no code path can produce double-counting.",
+    "ExpenseSection.jsx removeItem (line 307-333) and skipCategory (line 232-262): correctly `await axios.delete` then `await new Promise(r=>setTimeout(r,300))` then `await onRefresh()` before touching local state. Toast fires before refresh completes; consider awaiting refresh before toast to reflect true persistence.",
+    "server.py delete_expense_detail (line 41656-41678): $pull-based delete is idempotent and atomic — a second DELETE returns 200 with a no-op (verified in test_double_delete_is_idempotent). No response body echoes remaining list; frontend must re-fetch, which it now does."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_expense_delete_persistence.py"
+  ],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "n/a - static review only"},
+  "test_credentials": "SUPERUSER / kinntegraa123 / PIN 1234",
+  "seed_data_creation": "Test expenses added to family 7b59d56b-3034-4bb4-be73-98ea3a67d007 (Test Gagan Vohra) then deleted by tests; net zero footprint.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bug 1 verified end-to-end at API layer. Run: `REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d= -f2) pytest /app/backend/tests/test_expense_delete_persistence.py -v`. Bug 2 is purely a frontend calculation in SurplusSection.jsx runSimulation; UI verification requires logging in, opening a family with an FD asset that has a future maturity_date, opening Allocation Simulator > Configure Assets, toggling the FD in opening assets, and comparing per-year maturity totals. Preview DB may not have such an asset seeded.",
+  "rca_of_the_issue": "Bug 1 RCA: original frontend removeItem did not await the backend DELETE nor the onRefresh, so the next state read could race and re-populate the deleted row from stale cached data. Fix: awaited axios.delete + 300ms grace + awaited onRefresh(). Backend $pull already correctly persists deletion (verified). Bug 2 RCA: runSimulation previously always added every debt instrument's maturity into simMaturitiesByYear regardless of whether that instrument's current value was already counted in openingBalance, causing an FD's future value to appear both as opening asset and again as maturity income in the maturity year. Fix: added early `return` in the maturities loop when `selectedAssetMap[inc.id] === true` for debt-with-maturity instruments, mirroring the inverse condition used in the openingBalance loop."
+}

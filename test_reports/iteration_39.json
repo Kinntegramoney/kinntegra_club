@@ -1,0 +1,42 @@
+{
+  "summary": "Verified MFD family creation & access control fix. Backend $or query (sub_broker_id OR created_by) works end-to-end for MFD 1994108. All 7 backend tests pass. Frontend loads /broker/data-gathering without Access Denied. However, the 'MFD/RIA Partner' dropdown still shows the placeholder 'Select MFD/RIA Partner' instead of auto-selecting the creating MFD (2nd half of reported bug).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/data-gathering/family/{id}", "issue": "Update sets sub_broker_id=request.sub_broker_id (may become null if omitted), overwriting the auto-tagged value. Access still works via created_by fallback but the association is lost for other consumers relying on sub_broker_id."},
+      {"endpoint": "POST /api/auth/login-step2", "issue": "For MFD accounts 1994101-1994108 the Login_Credentials.login_type is 'broker' (not 'mfd_ria_partner'), so JWT/user payload role='broker'. Downstream get_current_user() reads users.role='sub_broker' from the users collection and overrides — inconsistency between JWT role and effective role. Frontend uses JWT role for routing, so MFDs land on /broker/* routes."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Data Gathering > New Family form", "issue": "MFD/RIA Partner dropdown shows placeholder 'Select MFD/RIA Partner' instead of auto-selecting the logged-in MFD (Test MFD User). This is the second part of the reported bug and is NOT fixed.", "selector": "MFD/RIA Partner select", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "MFD route access", "issue": "/sub-broker/data-gathering redirects to /broker/opportunities because login-step2 returns role='broker' for MFD accounts (login_type=broker in Login_Credentials). MFDs currently use /broker/data-gathering which works but conflicts with the stated MFD route in the review.", "affected_selectors": ["/sub-broker/data-gathering"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mfd_family_creation.py",
+    "/app/test_reports/pytest/iteration_39.xml"
+  ],
+  "action_items": [
+    "Fix frontend: auto-populate MFD/RIA Partner dropdown in New Family form with the logged-in MFD user when current_user.role==sub_broker (or when login_type==mfd_ria_partner). This is the second half of the reported bug.",
+    "Reconcile Login_Credentials.login_type='broker' vs users.role='sub_broker' for MFD accounts 1994101-1994108. Either update the credential rows to login_type='mfd_ria_partner' OR update login-step2 role_map to consult users.role. Currently JWT role='broker' causes frontend to route MFDs to /broker/* pages, contradicting the review's /sub-broker/data-gathering path.",
+    "Consider preserving sub_broker_id on PUT /api/data-gathering/family/{id} when request.sub_broker_id is null (don't overwrite existing value)."
+  ],
+  "critical_code_review_comments": [
+    "server.py:41209-41215 update_family unconditionally overwrites sub_broker_id with request.sub_broker_id even when None — this un-tags the family from the MFD (only the created_by fallback saves list/access from breaking).",
+    "server.py:1273 role_map uses login_type to derive role for JWT, but get_current_user() (line 1128) fetches users collection and returns users.role instead — the two roles can silently disagree, as seen with MFD 1994108."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mfd_family_creation.py"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "50% (list/access OK, dropdown auto-select missing)"},
+  "test_credentials": "MFD 1994108 / kinntegraa123 / PIN 1234 (used); SUPERUSER / kinntegraa123 / PIN 1234",
+  "seed_data_creation": "Test-only families prefixed 'TEST_MFD_' created via API for MFD 1994108 (5-6 families). Left in DB (no delete endpoint exposed).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend fix for MFD family access ($or on sub_broker_id/created_by) is verified working. Run: `REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d= -f2) pytest /app/backend/tests/test_mfd_family_creation.py -v`. The MFD 1994108 account is stored as login_type=broker in Login_Credentials but users.role=sub_broker in users collection; get_current_user returns sub_broker so the /api/data-gathering/* endpoints correctly hit the sub_broker branch. Frontend still needs MFD/RIA Partner dropdown auto-select fix in the New Family form under Data Gathering.",
+  "rca_of_the_issue": "Original bug: create_family in server.py did not set sub_broker_id or created_by for MFD-created families, so subsequent list ({sub_broker_id: current_user.id}) and detail (sub_broker_id equality check) returned empty/403. Fix (verified): create_family now sets sub_broker_id = request.sub_broker_id or current_user.id (for sub_broker) and always sets created_by = current_user.id. List query uses $or on both fields; detail/update access allow either match. Confirmed by creating families as MFD 1994108 and verifying: created_by=<mfd_id>, sub_broker_id=<mfd_id>, created_by_role='sub_broker', family appears in GET list, GET detail returns 200, PUT update returns 200, another MFD gets 403 on the same family. Remaining gap: MFD/RIA Partner dropdown auto-select on the frontend form."
+}
