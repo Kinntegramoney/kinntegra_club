@@ -1,5 +1,13 @@
 # Test Credentials
 
+## SUPERUSER Account (Full Access)
+- PAN: `SUPERUSER`
+- Password: `kinntegraa123`
+- PIN: `1234`
+- User ID: `b282d881-309a-4e7b-a11d-c5c8651c595c`
+- Name: Super User
+- Role: broker (superuser)
+
 ## Broker Account
 - PAN: `ANVPB5297J`
 - Password: `Laksh@0208`
@@ -21,11 +29,6 @@
 - PIN: `1234`
 - Name: Test MFD User
 - Email: testmfd@test.com
-
-## Live MFD Credentials (for production)
-- PAN: `1994108`
-- Password: `kinntegraa123`
-- PIN: `1234`
 
 ## Test Family IDs
 - Pradeep Dattatray Prabhu & Family (migrated): `869d412b-0cb8-4839-9459-d2a02b2860f1`
