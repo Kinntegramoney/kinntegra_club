@@ -1221,6 +1221,60 @@ async def verify_reset_token(token: str):
     return {"valid": True, "message": "Token is valid"}
 
 
+# Bootstrap/Seed Endpoint - Creates SUPERUSER broker if none exists
+class BootstrapRequest(BaseModel):
+    secret_key: str
+    pan: str = "SUPERUSER"
+    password: str = "kinntegraa123"
+    pin: str = "1234"
+    name: str = "Super Admin"
+    email: str = "admin@kinntegraa.club"
+
+@api_router.post("/auth/bootstrap-admin")
+async def bootstrap_admin(request: BootstrapRequest):
+    """One-time endpoint to create initial admin/broker account.
+    Requires secret key and only works if no broker exists."""
+    
+    # Verify secret key (use a secure key in production)
+    if request.secret_key != "KINNTEGRAA_BOOTSTRAP_2024":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    # Check if any broker already exists
+    existing_broker = await db.users.find_one({"role": "broker"})
+    if existing_broker:
+        raise HTTPException(status_code=400, detail="A broker account already exists. Bootstrap not needed.")
+    
+    # Check if PAN already exists
+    existing_user = await db.users.find_one({"pan": request.pan.upper()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="PAN already registered")
+    
+    # Create broker account
+    user_id = str(uuid.uuid4())
+    user = {
+        "id": user_id,
+        "pan": request.pan.upper(),
+        "name": request.name,
+        "email": request.email.lower(),
+        "phone": "+971502381689",
+        "password_hash": get_password_hash(request.password),
+        "pin_hash": get_password_hash(request.pin),
+        "role": "broker",
+        "is_active": True,
+        "is_superuser": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user)
+    
+    return {
+        "message": "Bootstrap successful! Admin broker account created.",
+        "pan": user["pan"],
+        "role": "broker",
+        "note": "You can now login with the provided credentials"
+    }
+
+
 # Customer Self-Registration
 @api_router.post("/auth/customer-signup")
 async def customer_signup(signup: CustomerSignup):
