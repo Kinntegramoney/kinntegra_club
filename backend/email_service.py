@@ -35,6 +35,11 @@ def get_mail_config():
     }
 
 
+def get_frontend_url():
+    """Get frontend URL from environment variable, fallback to production"""
+    return os.environ.get('FRONTEND_URL', 'https://kinntegraa.club')
+
+
 def send_email(
     to_email: str,
     subject: str,
@@ -384,11 +389,15 @@ def send_welcome_email_client(
     password: str,
     pin: str,
     broker_name: str,
-    login_url: str = "https://kinntegraa.club/login",
+    login_url: str = None,
     subbroker_name: str = None
 ) -> bool:
     """Send welcome email to a new client with login credentials.
     If subbroker_name is provided, show sub-broker as the representative."""
+    
+    # Use environment-based URL if not provided
+    if login_url is None:
+        login_url = f"{get_frontend_url()}/login"
     
     # Use sub-broker name if available, otherwise use broker name
     representative_name = subbroker_name if subbroker_name else broker_name
@@ -479,9 +488,13 @@ def send_welcome_email_subbroker(
     pin: str,
     partner_code: str,
     broker_name: str,
-    login_url: str = "https://kinntegraa.club/login"
+    login_url: str = None
 ) -> bool:
     """Send welcome email to a new sub-broker (Kinntegraa Club member) with login credentials"""
+    
+    # Use environment-based URL if not provided
+    if login_url is None:
+        login_url = f"{get_frontend_url()}/login"
     
     subject = "Welcome to Kinntegraa Club - Your Exclusive Member Access"
     
@@ -984,9 +997,13 @@ def send_reinvestment_approval_email(
     total_amount: float,
     approval_token: str,
     entries_count: int,
-    base_url: str = "https://kinntegraa.club"
+    base_url: str = None
 ) -> bool:
     """Send reinvestment approval request email to client"""
+    
+    # Use environment-based URL if not provided
+    if base_url is None:
+        base_url = get_frontend_url()
     
     approve_url = f"{base_url}/api/reinvestment/approve-via-link?token={approval_token}&action=approve"
     reject_url = f"{base_url}/api/reinvestment/approve-via-link?token={approval_token}&action=reject"
@@ -1092,9 +1109,13 @@ def send_password_reset_link_email(
     recipient_email: str,
     recipient_name: str,
     reset_token: str,
-    base_url: str = "https://kinntegraa.club"
+    base_url: str = None
 ) -> bool:
     """Send password reset link email (self-service reset)"""
+    
+    # Use environment-based URL if not provided
+    if base_url is None:
+        base_url = get_frontend_url()
     
     reset_url = f"{base_url}/forgot-password?token={reset_token}"
     
@@ -1378,6 +1399,7 @@ def send_holdings_report_email(
     total_invested: float,
     total_expected: float,
     total_profit: float,
+    total_repaid: float = 0.0,
     cc_emails: list = None,
     excel_attachment: bytes = None,
     attachment_filename: str = None,
@@ -1391,8 +1413,9 @@ def send_holdings_report_email(
         client_email: Client's email address
         holdings_data: List of holding dictionaries with bond details
         total_invested: Total investment amount
-        total_expected: Total expected returns
-        total_profit: Total profit
+        total_expected: Total Gross Expected (Principal + Interest, full lifecycle)
+        total_repaid: Total Gross Repaid (Principal + Interest + TDS so far)
+        total_profit: Total Profit (= total_expected − total_invested)
         cc_emails: List of CC email addresses (e.g., sub-broker email)
         excel_attachment: Excel file bytes to attach (optional)
         attachment_filename: Filename for the Excel attachment (optional)
@@ -1404,21 +1427,14 @@ def send_holdings_report_email(
     def fmt_inr(amount):
         return f"₹{amount:,.2f}"
     
-    # Build holdings table rows
-    holdings_rows = ""
-    for h in holdings_data:
-        holdings_rows += f"""
-            <tr>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">{h.get('bond_name', 'N/A')}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('units', 0)}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace;">{fmt_inr(h.get('invested_amount', 0))}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace;">{fmt_inr(h.get('gross_expected', 0))}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; color: {'#22C55E' if h.get('profit', 0) >= 0 else '#DC2626'};">{fmt_inr(h.get('profit', 0))}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('expected_xirr', '-')}%</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{h.get('actual_xirr', '-')}%</td>
-            </tr>
-        """
-    
+    # Profit colours toggle so green-on-positive / red-on-negative reads cleanly
+    # in both light and dark email clients.
+    _profit_bg_a, _profit_bg_b, _profit_label, _profit_value = (
+        ("#D1FAE5", "#A7F3D0", "#065F46", "#047857")
+        if total_profit >= 0
+        else ("#FEE2E2", "#FECACA", "#991B1B", "#B91C1C")
+    )
+
     content = f"""
                 <div class="header">
                     <div class="logo-container">
@@ -1431,59 +1447,45 @@ def send_holdings_report_email(
                 <div class="content">
                     <p class="greeting">Dear <strong>{client_name}</strong>,</p>
                     
-                    <p>Please find below your current investment holdings with Kinntegraa.</p>
+                    <p>Please find your current investment holdings report attached as an Excel file. A quick summary of your portfolio is below.</p>
                     
-                    <!-- Summary Cards -->
-                    <div style="display: flex; gap: 15px; margin: 25px 0;">
-                        <div style="flex: 1; background: linear-gradient(135deg, #FEF3C7, #FDE68A); padding: 20px; border-radius: 10px; text-align: center;">
-                            <p style="margin: 0; font-size: 12px; color: #92400E; text-transform: uppercase; letter-spacing: 0.5px;">Total Invested</p>
-                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #78350F;">{fmt_inr(total_invested)}</p>
-                        </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #DBEAFE, #BFDBFE); padding: 20px; border-radius: 10px; text-align: center;">
-                            <p style="margin: 0; font-size: 12px; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.5px;">Expected Returns</p>
-                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #1E3A8A;">{fmt_inr(total_expected)}</p>
-                        </div>
-                        <div style="flex: 1; background: linear-gradient(135deg, #D1FAE5, #A7F3D0); padding: 20px; border-radius: 10px; text-align: center;">
-                            <p style="margin: 0; font-size: 12px; color: #065F46; text-transform: uppercase; letter-spacing: 0.5px;">Total Profit</p>
-                            <p style="margin: 5px 0 0; font-size: 20px; font-weight: 700; color: #047857;">{fmt_inr(total_profit)}</p>
-                        </div>
+                    <!-- Summary cards — values mirror the Excel Summary tab's Total row -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 22px 0;">
+                        <tr>
+                            <td style="padding: 6px;" width="50%" valign="top">
+                                <div style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); padding: 16px; border-radius: 10px; text-align: center;">
+                                    <p style="margin: 0; font-size: 11px; color: #92400E; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;">Total Invested</p>
+                                    <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: #78350F; word-break: break-word;">{fmt_inr(total_invested)}</p>
+                                </div>
+                            </td>
+                            <td style="padding: 6px;" width="50%" valign="top">
+                                <div style="background: linear-gradient(135deg, #DBEAFE, #BFDBFE); padding: 16px; border-radius: 10px; text-align: center;">
+                                    <p style="margin: 0; font-size: 11px; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;">Gross Expected</p>
+                                    <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: #1E3A8A; word-break: break-word;">{fmt_inr(total_expected)}</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px;" width="50%" valign="top">
+                                <div style="background: linear-gradient(135deg, #E9D5FF, #DDD6FE); padding: 16px; border-radius: 10px; text-align: center;">
+                                    <p style="margin: 0; font-size: 11px; color: #5B21B6; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;">Gross Repaid</p>
+                                    <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: #4C1D95; word-break: break-word;">{fmt_inr(total_repaid)}</p>
+                                </div>
+                            </td>
+                            <td style="padding: 6px;" width="50%" valign="top">
+                                <div style="background: linear-gradient(135deg, {_profit_bg_a}, {_profit_bg_b}); padding: 16px; border-radius: 10px; text-align: center;">
+                                    <p style="margin: 0; font-size: 11px; color: {_profit_label}; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;">Total Profit</p>
+                                    <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: {_profit_value}; word-break: break-word;">{fmt_inr(total_profit)}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div class="info-box" style="margin-top: 8px;">
+                        <strong>📎 Attached:</strong> Open the Excel attachment for the per-scheme breakdown — Summary tab + one detail sheet per investment (Expected vs Actual cashflow, side-by-side), with hyperlinks to navigate between them.
                     </div>
                     
-                    <!-- Holdings Table -->
-                    <div style="overflow-x: auto; margin: 20px 0;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                            <thead>
-                                <tr style="background: #1E1B4B; color: white;">
-                                    <th style="padding: 12px; text-align: left;">Scheme</th>
-                                    <th style="padding: 12px; text-align: center;">Units</th>
-                                    <th style="padding: 12px; text-align: right;">Investment</th>
-                                    <th style="padding: 12px; text-align: right;">Expected</th>
-                                    <th style="padding: 12px; text-align: right;">Profit</th>
-                                    <th style="padding: 12px; text-align: center;">Exp. XIRR</th>
-                                    <th style="padding: 12px; text-align: center;">Act. XIRR</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {holdings_rows}
-                            </tbody>
-                            <tfoot>
-                                <tr style="background: #F3F4F6; font-weight: 600;">
-                                    <td style="padding: 12px;" colspan="2">Total</td>
-                                    <td style="padding: 12px; text-align: right; font-family: monospace;">{fmt_inr(total_invested)}</td>
-                                    <td style="padding: 12px; text-align: right; font-family: monospace;">{fmt_inr(total_expected)}</td>
-                                    <td style="padding: 12px; text-align: right; font-family: monospace; color: #22C55E;">{fmt_inr(total_profit)}</td>
-                                    <td colspan="2"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    
-                    <div class="info-box">
-                        <strong>📊 About Your Report:</strong><br>
-                        This report shows your current holdings as of today. Expected XIRR is based on the original schedule, while Actual XIRR reflects any prepayments or changes.
-                    </div>
-                    
-                    <p style="margin-top: 20px;">For detailed cashflow information, please log in to your Kinntegraa dashboard.</p>
+                    <p style="margin-top: 20px;">For detailed cashflow information, you can also log in to your Kinntegraa dashboard.</p>
                 </div>
     """
     
@@ -1496,13 +1498,16 @@ def send_holdings_report_email(
     
     Dear {client_name},
     
-    Please find below your current investment holdings with Kinntegraa.
+    Please find your current investment holdings report attached as an Excel file.
     
-    SUMMARY
-    -------
-    Total Invested: {fmt_inr(total_invested)}
-    Expected Returns: {fmt_inr(total_expected)}
-    Total Profit: {fmt_inr(total_profit)}
+    SUMMARY (matches the Excel Summary tab's Total row)
+    ----------------------------------------------------
+    Total Invested:   {fmt_inr(total_invested)}
+    Gross Expected:   {fmt_inr(total_expected)}
+    Gross Repaid:     {fmt_inr(total_repaid)}
+    Total Profit:     {fmt_inr(total_profit)}
+    
+    Open the Excel attachment for the per-scheme breakdown — Summary tab + one detail sheet per investment.
     
     For detailed cashflow information, please log in to your Kinntegraa dashboard.
     
@@ -1531,9 +1536,13 @@ def send_client_approval_request_email(
     client_email: str,
     approval_token: str,
     broker_name: str,
-    base_url: str = "https://kinntegraa.club"
+    base_url: str = None
 ) -> bool:
     """Send approval request email to client after broker approves their account"""
+    
+    # Use environment-based URL if not provided
+    if base_url is None:
+        base_url = get_frontend_url()
     
     approve_url = f"{base_url}/api/approval-workflow/client-approve?token={approval_token}&action=approve"
     reject_url = f"{base_url}/api/approval-workflow/client-approve?token={approval_token}&action=reject"
@@ -1640,9 +1649,13 @@ def send_reinvestment_client_approval_email(
     cashflows_count: int,
     approval_token: str,
     broker_name: str,
-    base_url: str = "https://kinntegraa.club"
+    base_url: str = None
 ) -> bool:
     """Send reinvestment approval request email to client"""
+    
+    # Use environment-based URL if not provided
+    if base_url is None:
+        base_url = get_frontend_url()
     
     # Redirect to login page with return URL to approvals tab
     login_url = f"{base_url}/login?redirect=/client/approvals"
@@ -1693,4 +1706,67 @@ def send_reinvestment_client_approval_email(
     """
     
     return send_email(client_email, subject, html_content, plain_content)
+
+
+
+def send_otp_email(
+    email: str,
+    name: str,
+    otp: str
+) -> bool:
+    """Send OTP verification email for signup"""
+    
+    subject = "Kinntegraa | Verify Your Email"
+    
+    content = f"""
+                <div class="content" style="padding: 30px;">
+                    <p style="font-size: 16px; color: #333; margin-bottom: 20px;">Dear <strong>{name}</strong>,</p>
+                    
+                    <p style="font-size: 16px; color: #333; margin-bottom: 20px;">Welcome to Kinntegraa!</p>
+                    
+                    <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
+                        Please use the following OTP to verify your email address:
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <div style="display: inline-block; background: linear-gradient(135deg, #5B373C 0%, #3D252A 100%); padding: 20px 40px; border-radius: 12px;">
+                            <span style="font-size: 32px; font-weight: bold; color: #C9A227; letter-spacing: 8px;">{otp}</span>
+                        </div>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        This OTP is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
+                    </p>
+                    
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                        If you did not request this verification, please ignore this email.
+                    </p>
+                </div>
+    """
+    
+    footer = "<p style='font-size: 13px; color: #666;'>This is an automated message from Kinntegraa. Please do not reply to this email.</p>"
+    
+    html_content = get_email_template_base(content, footer)
+    
+    plain_content = f"""
+    Kinntegraa | Verify Your Email
+    
+    Dear {name},
+    
+    Welcome to Kinntegraa!
+    
+    Please use the following OTP to verify your email address:
+    
+    {otp}
+    
+    This OTP is valid for 10 minutes. Do not share this code with anyone.
+    
+    If you did not request this verification, please ignore this email.
+    
+    This is an automated message from Kinntegraa. Please do not reply to this email.
+    
+    © 2026 Kinntegraa L.L.C-FZ, Dubai, UAE
+    """
+    
+    return send_email(email, subject, html_content, plain_content)
 

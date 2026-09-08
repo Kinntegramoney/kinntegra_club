@@ -70,9 +70,9 @@ async def seed_test_data():
     ]
     
     for client_data in clients_data:
-        existing = await db.clients.find_one({"pan_number": client_data['pan_number']})
+        existing = await db.Private_Investor.find_one({"pan_number": client_data['pan_number']})
         if not existing:
-            await db.clients.insert_one(client_data)
+            await db.Private_Investor.insert_one(client_data)
             print(f"Created client: {client_data['name']} ({client_data['pan_number']})")
         else:
             client_data['id'] = existing['id']
@@ -113,19 +113,19 @@ async def seed_test_data():
     ]
     
     for bond in bonds_data:
-        existing = await db.bonds.find_one({"isin": bond['isin']})
+        existing = await db.Ncd_Master.find_one({"isin": bond['isin']})
         if not existing:
-            await db.bonds.insert_one(bond)
+            await db.Ncd_Master.insert_one(bond)
             print(f"Created bond: {bond['name']}")
         else:
             bond['id'] = existing['id']
             print(f"Bond already exists: {bond['name']}")
     
     # Reload clients and bonds with correct IDs
-    client1 = await db.clients.find_one({"pan_number": "ABCDE1234F"})
-    client2 = await db.clients.find_one({"pan_number": "FGHIJ5678K"})
-    bond1 = await db.bonds.find_one({"isin": "INE001A08BC1"})
-    bond2 = await db.bonds.find_one({"isin": "INE002A08BC2"})
+    client1 = await db.Private_Investor.find_one({"pan_number": "ABCDE1234F"})
+    client2 = await db.Private_Investor.find_one({"pan_number": "FGHIJ5678K"})
+    bond1 = await db.Ncd_Master.find_one({"isin": "INE001A08BC1"})
+    bond2 = await db.Ncd_Master.find_one({"isin": "INE002A08BC2"})
     
     # Create trades
     trades_data = [
@@ -180,7 +180,7 @@ async def seed_test_data():
     ]
     
     for trade in trades_data:
-        existing = await db.trades.find_one({
+        existing = await db.Ncd_Investment_Details.find_one({
             "client_id": trade['client_id'],
             "bond_id": trade['bond_id'],
             "investment_date": trade['investment_date']
@@ -189,13 +189,13 @@ async def seed_test_data():
             trade['id'] = existing['id']
             print(f"Trade already exists for {trade['client_name']} - {trade['bond_name']}")
         else:
-            await db.trades.insert_one(trade)
+            await db.Ncd_Investment_Details.insert_one(trade)
             print(f"Created trade: {trade['client_name']} - {trade['bond_name']} ({trade['units']} units)")
     
     # Reload trades
-    trades_data[0] = await db.trades.find_one({"client_id": client1['id'], "bond_id": bond1['id']})
-    trades_data[1] = await db.trades.find_one({"client_id": client1['id'], "bond_id": bond2['id']})
-    trades_data[2] = await db.trades.find_one({"client_id": client2['id'], "bond_id": bond1['id']})
+    trades_data[0] = await db.Ncd_Investment_Details.find_one({"client_id": client1['id'], "bond_id": bond1['id']})
+    trades_data[1] = await db.Ncd_Investment_Details.find_one({"client_id": client1['id'], "bond_id": bond2['id']})
+    trades_data[2] = await db.Ncd_Investment_Details.find_one({"client_id": client2['id'], "bond_id": bond1['id']})
     
     # Generate cashflows for each trade
     print("\nGenerating cashflows...")
@@ -211,8 +211,8 @@ async def seed_test_data():
             continue
         
         # Get bond details
-        bond = await db.bonds.find_one({"id": trade['bond_id']})
-        client = await db.clients.find_one({"id": trade['client_id']})
+        bond = await db.Ncd_Master.find_one({"id": trade['bond_id']})
+        client = await db.Private_Investor.find_one({"id": trade['client_id']})
         
         investment_date = datetime.strptime(trade['investment_date'], "%Y-%m-%d")
         maturity_date = datetime.strptime(bond['maturity_date'], "%Y-%m-%d")

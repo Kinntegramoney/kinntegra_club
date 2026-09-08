@@ -72,7 +72,7 @@ async def seed_database():
     # 2. Create client (AAAPU0926D - Fali)
     pan_number = "AAAPU0926D"
     client_id = f"client-{pan_number}"
-    existing_client = await db.clients.find_one({"pan_number": pan_number})
+    existing_client = await db.Private_Investor.find_one({"pan_number": pan_number})
     
     if not existing_client:
         client_data = {
@@ -85,7 +85,7 @@ async def seed_database():
             "created_by": broker_id,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-        await db.clients.insert_one(client_data)
+        await db.Private_Investor.insert_one(client_data)
         print(f"Created client: {pan_number}")
     else:
         client_id = existing_client['id']
@@ -94,7 +94,7 @@ async def seed_database():
     # 3. Create bond from template
     bond_code = "CDNRE001"
     bond_id = f"bond-{bond_code}"
-    existing_bond = await db.bonds.find_one({"bond_code": bond_code})
+    existing_bond = await db.Ncd_Master.find_one({"bond_code": bond_code})
     
     if not existing_bond:
         # Parse bond details
@@ -145,7 +145,7 @@ async def seed_database():
             "created_by": broker_id,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-        await db.bonds.insert_one(bond_data)
+        await db.Ncd_Master.insert_one(bond_data)
         print(f"Created bond: {bond_code}")
         print(f"  - Start: {start_date}, Maturity: {maturity_date}")
         print(f"  - Face Value: {bond_data['face_value']}, Coupon: {bond_data['coupon_rate']}%")
@@ -166,7 +166,7 @@ async def seed_database():
         
         trade_id = f"trade-{bond_code}-{inv_date_str}-{row['No of Units*']}"
         
-        existing_trade = await db.trades.find_one({"id": trade_id})
+        existing_trade = await db.Ncd_Investment_Details.find_one({"id": trade_id})
         if not existing_trade:
             trade_data = {
                 "id": trade_id,
@@ -180,7 +180,7 @@ async def seed_database():
                 "created_by": broker_id,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
-            await db.trades.insert_one(trade_data)
+            await db.Ncd_Investment_Details.insert_one(trade_data)
             trades_created += 1
             print(f"  Trade: {inv_date_str} - {row['No of Units*']} units @ ₹{row['Amount*']:,.2f}")
     
@@ -289,9 +289,9 @@ async def seed_database():
     print("\n=== Database Seeding Complete ===")
     
     # Summary
-    bonds_count = await db.bonds.count_documents({})
-    clients_count = await db.clients.count_documents({})
-    trades_count = await db.trades.count_documents({})
+    bonds_count = await db.Ncd_Master.count_documents({})
+    clients_count = await db.Private_Investor.count_documents({})
+    trades_count = await db.Ncd_Investment_Details.count_documents({})
     repayments_count = await db.actual_repayments.count_documents({})
     cashflows_count = await db.holding_cashflows.count_documents({})
     
