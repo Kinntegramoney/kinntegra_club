@@ -14,6 +14,16 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
+  const loginType = searchParams.get('type') || '';
+  
+  // Copy variants per login_type — purely cosmetic; the backend resolves
+  // the collection automatically from the Login_Credentials registry.
+  const LOGIN_TYPE_COPY = {
+    private_investor: { label: 'Private Investor', loginIdLabel: 'PAN or Passport No', hint: 'Indian passport → PAN • Foreign passport → Passport No' },
+    real_estate_partner: { label: 'Real Estate Broker', loginIdLabel: 'RERA License No.', hint: 'Your RERA registration number' },
+    mfd_ria_partner: { label: 'MFD / RIA', loginIdLabel: 'Partner Code', hint: 'Partner code provided by Kinntegraa' },
+  };
+  const typeCopy = LOGIN_TYPE_COPY[loginType] || { label: '', loginIdLabel: 'Login ID', hint: '' };
   
   const [step, setStep] = useState(1); // 1: PAN+Password, 2: PIN
   const [formData, setFormData] = useState({
@@ -35,7 +45,7 @@ export default function Login() {
     e.preventDefault();
     
     if (!formData.pan || !formData.password) {
-      toast.error("Please enter PAN and Password");
+      toast.error("Please enter Login ID and Password");
       return;
     }
 
@@ -51,7 +61,7 @@ export default function Login() {
       toast.success("Please enter your PIN");
     } catch (error) {
       console.error("Login error:", error);
-      toast.error(error.response?.data?.detail || "Invalid PAN or Password");
+      toast.error(error.response?.data?.detail || "Invalid Login ID or Password");
     } finally {
       setLoading(false);
     }
@@ -83,7 +93,7 @@ export default function Login() {
         return;
       }
       
-      // Redirect based on role - always go to opportunities as dashboard may be disabled
+      // Redirect based on role to opportunities page
       if (response.data.user.role === "broker") {
         navigate("/broker/opportunities");
       } else if (response.data.user.role === "client") {
@@ -129,33 +139,32 @@ export default function Login() {
         
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
-                 style={{
-                   boxShadow: '0 8px 20px rgba(201, 162, 39, 0.3)'
-                 }}>
-              <img 
-                src="/logo.svg" 
-                alt="Kinntegraa Logo" 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-              <span className="text-white text-3xl font-bold hidden items-center justify-center w-full h-full rounded-full" style={{ fontFamily: 'serif', background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}>K</span>
-            </div>
-          </div>
+          <img 
+            src="/logo.svg" 
+            alt="Kinntegraa Logo" 
+            className="w-16 h-16"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          <span className="text-white text-3xl font-bold hidden items-center justify-center w-16 h-16 rounded-full" style={{ fontFamily: 'serif', background: 'linear-gradient(135deg, #C9A227 0%, #A68521 100%)' }}>K</span>
         </div>
 
         {step === 1 ? (
           <form onSubmit={handleStep1Submit} data-testid="step1-form">
+            {typeCopy.label && (
+              <p className="text-center text-[11px] uppercase tracking-wider text-etihad-gold-700 font-semibold mb-3"
+                 data-testid="login-type-badge">
+                Logging in as · {typeCopy.label}
+              </p>
+            )}
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="pan" 
                        className="text-xs font-medium tracking-wider"
                        style={{ color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  PAN NO
+                  {typeCopy.loginIdLabel}
                 </Label>
                 <Input
                   data-testid="pan-input"
@@ -163,7 +172,7 @@ export default function Login() {
                   type="text"
                   value={formData.pan}
                   onChange={(e) => setFormData({...formData, pan: e.target.value.toUpperCase()})}
-                  maxLength={12}
+                  maxLength={50}
                   className="h-12 font-mono text-base"
                   style={{
                     borderColor: '#E5E7EB',
@@ -172,6 +181,9 @@ export default function Login() {
                   }}
                   required
                 />
+                {typeCopy.hint && (
+                  <p className="text-[10px] text-gray-400 mt-1">{typeCopy.hint}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -235,20 +247,6 @@ export default function Login() {
                 </Link>
               </div>
 
-              {/* Signup Link */}
-              <div className="text-center mt-4 pt-4 border-t" style={{ borderColor: '#E5E7EB' }}>
-                <p className="text-sm" style={{ color: '#6B7280' }}>
-                  Don&apos;t have an account?{" "}
-                  <Link
-                    to="/signup"
-                    className="font-medium hover:underline"
-                    style={{ color: '#D4A853' }}
-                    data-testid="signup-link"
-                  >
-                    Sign Up
-                  </Link>
-                </p>
-              </div>
             </div>
           </form>
         ) : (
