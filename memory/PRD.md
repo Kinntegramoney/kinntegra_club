@@ -10,10 +10,36 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## Core Requirements
 
-### Landing Page (Restored Sep 2026)
-- User type selection: Private Investor, MFD/RIA, Real Estate Broker
-- Routes to login page after selection
-- Company branding and trust badges
+### Landing Page & Pre-Login Experience (FULLY Restored Sep 8, 2026)
+**Main Landing Page (`/`):**
+- Navigation: About Us, Real Estate Brokers, MFD/RIA, Private Investors
+- Hero: "Investment & Financial Consultancy Platform"
+- Who We Are: Kinntegraa L.L.C-FZ, Meydan Free Zone, License: 2418465.01
+- Our Services: Investment Consultancy, Financial Consultancy, Commercial Brokerage
+- Who We Serve: Private Investors, Real Estate Brokers, MFD/RIA
+- Login dropdown with user type selection
+
+**Audience-Specific Pages:**
+1. **Private Investors (`/private-investors`):**
+   - Indian Passport Holder / Foreign Passport Holder tabs
+   - Services: Real Estate Investment, NCD Investments, CAS Analysis, Data Gathering
+   - Key benefits and examples
+
+2. **MFD/RIA (`/mf-distributors`):**
+   - AMFI Registered MFD / SEBI Registered RIA tabs
+   - Platform Services: CAS Analysis, NCD Distribution, Dubai Real Estate, Financial Planning
+   - Key benefits and examples
+
+3. **Real Estate Brokers (`/real-estate-brokers`):**
+   - B2B2C Fractional Aggregation Platform
+   - For Broker Firms / Your Agents / Your Clients tabs
+   - Challenges and Solutions sections
+
+**Additional Landing Pages:**
+- `/real-estate` - Real Estate Landing
+- `/bonds` - Bonds Landing
+- `/wealth-planning` - Wealth Planning Landing
+- `/portfolio-analyzer` - Portfolio Analyzer Landing
 
 ### Data Gathering Module
 1. **Members Section**: Family member management with retirement year, life expectancy, tax details
@@ -30,11 +56,19 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## What's Been Implemented
 
-### Landing Page & Login Restoration (Sep 8, 2026)
-- ✅ **Landing Page Created** - 3 user types: Private Investor, MFD/RIA, Real Estate Broker
+### Original Pre-Login Pages Restored from GitHub (Sep 8, 2026)
+- ✅ **Recovered original content** from GitHub repository `punitbisani1989/Kinntegraa-Club`
+- ✅ **Main LandingPage.jsx** - Full About Us page with company info, services, audience sections
+- ✅ **PrivateInvestorsPage.jsx** - Complete page for private investor audience
+- ✅ **MFDistributorsPage.jsx** - Complete page for MFD/RIA audience  
+- ✅ **RealEstateBrokersPage.jsx** - Complete page for real estate broker audience
+- ✅ **Additional landing pages** - BondsLanding, RealEstateLanding, WealthPlanningLanding, PortfolioAnalyzerLanding
+- ✅ **Supporting components** - UserTypeSelector, REBrokerSidebar, PartnersTabs, and more
+- ✅ **App.js routes** - All original routes restored with proper imports
+
+### Test Accounts Created (Previous session)
 - ✅ **MFD Accounts Created** - Codes 1994101-1994108 with password `kinntegraa123`, PIN `1234`
 - ✅ **SUPERUSER Account** - PAN `SUPERUSER`, password `kinntegraa123`, PIN `1234`
-- ✅ **App Routes Updated** - Landing page at `/`, login at `/login`
 
 ### MFD Access Bug Fix (Sep 8, 2026)
 - ✅ **Auto-tagging**: When MFD creates family, auto-set `sub_broker_id` to their ID

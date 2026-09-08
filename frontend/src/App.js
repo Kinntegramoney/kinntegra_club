@@ -1,7 +1,6 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/Login";
-import LandingPage from "@/pages/LandingPage";
 import CustomerSignup from "@/pages/CustomerSignup";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Dashboard from "@/pages/Dashboard";
@@ -18,6 +17,9 @@ import SubBrokerDashboard from "@/pages/SubBrokerDashboard";
 import SubBrokerClients from "@/pages/SubBrokerClients";
 import SubBrokerReinvestment from "@/pages/SubBrokerReinvestment";
 import SubBrokerAnalysis from "@/pages/SubBrokerAnalysis";
+import SubBrokerAgents from "@/pages/SubBrokerAgents";
+import SubBrokerApprovals from "@/pages/SubBrokerApprovals";
+import SubBrokerBulkUpload from "@/pages/SubBrokerBulkUpload";
 import CreateBondNew from "@/pages/CreateBondNew";
 import BondDetails from "@/pages/BondDetails";
 import RealEstateDetails from "@/pages/RealEstateDetails";
@@ -30,6 +32,7 @@ import ClientReinvestmentApprovals from "@/pages/ClientReinvestmentApprovals";
 import ClientApprovals from "@/pages/ClientApprovals";
 import ClientLogs from "@/pages/ClientLogs";
 import BulkUpload from "@/pages/BulkUpload";
+import Downloads from "@/pages/Downloads";
 import Analysis from "@/pages/Analysis";
 import AnalysisDashboard from "@/pages/AnalysisDashboard";
 import AdminSchemeMaster from "@/pages/AdminSchemeMaster";
@@ -41,15 +44,43 @@ import SubBrokerClientDetails from "@/pages/SubBrokerClientDetails";
 import BrokerSettings from "@/pages/BrokerSettings";
 import BrokerProfile from "@/pages/BrokerProfile";
 import LeadManagement from "@/pages/LeadManagement";
+import CRMLeadManagement from "@/pages/CRMLeadManagement";
+import PublicLeadSignup from "@/pages/PublicLeadSignup";
+import PublicREBrokerSignup from "@/pages/PublicREBrokerSignup";
+import PublicSubBrokerSignup from "@/pages/PublicSubBrokerSignup";
+import SetupPassword from "@/pages/SetupPassword";
+import REBrokerManagement from "@/pages/REBrokerManagement";
+import REBrokerDashboard from "@/pages/REBrokerDashboard";
+import REBrokerOpportunities from "@/pages/REBrokerOpportunities";
+import REBrokerHoldings from "@/pages/REBrokerHoldings";
+import REBrokerApprovals from "@/pages/REBrokerApprovals";
+import REBrokerAgents from "@/pages/REBrokerAgents";
+import REBrokerPaymentTag from "@/pages/REBrokerPaymentTag";
+import REBrokerPrivateInvestors from "@/pages/REBrokerPrivateInvestors";
+import REBrokerUpload from "@/pages/REBrokerUpload";
+import REBrokerSupportRequests from "@/pages/REBrokerSupportRequests";
+import REBrokerSubscription from "@/pages/REBrokerSubscription";
+import REBrokerPropertyDetails from "@/pages/REBrokerPropertyDetails";
+import SuperAdminDashboard from "@/pages/SuperAdminDashboard";
 import ApprovalsPage from "@/pages/ApprovalsPage";
 import TradeLogs from "@/pages/TradeLogs";
+import BrokerDashboardSummary from "@/pages/BrokerDashboardSummary";
 import UntaggedTrades from "@/pages/UntaggedTrades";
 import EmailEngagementDashboard from "@/pages/EmailEngagementDashboard";
 import DataGathering from "@/pages/DataGathering";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
-import InstallPWA from "@/components/InstallPWA";
+// InstallPWA removed per user request
 import SyncStatus from "@/components/SyncStatus";
+import UserTypeSelector from "@/components/UserTypeSelector";
+import LandingPage from "@/pages/LandingPage";
+import RealEstateLanding from "@/pages/landing/RealEstateLanding";
+import BondsLanding from "@/pages/landing/BondsLanding";
+import WealthPlanningLanding from "@/pages/landing/WealthPlanningLanding";
+import PortfolioAnalyzerLanding from "@/pages/landing/PortfolioAnalyzerLanding";
+import PrivateInvestorsPage from "@/pages/landing/PrivateInvestorsPage";
+import RealEstateBrokersPage from "@/pages/landing/RealEstateBrokersPage";
+import MFDistributorsPage from "@/pages/landing/MFDistributorsPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -67,6 +98,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       return <Navigate to="/broker/opportunities" replace />;
     } else if (parsedUser.role === "client") {
       return <Navigate to="/client/opportunities" replace />;
+    } else if (parsedUser.role === "re_broker") {
+      return <Navigate to="/re-broker/dashboard" replace />;
     } else {
       return <Navigate to="/sub-broker/opportunities" replace />;
     }
@@ -80,11 +113,23 @@ function App() {
     <div className="App">
       <PermissionsProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<CustomerSignup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+          <UserTypeSelector>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/about" element={<Navigate to="/" replace />} />
+              <Route path="/private-investors" element={<PrivateInvestorsPage />} />
+              <Route path="/real-estate-brokers" element={<RealEstateBrokersPage />} />
+              <Route path="/mf-distributors" element={<MFDistributorsPage />} />
+              <Route path="/real-estate" element={<RealEstateLanding />} />
+              <Route path="/bonds" element={<BondsLanding />} />
+              <Route path="/wealth-planning" element={<WealthPlanningLanding />} />
+              <Route path="/portfolio-analyzer" element={<PortfolioAnalyzerLanding />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<PublicLeadSignup />} />
+              <Route path="/re-broker-signup" element={<PublicREBrokerSignup />} />
+              <Route path="/mfd-signup" element={<PublicSubBrokerSignup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/setup-password" element={<SetupPassword />} />
             
             {/* Broker Routes */}
             <Route 
@@ -116,6 +161,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
                 <AdminSubBrokers />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/admin/re-brokers" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <REBrokerManagement />
               </ProtectedRoute>
             } 
           />
@@ -219,6 +272,14 @@ function App() {
             } 
           />
           <Route 
+            path="/broker/downloads" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <Downloads />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/broker/settings" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
@@ -252,9 +313,13 @@ function App() {
           />
           <Route 
             path="/broker/leads" 
+            element={<Navigate to="/broker/approvals?tab=interests" replace />}
+          />
+          <Route 
+            path="/broker/crm-leads" 
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
-                <LeadManagement />
+                <CRMLeadManagement />
               </ProtectedRoute>
             } 
           />
@@ -271,6 +336,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
                 <TradeLogs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/summary" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <BrokerDashboardSummary />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/sub-broker/summary" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <BrokerDashboardSummary />
               </ProtectedRoute>
             } 
           />
@@ -309,6 +390,114 @@ function App() {
             } 
           />
           
+          {/* RE Broker Routes */}
+          <Route 
+            path="/re-broker/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/opportunities" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerOpportunities />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/opportunities/:id" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <RealEstateDetails />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/holdings" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerHoldings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerApprovals />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/agents" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerAgents />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/payment-tag" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerPaymentTag />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/private-investors" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerPrivateInvestors />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/upload" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerUpload />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/support-requests" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerSupportRequests />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/re-broker/subscription" 
+            element={
+              <ProtectedRoute allowedRoles={["re_broker"]}>
+                <REBrokerSubscription />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Super Admin Routes */}
+          <Route 
+            path="/super-admin" 
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "broker"]}>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/super-admin/dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={["superadmin", "broker"]}>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Client Routes */}
           <Route 
             path="/client/opportunities" 
@@ -322,7 +511,7 @@ function App() {
             path="/client/holdings" 
             element={
               <ProtectedRoute allowedRoles={["client"]}>
-                <ClientHoldings />
+                <Holdings />
               </ProtectedRoute>
             } 
           />
@@ -423,6 +612,26 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Approvals Route */}
+          <Route 
+            path="/sub-broker/approvals" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerApprovals />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Sub-Broker Bulk Upload Route */}
+          <Route 
+            path="/sub-broker/bulk-upload" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerBulkUpload />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Sub-Broker Reinvestment Route */}
           <Route 
             path="/sub-broker/reinvestment" 
@@ -433,12 +642,30 @@ function App() {
             } 
           />
           
+          {/* Sub-Broker Agents Route */}
+          <Route 
+            path="/sub-broker/agents" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <SubBrokerAgents />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Sub-Broker Lead Management Route */}
           <Route 
             path="/sub-broker/leads" 
             element={
               <ProtectedRoute allowedRoles={["sub_broker"]}>
                 <LeadManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/sub-broker/crm-leads" 
+            element={
+              <ProtectedRoute allowedRoles={["sub_broker"]}>
+                <CRMLeadManagement />
               </ProtectedRoute>
             } 
           />
@@ -541,10 +768,10 @@ function App() {
             } 
           />
           </Routes>
+          </UserTypeSelector>
         </BrowserRouter>
       </PermissionsProvider>
       <Toaster />
-      <InstallPWA />
       <SyncStatus />
     </div>
   );
