@@ -2930,12 +2930,12 @@ function AllocationSimulator({
       
       let totalEMI = 0;
       entityLiabilities.forEach(l => {
-        const emi = parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0;
-        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const emi = parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0;
+        const remaining = parseInt(l.num_installments) || parseInt(l.remaining_tenure) || 0;
         const rate = parseFloat(l.interest_rate) || 0;
         const outstanding = emi * remaining;
         totalEMI += emi;
-        const loanType = (l.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const loanType = (l.category || l.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         dataSheetData.push(['', loanType, emi, emi * 12, remaining, `${rate}%`, outstanding]);
       });
       dataSheetData.push(['', 'TOTAL', totalEMI, totalEMI * 12, '', '', '']);
@@ -3007,7 +3007,7 @@ function AllocationSimulator({
 
     // SECTION 8: SUMMARY
     const totalAnnualIncome = totalByMember.reduce((a, b) => a + b, 0);
-    const totalAnnualEMI = entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12), 0);
+    const totalAnnualEMI = entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12), 0);
     const annualSurplus = totalAnnualIncome - totalExpenses - totalAnnualEMI;
     
     dataSheetData.push(['', 'SECTION 8: FINANCIAL SUMMARY']);
@@ -3117,9 +3117,9 @@ function AllocationSimulator({
       // Loan installments by type
       let homeLoanEMI = 0, vehicleLoanEMI = 0, personalLoanEMI = 0;
       entityLiabilities.forEach(l => {
-        const loanType = (l.loan_type || l.expense_type || '').toLowerCase();
-        const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
-        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const loanType = (l.category || l.loan_type || l.expense_type || '').toLowerCase();
+        const emi = (parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12;
+        const remaining = parseInt(l.num_installments) || parseInt(l.remaining_tenure) || 0;
         const yearsRemaining = Math.ceil(remaining / 12);
         
         if (yearsFromNow < yearsRemaining) {
@@ -3332,13 +3332,14 @@ function AllocationSimulator({
       cashFlowData.push([]);
       cashFlowData.push(['  Loan EMI Payments:']);
       entityLiabilities.forEach(l => {
-        const loanName = l.loan_name || l.bank_name || l.loan_type || 'Loan';
-        const loanType = (l.loan_type || l.expense_type || '').toLowerCase();
-        const emi = (parseFloat(l.emi_amount) || parseFloat(l.monthly_emi) || 0) * 12;
-        const remaining = parseInt(l.remaining_tenure) || parseInt(l.num_installments) || 0;
+        const loanName = l.loan_name || l.bank_name || l.category || l.loan_type || 'Loan';
+        const loanCategory = (l.category || l.loan_type || l.expense_type || '').toLowerCase();
+        const emi = (parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12;
+        const remaining = parseInt(l.num_installments) || parseInt(l.remaining_tenure) || 0;
         const yearsRemaining = Math.ceil(remaining / 12);
+        const displayName = loanName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         
-        cashFlowData.push([`    - ${loanName} (${l.loan_type || 'Loan'})`, ...yearlyData.map(d => {
+        cashFlowData.push([`    - ${displayName}`, ...yearlyData.map(d => {
           const yearsFromNow = d.year - currentYear;
           return yearsFromNow < yearsRemaining ? formatCurrency(emi) : '-';
         })]);
