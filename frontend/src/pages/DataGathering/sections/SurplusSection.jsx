@@ -799,6 +799,17 @@ export default function SurplusSection({ family, isReadOnly }) {
       }
     });
     
+    // Add Loan EMIs from liabilities collection
+    const liabilitiesData = family?.liabilities || [];
+    liabilitiesData.forEach(loan => {
+      const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0) * 12;
+      const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+      const completionYear = currentYear + Math.ceil(numInstallments / 12);
+      if (targetYear < completionYear && emi > 0) {
+        totalYearExp += emi;
+      }
+    });
+    
     return totalYearExp;
   };
 
@@ -1192,16 +1203,32 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([]);
     
     // ========== LIABILITIES ==========
+    // Check both expense_details for legacy loan expenses AND liabilities collection
     const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
-    if (loanExpenses.length > 0) {
+    const dgLiabilities = family?.liabilities || [];
+    
+    if (loanExpenses.length > 0 || dgLiabilities.length > 0) {
       dgData.push([dgSeparator]);
       dgData.push(['LIABILITIES']);
       dgData.push([dgSeparator]);
-      dgData.push(['Loan Type', 'Member', 'Monthly EMI', 'Remaining Installments', 'Outstanding Amount']);
+      dgData.push(['Loan Type', 'Member', 'Monthly EMI', 'Remaining Installments', 'Interest Rate', 'Outstanding Amount']);
+      
+      // Legacy loan expenses from expense_details
       loanExpenses.forEach(exp => {
         const outstanding = (parseFloat(exp.monthly_emi) || 0) * (parseFloat(exp.num_installments) || 0);
-        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', formatCurrencyINR(outstanding)]);
+        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', '', formatCurrencyINR(outstanding)]);
       });
+      
+      // Liabilities from liabilities collection
+      dgLiabilities.forEach(loan => {
+        const loanType = (loan.category || loan.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0;
+        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+        const rate = loan.interest_rate || '';
+        const outstanding = emi * numInstallments;
+        dgData.push([loanType, getMemberNames(loan.member_ids), formatCurrencyINR(emi), numInstallments, rate ? `${rate}%` : '', formatCurrencyINR(outstanding)]);
+      });
+      
       dgData.push([]);
     }
     
@@ -1364,6 +1391,28 @@ export default function SurplusSection({ family, isReadOnly }) {
       });
       data.push(row);
     });
+    
+    // Loan EMI Payments from liabilities collection
+    const liabilitiesData = family?.liabilities || [];
+    if (liabilitiesData.length > 0) {
+      liabilitiesData.forEach(loan => {
+        const loanCategory = loan.category || loan.loan_type || 'Loan';
+        const loanLabel = loanCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0) * 12;
+        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+        const completionYear = currentYear + Math.ceil(numInstallments / 12);
+        
+        const row = [`  ${loanLabel} EMI`];
+        projectionYears.forEach(year => {
+          if (year < completionYear && emi > 0) {
+            row.push(formatCurrencyINR(Math.round(emi)));
+          } else {
+            row.push('-');
+          }
+        });
+        data.push(row);
+      });
+    }
     
     // Total Expenses - use getTotalFamilyExpenses for consistency with simulation
     const totExpRow = ['TOTAL EXPENSES (B)'];
@@ -3070,7 +3119,7 @@ function AllocationSimulator({
     let debtCorpus = 0;
     
     // Calculate total annual premium from insurance policies
-    const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
+    const totalAnnualPremium = entityPremiums.reduce((sum, p) => sum + (parseFloat(p.yearly_premium) || parseFloat(p.annual_premium) || parseFloat(p.amount) || parseFloat(p.premium) || 0), 0);
     
     const yearlyData = allYears.map((y, idx) => {
       const yearStr = y.toString();
@@ -3318,11 +3367,11 @@ function AllocationSimulator({
       cashFlowData.push([]);
       cashFlowData.push(['  Insurance Premiums:']);
       entityPremiums.forEach(p => {
-        const policyName = p.policy_name || p.company || 'Insurance Policy';
-        const premiumAmt = parseFloat(p.amount) || parseFloat(p.premium) || 0;
+        const policyName = p.policy_name || p.company || (p.category ? p.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Insurance Policy');
+        const premiumAmt = parseFloat(p.yearly_premium) || parseFloat(p.annual_premium) || parseFloat(p.amount) || parseFloat(p.premium) || 0;
+        const uptoYear = parseInt(p.upto_year) || parseInt(p.premium_end_year) || (currentYear + 30);
         cashFlowData.push([`    - ${policyName}`, ...yearlyData.map(d => {
-          const info = getMemberIncomeInfo(targetMembers[0]?.id);
-          return d.year < (info?.retirementYear || 2050) ? formatCurrency(premiumAmt) : '-';
+          return d.year <= uptoYear ? formatCurrency(premiumAmt) : '-';
         })]);
       });
     }
