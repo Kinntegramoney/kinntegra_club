@@ -1,0 +1,34 @@
+{
+  "summary": "Verified the life_expectancy null-persistence fix via backend integration tests against the deployed API. Login via SUPERUSER (login-step1 + login-step2 with PIN 1234) worked. PUT /api/data-gathering/family/{family_id}/member/{member_id} with life_expectancy=null correctly persists null and subsequent GET returns life_expectancy as null. Setting an integer (90) also persists correctly. Backend accepts Optional[int]=None as documented. Frontend UI flow was partially exercised (login screen) but automated login was not completed due to test-script button-text matching issue; not a product bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_life_expectancy_null.py",
+    "/app/test_reports/pytest/life_expectancy.xml"
+  ],
+  "action_items": [
+    "Optional (code fragility, not a bug): In /app/frontend/src/pages/DataGathering/sections/MembersSection.jsx line 259, onValueChange calls parseInt(v) which yields NaN when the 'Not set' option ('' value) is chosen. It happens to work because JSON.stringify serializes NaN to null and the backend accepts null. However, formData.life_expectancy then holds NaN in local state (never ''), so the guard on line 68 (=== '' || === null) never matches — the null value is produced by the parseInt(NaN) path and coerced via JSON. Recommend: `onValueChange={(v) => setFormData({ ...formData, life_expectancy: v === '' ? '' : parseInt(v) })}` so state stays '' and the explicit null-conversion in handleSubmit executes as intended.",
+    "Also the Select's `value={String(formData.life_expectancy)}` becomes 'NaN' after selecting 'Not set', which can break the displayed selection on re-open (should be '' to match the SelectItem key 'not-set'/value '')."
+  ],
+  "critical_code_review_comments": [
+    "Backend update path (server.py L41292-41299) correctly writes life_expectancy through without coercion.",
+    "Frontend handleSubmit correctly sends null when state is '' — but see action_items about the onValueChange producing NaN instead of ''."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_life_expectancy_null.py (new)"
+  ],
+  "success_rate": {"backend": "100% (3/3 pytest)", "frontend": "N/A (code review only)"},
+  "test_credentials": "SUPERUSER / kinntegraa123 / PIN 1234 (as documented in /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Used existing family 869d412b-0cb8-4839-9459-d2a02b2860f1 and restored original life_expectancy after each mutation.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reusable pytest at /app/backend/tests/test_life_expectancy_null.py exercises PUT/GET on family member life_expectancy with null and integer. It self-restores the value. Uses REACT_APP_BACKEND_URL from env.",
+  "rca of the issue": "Root cause of the original user-reported bug: the frontend was sending life_expectancy as an empty string, which is neither None nor int for the Pydantic model (or was being coerced/ignored) so the previously stored value remained. The applied fix (frontend converts '' -> null before PUT) resolves it. Backend model already Optional[int] = None. Verified via API: PUT with null → GET returns null."
+}

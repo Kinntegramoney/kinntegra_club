@@ -62,11 +62,19 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
     try {
       const token = localStorage.getItem("token");
       
+      // Prepare payload - convert empty life_expectancy to null
+      const payload = {
+        ...formData,
+        life_expectancy: formData.life_expectancy === "" || formData.life_expectancy === null 
+          ? null 
+          : parseInt(formData.life_expectancy)
+      };
+      
       if (editMember) {
         // Update existing member
         const response = await axios.put(
           `${API}/data-gathering/family/${family.id}/member/${editMember.id}`,
-          formData,
+          payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
@@ -80,7 +88,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
         // Add new member
         await axios.put(
           `${API}/data-gathering/family/${family.id}/member`,
-          formData,
+          payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success("Member added");
@@ -247,11 +255,11 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
                       <div>
                         <Label>Life Expectancy</Label>
                         <Select 
-                          value={String(formData.life_expectancy)} 
-                          onValueChange={(v) => setFormData({ ...formData, life_expectancy: parseInt(v) })}
+                          value={formData.life_expectancy === "" || formData.life_expectancy === null ? "" : String(formData.life_expectancy)} 
+                          onValueChange={(v) => setFormData({ ...formData, life_expectancy: v === "" ? "" : parseInt(v) })}
                         >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select life expectancy" />
                           </SelectTrigger>
                           <SelectContent>
                             {LIFE_EXPECTANCY.map(le => (
