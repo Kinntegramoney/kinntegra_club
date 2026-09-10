@@ -3802,7 +3802,7 @@ function AllocationSimulator({
                           {member.is_primary && <span className="text-blue-500 ml-0.5 text-[9px]">*</span>}
                         </div>
                         <div className="text-[9px] text-gray-400 mt-0.5 text-center">
-                          {age}y | LE:{memberLifeExp} | R:{memberInfo.retirementYear}
+                          {age}y | LE:{memberLifeExp || 'N/A'} | R:{memberInfo.retirementYear}
                         </div>
                         {allocation.result && (
                           <WealthChart result={allocation.result} entityName={member.name} entityId={member.id} />
