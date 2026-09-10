@@ -40922,7 +40922,7 @@ class FamilyMemberCreate(BaseModel):
     name: str
     date_of_birth: str
     relation: str  # "Primary", "Spouse", "Child", "Parent", etc.
-    life_expectancy: int
+    life_expectancy: Optional[int] = None  # Can be null/empty - if not set, member is excluded from financial plan end year calculation
     retirement_year: Optional[int] = None
     tax_regime: Optional[str] = "New Regime"  # "Old Regime", "New Regime", "NA"
     tax_status: Optional[str] = "Resident"  # "Resident", "NRI with Indian Passport", "NRI with Foreign Passport", "Foreign Passport"

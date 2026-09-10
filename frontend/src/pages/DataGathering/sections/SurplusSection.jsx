@@ -46,17 +46,22 @@ export default function SurplusSection({ family, isReadOnly }) {
 
   const primaryAge = calculateAge(primaryMember?.date_of_birth);
   // Per-member life expectancy (falls back to 85 if missing on the family record)
-  const memberLifeExp = (m) => Number(m?.life_expectancy) || 85;
-  const lifeExpectancy = memberLifeExp(primaryMember);
+  const memberLifeExp = (m) => Number(m?.life_expectancy) || 0;  // Return 0 if not set
+  const lifeExpectancy = memberLifeExp(primaryMember) || 85;  // Default to 85 for primary if not set
   
-  // End year = the year when the LONGEST-LIVED member reaches their own life
-  // expectancy. Using the youngest member with a hardcoded 85 was the bug:
-  // even when the primary's life_expectancy was 95, the projection capped at
-  // 85 and any member outliving 85 fell off the table.
-  const endYear = members.reduce((maxYear, m) => {
+  // Filter members who have a life expectancy value set (non-empty, non-zero)
+  // If life expectancy is not set for a member (like kids), they won't be considered for the financial plan end year
+  const membersWithLifeExp = members.filter(m => m.life_expectancy && Number(m.life_expectancy) > 0);
+  
+  // End year = the year when the LONGEST-LIVED member (with life expectancy set) reaches their own life expectancy
+  // Only consider members who have life expectancy filled in
+  // If no members have life expectancy set, use the primary member with a default of 85
+  const membersToConsider = membersWithLifeExp.length > 0 ? membersWithLifeExp : [{ ...primaryMember, life_expectancy: primaryMember?.life_expectancy || 85 }];
+  const endYear = membersToConsider.reduce((maxYear, m) => {
     const memberAge = calculateAge(m?.date_of_birth);
+    const memberLE = Number(m?.life_expectancy) || 85;
     if (!Number.isFinite(memberAge)) return maxYear;
-    const yearReachesLife = currentYear + Math.max(0, memberLifeExp(m) - memberAge);
+    const yearReachesLife = currentYear + Math.max(0, memberLE - memberAge);
     return Math.max(maxYear, yearReachesLife);
   }, currentYear);
   

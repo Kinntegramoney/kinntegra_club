@@ -25,7 +25,7 @@ const RELATIONS = [
   { value: "Other", label: "Other" }
 ];
 
-const LIFE_EXPECTANCY = [70, 75, 80, 85, 90, 95, 100];
+const LIFE_EXPECTANCY = ["", 70, 75, 80, 85, 90, 95, 100];  // Empty string option added for "not set"
 const TAX_SLABS = ["0%", "5%", "10%", "15%", "20%", "25%", "30%", "surcharge"];
 
 export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh }) {
@@ -37,7 +37,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
     name: "",
     date_of_birth: "",
     relation: "Spouse",
-    life_expectancy: 80,
+    life_expectancy: "",  // Default to empty (not set)
     tax_slab: "30%"
   });
 
@@ -46,7 +46,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
       name: "",
       date_of_birth: "",
       relation: "Spouse",
-      life_expectancy: 80,
+      life_expectancy: "",  // Default to empty (not set)
       tax_slab: "30%"
     });
     setEditMember(null);
@@ -117,7 +117,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
       name: member.name,
       date_of_birth: member.date_of_birth,
       relation: member.relation,
-      life_expectancy: member.life_expectancy,
+      life_expectancy: member.life_expectancy || "",  // Keep empty if not set
       tax_slab: member.tax_slab
     });
     setEditMember(member);
@@ -169,7 +169,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <Badge variant="outline">Life Exp: {primaryMember.life_expectancy} yrs</Badge>
+                  <Badge variant="outline">Life Exp: {primaryMember.life_expectancy || 'Not set'}</Badge>
                   <Badge variant="outline" className="ml-2">Tax: {primaryMember.tax_slab}</Badge>
                 </div>
                 {!isReadOnly && (
@@ -255,7 +255,9 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
                           </SelectTrigger>
                           <SelectContent>
                             {LIFE_EXPECTANCY.map(le => (
-                              <SelectItem key={le} value={String(le)}>{le} years</SelectItem>
+                              <SelectItem key={le === "" ? "not-set" : le} value={String(le)}>
+                                {le === "" ? "Not set (exclude from plan)" : `${le} years`}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -326,7 +328,7 @@ export default function MembersSection({ family, onUpdate, isReadOnly, onRefresh
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">LE: {member.life_expectancy}</Badge>
+                    <Badge variant="outline" className="text-xs">LE: {member.life_expectancy || 'Not set'}</Badge>
                     <Badge variant="outline" className="text-xs">Tax: {member.tax_slab}</Badge>
                     {!isReadOnly && (
                       <>
