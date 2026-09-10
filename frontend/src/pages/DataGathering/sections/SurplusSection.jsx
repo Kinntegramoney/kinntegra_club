@@ -1172,6 +1172,29 @@ export default function SurplusSection({ family, isReadOnly }) {
         ]);
       });
     }
+    
+    // Add Loan EMIs to Expenses section (from liabilities collection)
+    const dgLiabilities = family?.liabilities || [];
+    if (dgLiabilities.length > 0) {
+      dgLiabilities.forEach(loan => {
+        const loanType = (loan.category || loan.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0;
+        const annual = emi * 12;
+        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+        const yearsRemaining = Math.ceil(numInstallments / 12);
+        const uptoYear = currentYear + yearsRemaining;
+        dgData.push([
+          `${loanType} EMI`,
+          getMemberNames(loan.member_ids),
+          formatCurrencyINR(emi),
+          formatCurrencyINR(annual),
+          '0%', // Loan EMIs don't inflate
+          uptoYear,
+          'No',
+          '100%'
+        ]);
+      });
+    }
     dgData.push([]);
     
     // ========== GOALS SECTION ==========
@@ -1201,36 +1224,6 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([getCategoryLabel(inv.category), memberName, formatCurrencyINR(inv.annual_amount), inv.upto_year || '']);
     });
     dgData.push([]);
-    
-    // ========== LIABILITIES ==========
-    // Check both expense_details for legacy loan expenses AND liabilities collection
-    const loanExpenses = expenseDetails.filter(e => ['home_loan', 'vehicle_loan', 'personal_loan', 'consumer_durable', 'education_loan', 'credit_card', 'other_loan'].includes(e.expense_type));
-    const dgLiabilities = family?.liabilities || [];
-    
-    if (loanExpenses.length > 0 || dgLiabilities.length > 0) {
-      dgData.push([dgSeparator]);
-      dgData.push(['LIABILITIES']);
-      dgData.push([dgSeparator]);
-      dgData.push(['Loan Type', 'Member', 'Monthly EMI', 'Remaining Installments', 'Interest Rate', 'Outstanding Amount']);
-      
-      // Legacy loan expenses from expense_details
-      loanExpenses.forEach(exp => {
-        const outstanding = (parseFloat(exp.monthly_emi) || 0) * (parseFloat(exp.num_installments) || 0);
-        dgData.push([getCategoryLabel(exp.expense_type), getMemberNames(exp.member_ids), formatCurrencyINR(exp.monthly_emi), exp.num_installments || '', '', formatCurrencyINR(outstanding)]);
-      });
-      
-      // Liabilities from liabilities collection
-      dgLiabilities.forEach(loan => {
-        const loanType = (loan.category || loan.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0;
-        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
-        const rate = loan.interest_rate || '';
-        const outstanding = emi * numInstallments;
-        dgData.push([loanType, getMemberNames(loan.member_ids), formatCurrencyINR(emi), numInstallments, rate ? `${rate}%` : '', formatCurrencyINR(outstanding)]);
-      });
-      
-      dgData.push([]);
-    }
     
     // Create Data Gathering Sheet
     const dgSheet = XLSX.utils.aoa_to_sheet(dgData);
@@ -3376,19 +3369,16 @@ function AllocationSimulator({
       });
     }
     
-    // Loan EMIs - show individual loans
+    // Loan EMIs - show as individual expense entries (no separate header)
     if (entityLiabilities.length > 0) {
-      cashFlowData.push([]);
-      cashFlowData.push(['  Loan EMI Payments:']);
       entityLiabilities.forEach(l => {
         const loanName = l.loan_name || l.bank_name || l.category || l.loan_type || 'Loan';
-        const loanCategory = (l.category || l.loan_type || l.expense_type || '').toLowerCase();
         const emi = (parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12;
         const remaining = parseInt(l.num_installments) || parseInt(l.remaining_tenure) || 0;
         const yearsRemaining = Math.ceil(remaining / 12);
-        const displayName = loanName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const displayName = loanName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' EMI';
         
-        cashFlowData.push([`    - ${displayName}`, ...yearlyData.map(d => {
+        cashFlowData.push([`  ${displayName}`, ...yearlyData.map(d => {
           const yearsFromNow = d.year - currentYear;
           return yearsFromNow < yearsRemaining ? formatCurrency(emi) : '-';
         })]);
