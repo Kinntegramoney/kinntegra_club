@@ -45,9 +45,10 @@ export default function SurplusSection({ family, isReadOnly }) {
   };
 
   const primaryAge = calculateAge(primaryMember?.date_of_birth);
-  // Per-member life expectancy (falls back to 85 if missing on the family record)
-  const memberLifeExp = (m) => Number(m?.life_expectancy) || 0;  // Return 0 if not set
-  const lifeExpectancy = memberLifeExp(primaryMember) || 85;  // Default to 85 for primary if not set
+  // Per-member life expectancy - returns actual value or 0 if not set
+  const memberLifeExp = (m) => Number(m?.life_expectancy) || 0;
+  // Primary member's life expectancy (only default to 85 if primary has no value set)
+  const lifeExpectancy = memberLifeExp(primaryMember) || 85;
   
   // Filter members who have a life expectancy value set (non-empty, non-zero)
   // If life expectancy is not set for a member (like kids), they won't be considered for the financial plan end year
@@ -59,8 +60,9 @@ export default function SurplusSection({ family, isReadOnly }) {
   const membersToConsider = membersWithLifeExp.length > 0 ? membersWithLifeExp : [{ ...primaryMember, life_expectancy: primaryMember?.life_expectancy || 85 }];
   const endYear = membersToConsider.reduce((maxYear, m) => {
     const memberAge = calculateAge(m?.date_of_birth);
-    const memberLE = Number(m?.life_expectancy) || 85;
-    if (!Number.isFinite(memberAge)) return maxYear;
+    // Members in this list already have life_expectancy > 0 (from filter), so use their actual value
+    const memberLE = Number(m?.life_expectancy);
+    if (!Number.isFinite(memberAge) || !memberLE) return maxYear;
     const yearReachesLife = currentYear + Math.max(0, memberLE - memberAge);
     return Math.max(maxYear, yearReachesLife);
   }, currentYear);
@@ -800,10 +802,10 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     
     // Add Loan EMIs from liabilities collection
-    const liabilitiesData = family?.liabilities || [];
+    const liabilitiesData = family?.liabilities || family?.liability_details || family?.loans || [];
     liabilitiesData.forEach(loan => {
-      const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0) * 12;
-      const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+      const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || parseFloat(loan.emi) || 0) * 12;
+      const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || parseInt(loan.tenure_months) || 0;
       const completionYear = currentYear + Math.ceil(numInstallments / 12);
       if (targetYear < completionYear && emi > 0) {
         totalYearExp += emi;
@@ -1174,25 +1176,28 @@ export default function SurplusSection({ family, isReadOnly }) {
     }
     
     // Add Loan EMIs to Expenses section (from liabilities collection)
-    const dgLiabilities = family?.liabilities || [];
+    // Support multiple possible field names for liabilities
+    const dgLiabilities = family?.liabilities || family?.liability_details || family?.loans || [];
     if (dgLiabilities.length > 0) {
       dgLiabilities.forEach(loan => {
-        const loanType = (loan.category || loan.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0;
+        const loanType = (loan.category || loan.loan_type || loan.type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || parseFloat(loan.emi) || 0;
         const annual = emi * 12;
-        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || parseInt(loan.tenure_months) || 0;
         const yearsRemaining = Math.ceil(numInstallments / 12);
         const uptoYear = currentYear + yearsRemaining;
-        dgData.push([
-          `${loanType} EMI`,
-          getMemberNames(loan.member_ids),
-          formatCurrencyINR(emi),
-          formatCurrencyINR(annual),
-          '0%', // Loan EMIs don't inflate
-          uptoYear,
-          'No',
-          '100%'
-        ]);
+        if (emi > 0) {  // Only add if there's an actual EMI
+          dgData.push([
+            `${loanType} EMI`,
+            getMemberNames(loan.member_ids),
+            formatCurrencyINR(emi),
+            formatCurrencyINR(annual),
+            '0%', // Loan EMIs don't inflate
+            uptoYear,
+            'No',
+            '100%'
+          ]);
+        }
       });
     }
     dgData.push([]);
@@ -1386,24 +1391,27 @@ export default function SurplusSection({ family, isReadOnly }) {
     });
     
     // Loan EMI Payments from liabilities collection
-    const liabilitiesData = family?.liabilities || [];
+    // Support multiple possible field names for liabilities
+    const liabilitiesData = family?.liabilities || family?.liability_details || family?.loans || [];
     if (liabilitiesData.length > 0) {
       liabilitiesData.forEach(loan => {
-        const loanCategory = loan.category || loan.loan_type || 'Loan';
+        const loanCategory = loan.category || loan.loan_type || loan.type || 'Loan';
         const loanLabel = loanCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || 0) * 12;
-        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || 0;
+        const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || parseFloat(loan.emi) || 0) * 12;
+        const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || parseInt(loan.tenure_months) || 0;
         const completionYear = currentYear + Math.ceil(numInstallments / 12);
         
-        const row = [`  ${loanLabel} EMI`];
-        projectionYears.forEach(year => {
-          if (year < completionYear && emi > 0) {
-            row.push(formatCurrencyINR(Math.round(emi)));
-          } else {
-            row.push('-');
-          }
-        });
-        data.push(row);
+        if (emi > 0) {  // Only add if there's an actual EMI
+          const row = [`  ${loanLabel} EMI`];
+          projectionYears.forEach(year => {
+            if (year < completionYear) {
+              row.push(formatCurrencyINR(Math.round(emi)));
+            } else {
+              row.push('-');
+            }
+          });
+          data.push(row);
+        }
       });
     }
     
@@ -2325,11 +2333,15 @@ function AllocationSimulator({
     const { success, finalCorpus, lastYear, yearsShort, entityEndYear, lifeExpectancy } = result;
     
     // Calculate years short of youngest member's life expectancy
-    const youngestMemberEndYear = Math.max(...members.map(m => {
-      const age = calculateAge(m.date_of_birth);
-      const lifeExp = parseInt(m.life_expectancy) || 85;
-      return currentYear + (lifeExp - age);
-    }));
+    // Only consider members who have life expectancy explicitly set
+    const membersWithLE = members.filter(m => m.life_expectancy && Number(m.life_expectancy) > 0);
+    const youngestMemberEndYear = membersWithLE.length > 0 
+      ? Math.max(...membersWithLE.map(m => {
+          const age = calculateAge(m.date_of_birth);
+          const lifeExp = parseInt(m.life_expectancy);
+          return currentYear + (lifeExp - age);
+        }))
+      : endYear;  // Use primary's end year if no one has LE set
     
     const yearsFromLifeExpectancy = youngestMemberEndYear - lastYear;
     const meetsLifeExpectancy = lastYear >= youngestMemberEndYear;
@@ -2500,10 +2512,13 @@ function AllocationSimulator({
     let exhaustYear = null;
     
     // Determine end year based on entity
+    // For individual members without life expectancy, use the family's endYear
     const entityEndYear = isFamily ? endYear : (() => {
       const member = members.find(m => m.id === entityId);
       const age = calculateAge(member?.date_of_birth);
-      const memberLifeExp = parseInt(member?.life_expectancy) || 85;
+      const memberLifeExp = parseInt(member?.life_expectancy);
+      // If member has no life expectancy set, use family endYear
+      if (!memberLifeExp) return endYear;
       return currentYear + (memberLifeExp - age);
     })();
 
@@ -2512,9 +2527,10 @@ function AllocationSimulator({
       ? calculateAge(members.find(m => m.is_primary)?.date_of_birth)
       : calculateAge(members.find(m => m.id === entityId)?.date_of_birth);
     
+    // Life expectancy - only use 85 default for primary member if not set
     const lifeExpectancy = isFamily 
       ? parseInt(members.find(m => m.is_primary)?.life_expectancy) || 85
-      : parseInt(members.find(m => m.id === entityId)?.life_expectancy) || 85;
+      : parseInt(members.find(m => m.id === entityId)?.life_expectancy) || endYear - currentYear + entityAge;
 
     // Store yearly data for chart
     const yearlyData = [];
@@ -2852,8 +2868,9 @@ function AllocationSimulator({
       const member = members.find(m => m.id === entityId);
       entityName = member?.name || 'Member';
       entityAge = calculateAge(member?.date_of_birth);
-      const memberLifeExp = parseInt(member?.life_expectancy) || 85;
-      entityEndYear = currentYear + (memberLifeExp - entityAge);
+      const memberLifeExp = parseInt(member?.life_expectancy);
+      // If member has no life expectancy, use family's endYear
+      entityEndYear = memberLifeExp ? currentYear + (memberLifeExp - entityAge) : endYear;
     }
 
     const wb = XLSX.utils.book_new();
@@ -2907,7 +2924,7 @@ function AllocationSimulator({
     })]);
     dataSheetData.push(['', 'Retirement Age', ...targetMembers.map(m => getMemberIncomeInfo(m.id).retirementAge || 60)]);
     dataSheetData.push(['', 'Retirement Year', ...targetMembers.map(m => getMemberIncomeInfo(m.id).retirementYear)]);
-    dataSheetData.push(['', 'Life Expectancy', ...targetMembers.map(m => parseInt(m.life_expectancy) || 85)]);
+    dataSheetData.push(['', 'Life Expectancy', ...targetMembers.map(m => m.life_expectancy ? parseInt(m.life_expectancy) : 'Not set')]);
     dataSheetData.push(['']);
 
     // SECTION 2: INCOME DETAILS
@@ -3772,7 +3789,8 @@ function AllocationSimulator({
               {members.map((member, idx) => {
                 const allocation = memberAllocations[member.id] || { equity: 60, debt: 40, equityReturn: 12, debtReturn: 0 };
                 const age = calculateAge(member.date_of_birth);
-                const memberLifeExp = parseInt(member.life_expectancy) || 85;
+                // Use actual life expectancy if set, otherwise show as not applicable for end year calc
+                const memberLifeExp = parseInt(member.life_expectancy) || 0;
                 const memberInfo = getMemberIncomeInfo(member.id);
                 
                 return (

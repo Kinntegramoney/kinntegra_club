@@ -255,6 +255,15 @@ export default function DataGathering() {
       // as the backend will use their ID automatically
       const subBrokerId = user?.role === 'sub_broker' ? null : (selectedSubBroker || null);
       
+      // Helper to convert life_expectancy - preserve null/empty instead of defaulting to 85
+      const parseLifeExpectancy = (value) => {
+        if (value === null || value === undefined || value === "" || value === "Not set") {
+          return null;  // Preserve empty/null - member will be excluded from plan horizon
+        }
+        const parsed = parseInt(value);
+        return isNaN(parsed) ? null : parsed;
+      };
+      
       const payload = {
         broker_id: user?.role === 'broker' ? user.id : user?.broker_id,
         sub_broker_id: subBrokerId,
@@ -263,7 +272,7 @@ export default function DataGathering() {
           name: primaryMember.name,
           date_of_birth: primaryMember.dob,
           relation: "Primary",
-          life_expectancy: parseInt(primaryMember.life_expectancy) || 85,
+          life_expectancy: parseLifeExpectancy(primaryMember.life_expectancy),
           retirement_year: parseInt(primaryMember.retirement_year) || null,
           tax_regime: primaryMember.tax_regime,
           tax_status: primaryMember.tax_status,
@@ -271,7 +280,7 @@ export default function DataGathering() {
         },
         members: members.filter(m => !m.isPrimary).map(m => ({
           name: m.name, date_of_birth: m.dob, relation: m.relation,
-          life_expectancy: parseInt(m.life_expectancy) || 85, 
+          life_expectancy: parseLifeExpectancy(m.life_expectancy), 
           retirement_year: parseInt(m.retirement_year) || null,
           tax_regime: m.tax_regime, tax_status: m.tax_status, tax_slab: m.tax_slab
         }))
