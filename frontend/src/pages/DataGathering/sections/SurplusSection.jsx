@@ -1574,13 +1574,32 @@ export default function SurplusSection({ family, isReadOnly }) {
       data.push(row);
     });
     
-    // Maturities row
-    const matRow = ['  Maturities (FD/PPF/EPF/Bonds)'];
-    projectionYears.forEach(year => {
-      const yearMat = maturitiesByYear[year]?.total || 0;
-      matRow.push(yearMat > 0 ? formatCurrencyINR(Math.round(yearMat)) : '-');
+    // Maturities rows - show each maturity type separately
+    // Get all unique maturity types across all years
+    const allMaturityTypes = new Set();
+    Object.values(maturitiesByYear).forEach(yearData => {
+      yearData.details.forEach(d => allMaturityTypes.add(d.type));
     });
-    data.push(matRow);
+    
+    // Create a row for each maturity type
+    const maturityTypeOrder = ['PPF', 'EPF', 'Gratuity', 'NPS', 'FD', 'RD', 'NCD', 'Insurance', 'MF', 'Other'];
+    const sortedMaturityTypes = [...allMaturityTypes].sort((a, b) => {
+      const aIdx = maturityTypeOrder.indexOf(a);
+      const bIdx = maturityTypeOrder.indexOf(b);
+      return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+    });
+    
+    sortedMaturityTypes.forEach(matType => {
+      const matRow = [`  ${matType} Maturity`];
+      projectionYears.forEach(year => {
+        const yearMaturities = maturitiesByYear[year]?.details || [];
+        const typeTotal = yearMaturities
+          .filter(d => d.type === matType)
+          .reduce((sum, d) => sum + d.value, 0);
+        matRow.push(typeTotal > 0 ? formatCurrencyINR(Math.round(typeTotal)) : '-');
+      });
+      data.push(matRow);
+    });
     
     // Total Income - use getTotalFamilyIncome for consistency with simulation
     const totIncRow = ['TOTAL INCOME (A)'];
@@ -3387,12 +3406,20 @@ function AllocationSimulator({
       dataSheetData.push(['', '▸ FIXED INCOME / DEBT INSTRUMENTS']);
       dataSheetData.push(['', 'Type', 'Member', 'Description', 'Investment', 'Interest/XIRR', 'Maturity Date', 'Maturity Amount']);
       
-      // Fixed Deposit
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'fd');
-        items.forEach(item => {
+      // Helper to get member name from ID - use ALL members for lookup
+      const getMemberNameForDebt = (memberIds) => {
+        if (!memberIds || memberIds.length === 0) return 'Family';
+        const memberId = memberIds[0];
+        const member = members.find(m => m.id === memberId || String(m.id) === String(memberId));
+        return member?.name || 'Family';
+      };
+      
+      // Fixed Deposit - iterate directly
+      incomeDetails
+        .filter(inc => inc.category === 'fd' || inc.category === 'fixed_deposit')
+        .forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Fixed Deposit', m.name,
+          dataSheetData.push(['', 'Fixed Deposit', getMemberNameForDebt(item.member_ids),
             d.description || '-',
             parseFloat(d.investment_value) || 0,
             d.gross_xirr ? `${d.gross_xirr}%` : (d.interest_rate ? `${d.interest_rate}%` : '-'),
@@ -3400,14 +3427,13 @@ function AllocationSimulator({
             parseFloat(d.maturity_amount) || 0
           ]);
         });
-      });
       
       // RD / PIS
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'rd_pis');
-        items.forEach(item => {
+      incomeDetails
+        .filter(inc => inc.category === 'rd_pis')
+        .forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'RD / PIS', m.name,
+          dataSheetData.push(['', 'RD / PIS', getMemberNameForDebt(item.member_ids),
             `Monthly: ₹${parseFloat(d.investment_value_monthly) || 0}`,
             parseFloat(d.investment_value) || 0,
             d.gross_xirr ? `${d.gross_xirr}%` : (d.interest_rate ? `${d.interest_rate}%` : '-'),
@@ -3415,14 +3441,13 @@ function AllocationSimulator({
             parseFloat(d.maturity_value) || 0
           ]);
         });
-      });
       
       // NCD / Bonds
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'bond');
-        items.forEach(item => {
+      incomeDetails
+        .filter(inc => inc.category === 'bond' || inc.category === 'ncd')
+        .forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'NCD', m.name,
+          dataSheetData.push(['', 'NCD', getMemberNameForDebt(item.member_ids),
             d.description || '-',
             parseFloat(d.investment_value) || 0,
             d.gross_xirr ? `${d.gross_xirr}%` : '-',
@@ -3430,14 +3455,13 @@ function AllocationSimulator({
             parseFloat(d.maturity_amount) || 0
           ]);
         });
-      });
       
       // Insurance (as investment)
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'insurance_income');
-        items.forEach(item => {
+      incomeDetails
+        .filter(inc => inc.category === 'insurance_income' || inc.category === 'insurance')
+        .forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Insurance', m.name,
+          dataSheetData.push(['', 'Insurance', getMemberNameForDebt(item.member_ids),
             d.description || '-',
             parseFloat(d.total_paid) || 0,
             d.gross_xirr ? `${d.gross_xirr}%` : '-',
@@ -3445,7 +3469,6 @@ function AllocationSimulator({
             parseFloat(d.maturity_amount) || 0
           ]);
         });
-      });
       dataSheetData.push(['']);
     }
     
@@ -3456,34 +3479,48 @@ function AllocationSimulator({
     
     if (hasEquityInvestments) {
       dataSheetData.push(['', '▸ MARKET-LINKED INVESTMENTS']);
-      dataSheetData.push(['', 'Type', 'Member', 'Market Value', 'Monthly SIP/Contribution', 'Up to Year']);
+      
+      // Helper to get member name from ID - use ALL members for lookup
+      const getMemberNameForInv = (memberIds) => {
+        if (!memberIds || memberIds.length === 0) return 'Family';
+        const memberId = memberIds[0];
+        const member = members.find(m => m.id === memberId || String(m.id) === String(memberId));
+        return member?.name || 'Family';
+      };
       
       // Mutual Funds
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'mutual_fund');
-        items.forEach(item => {
+      const mfItems = incomeDetails.filter(inc => inc.category === 'mutual_fund');
+      if (mfItems.length > 0) {
+        dataSheetData.push(['', 'Mutual Fund', 'Member', 'Market Value', 'SIP Amount', 'Annual SIP', 'Up to Year']);
+        mfItems.forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Mutual Fund', m.name,
+          dataSheetData.push(['', '', getMemberNameForInv(item.member_ids),
             parseFloat(d.market_value) || 0,
             parseFloat(d.sip_amount) || 0,
+            parseFloat(d.annual_sip_amount) || (parseFloat(d.sip_amount) || 0) * 12,
             d.upto_year || '-'
           ]);
         });
-      });
+        dataSheetData.push(['']);
+      }
       
       // Shares / PMS
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'shares_pms');
-        items.forEach(item => {
+      const sharesItems = incomeDetails.filter(inc => inc.category === 'shares_pms');
+      if (sharesItems.length > 0) {
+        dataSheetData.push(['', 'Shares / PMS', 'Member', 'Market Value', 'Annual Contribution', 'Monthly Contribution', 'Up to Year']);
+        sharesItems.forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Shares / PMS', m.name,
+          const annualContrib = parseFloat(d.annual_contribution) || 0;
+          const monthlyContrib = parseFloat(d.monthly_contribution) || Math.round(annualContrib / 12);
+          dataSheetData.push(['', '', getMemberNameForInv(item.member_ids),
             parseFloat(d.market_value) || 0,
-            Math.round((parseFloat(d.annual_contribution) || 0) / 12),
+            annualContrib,
+            monthlyContrib,
             d.upto_year || '-'
           ]);
         });
-      });
-      dataSheetData.push(['']);
+        dataSheetData.push(['']);
+      }
     }
     
     // ---- OTHER ASSETS ----
@@ -3493,56 +3530,72 @@ function AllocationSimulator({
     
     if (hasOtherAssets) {
       dataSheetData.push(['', '▸ OTHER ASSETS']);
-      dataSheetData.push(['', 'Type', 'Member', 'Description', 'Value']);
       
-      // Commodities
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'commodities');
-        items.forEach(item => {
-          const d = item.details || {};
-          dataSheetData.push(['', 'Commodities', m.name,
-            `${d.commodity_type || 'Gold'} - ${d.weight_kg || 0} Kg`,
-            parseFloat(d.market_value) || 0
-          ]);
-        });
-      });
+      // Helper to get member name from ID - use ALL members for lookup
+      const getMemberNameForAssets = (memberIds) => {
+        if (!memberIds || memberIds.length === 0) return 'Family';
+        const memberId = memberIds[0];
+        const member = members.find(m => m.id === memberId || String(m.id) === String(memberId));
+        return member?.name || 'Family';
+      };
       
       // Cash In Hand
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'cash');
-        items.forEach(item => {
+      const cashItems = incomeDetails.filter(inc => inc.category === 'cash' || inc.category === 'cash_in_hand');
+      if (cashItems.length > 0) {
+        dataSheetData.push(['', 'Cash In Hand', 'Member', 'Description', 'Bank Balance']);
+        cashItems.forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Cash In Hand', m.name,
+          dataSheetData.push(['', '', getMemberNameForAssets(item.member_ids),
             d.description || '-',
             parseFloat(d.bank_balance) || 0
           ]);
         });
-      });
+        dataSheetData.push(['']);
+      }
       
       // Vehicle
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'vehicle');
-        items.forEach(item => {
+      const vehicleItems = incomeDetails.filter(inc => inc.category === 'vehicle');
+      if (vehicleItems.length > 0) {
+        dataSheetData.push(['', 'Vehicle', 'Member', 'Description', 'Current Market Value']);
+        vehicleItems.forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Vehicle', m.name,
+          dataSheetData.push(['', '', getMemberNameForAssets(item.member_ids),
             d.description || '-',
             parseFloat(d.market_value) || 0
           ]);
         });
-      });
+        dataSheetData.push(['']);
+      }
+      
+      // Commodities
+      const commodityItems = incomeDetails.filter(inc => inc.category === 'commodities');
+      if (commodityItems.length > 0) {
+        dataSheetData.push(['', 'Commodities', 'Member', 'Type', 'Weight (Kg)', 'Price/Kg', 'Market Value']);
+        commodityItems.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', '', getMemberNameForAssets(item.member_ids),
+            d.commodity_type || 'Gold',
+            parseFloat(d.weight_kg) || 0,
+            parseFloat(d.price_per_kg) || 0,
+            parseFloat(d.market_value) || 0
+          ]);
+        });
+        dataSheetData.push(['']);
+      }
       
       // Other
-      targetMembers.forEach(m => {
-        const items = getMemberIncomeByCategory(m.id, 'other');
-        items.forEach(item => {
+      const otherItems = incomeDetails.filter(inc => inc.category === 'other');
+      if (otherItems.length > 0) {
+        dataSheetData.push(['', 'Other', 'Member', 'Description', 'Value']);
+        otherItems.forEach(item => {
           const d = item.details || {};
-          dataSheetData.push(['', 'Other', m.name,
+          dataSheetData.push(['', '', getMemberNameForAssets(item.member_ids),
             d.description || '-',
-            parseFloat(d.market_value) || 0
+            parseFloat(d.market_value) || parseFloat(d.value) || 0
           ]);
         });
-      });
-      dataSheetData.push(['']);
+        dataSheetData.push(['']);
+      }
     }
     
     // ---- PROPERTY DETAILS (Full) ----
@@ -3848,14 +3901,14 @@ function AllocationSimulator({
     // SECTION 8: SUMMARY
     const totalAnnualIncome = totalIncomeByMember.reduce((a, b) => a + b, 0);
     const totalAnnualEMI = entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12), 0);
-    const annualSurplus = totalAnnualIncome - totalExpenses - totalAnnualEMI;
+    const annualSurplus = totalAnnualIncome - grandTotalExpenses - totalAnnualEMI;
     
     dataSheetData.push(['', 'SECTION 8: FINANCIAL SUMMARY']);
     dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
     dataSheetData.push(['']);
     dataSheetData.push(['', 'Metric', 'Annual', 'Monthly']);
     dataSheetData.push(['', 'Total Income', totalAnnualIncome, Math.round(totalAnnualIncome / 12)]);
-    dataSheetData.push(['', 'Total Expenses', totalExpenses, Math.round(totalExpenses / 12)]);
+    dataSheetData.push(['', 'Total Expenses', grandTotalExpenses, Math.round(grandTotalExpenses / 12)]);
     dataSheetData.push(['', 'Total EMI Payments', totalAnnualEMI, Math.round(totalAnnualEMI / 12)]);
     dataSheetData.push(['', 'Available for Savings', annualSurplus, Math.round(annualSurplus / 12)]);
     dataSheetData.push(['', 'Savings Rate', `${((annualSurplus / totalAnnualIncome) * 100).toFixed(1)}%`, '']);
