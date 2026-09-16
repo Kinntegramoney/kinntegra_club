@@ -11,6 +11,173 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { generateFinancialPlanPDF } from "@/components/PDFExport/FinancialPlanPDF";
 
+// ========================================
+// INCOME CATEGORY CONFIGURATION
+// Maps stored category values to Excel display labels
+// Source of truth: Matches IncomeSection.jsx INCOME_CATEGORIES
+// ========================================
+const INCOME_CATEGORY_CONFIG = {
+  // Regular Income (recurring)
+  salary: { 
+    label: "Salary Income", 
+    type: "regular",
+    fields: ["net_income_monthly", "net_income_yearly", "avg_growth_rate", "increment_month"]
+  },
+  business: { 
+    label: "Business Income", 
+    type: "regular",
+    fields: ["net_income_yearly", "avg_growth_rate"]
+  },
+  // Also handle 'business_income' as alias
+  business_income: { 
+    label: "Business Income", 
+    type: "regular",
+    fields: ["net_income_yearly", "avg_growth_rate"]
+  },
+  rental: { 
+    label: "Property Details", 
+    type: "property",
+    fields: ["property_type", "property_details", "investment_amount", "investment_date", "market_value", 
+             "market_value_date", "xirr_return", "is_on_rent", "rent_per_month", "annual_rent", 
+             "maintenance", "property_tax", "absolute_return"]
+  },
+  // Also handle 'property_details' as alias
+  property_details: { 
+    label: "Property Details", 
+    type: "property",
+    fields: ["property_type", "property_details", "investment_amount", "investment_date", "market_value", 
+             "market_value_date", "xirr_return", "is_on_rent", "rent_per_month", "annual_rent", 
+             "maintenance", "property_tax", "absolute_return"]
+  },
+  
+  // Retirement Corpus (with maturity)
+  ppf: { 
+    label: "PPF", 
+    type: "retirement",
+    fields: ["market_value", "annual_contribution", "growth_rate", "upto_year", "maturity_date", "maturity_value"]
+  },
+  epf: { 
+    label: "EPF", 
+    type: "retirement",
+    fields: ["market_value", "annual_contribution", "growth_rate", "upto_year", "maturity_date", "maturity_value"]
+  },
+  gratuity: { 
+    label: "Gratuity", 
+    type: "retirement",
+    fields: ["market_value", "growth_rate", "maturity_date", "maturity_value"]
+  },
+  pension: { 
+    label: "Pension", 
+    type: "pension",
+    fields: ["payable_type", "description", "amount", "amount_yearly", "start_date", "upto_life", "end_date", "payable_to_relation"]
+  },
+  
+  // Fixed Income / Debt Instruments (with maturity)
+  fd: { 
+    label: "Fixed Deposit", 
+    type: "debt",
+    fields: ["description", "investment_value", "investment_date", "interest_rate", "payable_cycle", 
+             "maturity_amount", "maturity_date", "gross_xirr"]
+  },
+  // Also handle 'fixed_deposit' as alias
+  fixed_deposit: { 
+    label: "Fixed Deposit", 
+    type: "debt",
+    fields: ["description", "investment_value", "investment_date", "interest_rate", "payable_cycle", 
+             "maturity_amount", "maturity_date", "gross_xirr"]
+  },
+  rd_pis: { 
+    label: "RD / PIS", 
+    type: "debt",
+    fields: ["investment_value_monthly", "interest_rate", "start_date", "end_date", "num_installments", 
+             "investment_value", "maturity_value", "gross_xirr"]
+  },
+  bond: { 
+    label: "NCD", 
+    type: "debt",
+    fields: ["description", "investment_date", "investment_value", "payout_frequency", "payout_amount", 
+             "maturity_amount", "maturity_date", "gross_xirr"]
+  },
+  // Also handle 'ncd' as alias
+  ncd: { 
+    label: "NCD", 
+    type: "debt",
+    fields: ["description", "investment_date", "investment_value", "payout_frequency", "payout_amount", 
+             "maturity_amount", "maturity_date", "gross_xirr"]
+  },
+  insurance_income: { 
+    label: "Insurance", 
+    type: "insurance_investment",
+    fields: ["description", "premium_frequency", "premium_amount", "premium_start_date", "premium_end_date", 
+             "total_paid", "total_pending", "maturity_date", "maturity_amount", "gross_xirr"]
+  },
+  // Also handle 'insurance' as alias
+  insurance: { 
+    label: "Insurance", 
+    type: "insurance_investment",
+    fields: ["description", "premium_frequency", "premium_amount", "premium_start_date", "premium_end_date", 
+             "total_paid", "total_pending", "maturity_date", "maturity_amount", "gross_xirr"]
+  },
+  
+  // Market-Linked Investments
+  mutual_fund: { 
+    label: "Mutual Fund", 
+    type: "equity",
+    fields: ["market_value", "sip_amount", "annual_sip_amount", "upto_year"]
+  },
+  shares_pms: { 
+    label: "Shares / PMS", 
+    type: "equity",
+    fields: ["market_value", "annual_contribution", "upto_year"]
+  },
+  commodities: { 
+    label: "Commodities", 
+    type: "commodity",
+    fields: ["commodity_type", "weight_kg", "price_per_kg", "market_value"]
+  },
+  
+  // Other Assets
+  cash: { 
+    label: "Cash In Hand", 
+    type: "liquid",
+    fields: ["description", "bank_balance"]
+  },
+  // Also handle 'cash_in_hand' as alias
+  cash_in_hand: { 
+    label: "Cash In Hand", 
+    type: "liquid",
+    fields: ["description", "bank_balance"]
+  },
+  vehicle: { 
+    label: "Vehicle", 
+    type: "asset",
+    fields: ["description", "market_value"]
+  },
+  other: { 
+    label: "Other", 
+    type: "other",
+    fields: ["description", "market_value"]
+  }
+};
+
+// Helper function to get the display label for a category
+const getIncomeCategoryLabel = (category) => {
+  return INCOME_CATEGORY_CONFIG[category]?.label || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Helper function to normalize category (handle aliases)
+const normalizeIncomeCategory = (category) => {
+  const aliases = {
+    'business_income': 'business',
+    'property_details': 'rental',
+    'fixed_deposit': 'fd',
+    'ncd': 'bond',
+    'insurance': 'insurance_income',
+    'cash_in_hand': 'cash'
+  };
+  return aliases[category] || category;
+};
+
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
   const incomeDetails = family?.income_details || [];
@@ -103,6 +270,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     let salaryGrowth = 0, businessGrowth = 0, retirementAge = 60, retirementYear = null;
     let baseSalary = 0, baseBusiness = 0, baseRental = 0, basePension = 0;
     let salaryIncomeTill = null, businessIncomeTill = null;
+    let rentalGrowthRate = 0;
     
     // First priority: Use member's retirement_year if set
     if (member?.retirement_year) {
@@ -143,6 +311,11 @@ export default function SurplusSection({ family, isReadOnly }) {
           if (details.is_on_rent === 'Yes' || annualRent > 0 || rentPerMonth > 0) {
             baseRental += annualRent > 0 ? annualRent : rentPerMonth * 12;
           }
+          // Track rental growth rate from xirr_return, absolute_return, or rental_growth_rate
+          const propertyGrowth = parseFloat(details.xirr_return) || parseFloat(details.absolute_return) || parseFloat(details.rental_growth_rate) || parseFloat(details.growth_rate) || 0;
+          if (propertyGrowth > 0) {
+            rentalGrowthRate = Math.max(rentalGrowthRate, propertyGrowth);
+          }
           break;
         case 'pension':
           const pensionYearly = parseFloat(details.amount_yearly) || parseFloat(details.annual_pension) || 0;
@@ -179,7 +352,8 @@ export default function SurplusSection({ family, isReadOnly }) {
     const effectiveBusinessEndYear = businessIncomeTill ? Math.min(retirementYear, businessIncomeTill) : retirementYear;
     
     return { 
-      salaryGrowth, businessGrowth, rentalGrowth: 3, 
+      salaryGrowth, businessGrowth, rentalGrowth: rentalGrowthRate || 3, 
+      retirementAge,
       retirementYear, 
       salaryEndYear: effectiveSalaryEndYear,
       businessEndYear: effectiveBusinessEndYear,
@@ -1006,10 +1180,19 @@ export default function SurplusSection({ family, isReadOnly }) {
     const rentalIncomes = incomeDetails.filter(inc => inc.category === 'property_details' || inc.category === 'rental');
     if (rentalIncomes.length > 0) {
       dgData.push(['Property Details']);
-      dgData.push(['Member', 'Property Type', 'Monthly Income', 'Annual Income', 'Growth Rate %']);
+      dgData.push(['Member', 'Property Type', 'Investment Amount', 'Market Value', 'Annual Rent', 'Growth Rate %']);
       rentalIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.property_type || '', formatCurrencyINR(d.monthly_amount || d.rent_per_month), formatCurrencyINR(d.annual_amount || d.annual_rent), d.rental_growth_rate || d.growth_rate || '3']);
+        // Use xirr_return, absolute_return, rental_growth_rate, or growth_rate - don't default to hardcoded value
+        const growthRate = d.xirr_return || d.absolute_return || d.rental_growth_rate || d.growth_rate || '';
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.property_type || '', 
+          formatCurrencyINR(d.investment_amount),
+          formatCurrencyINR(d.market_value),
+          formatCurrencyINR(d.annual_rent || d.annual_amount),
+          growthRate
+        ]);
       });
       dgData.push([]);
     }
@@ -2991,36 +3174,313 @@ function AllocationSimulator({
     dataSheetData.push(['', 'Life Expectancy', ...targetMembers.map(m => m.life_expectancy ? parseInt(m.life_expectancy) : 'Not set')]);
     dataSheetData.push(['']);
 
-    // SECTION 2: INCOME DETAILS
-    dataSheetData.push(['', 'SECTION 2: INCOME DETAILS (Annual)']);
+    // SECTION 2: INCOME DETAILS - Comprehensive with all categories
+    dataSheetData.push(['', 'SECTION 2: INCOME DETAILS']);
     dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
     dataSheetData.push(['']);
-    dataSheetData.push(['', 'Income Type', ...targetMembers.map(m => m.name), 'Total']);
+    
+    // Helper to get income by category for a member
+    const getMemberIncomeByCategory = (memberId, category) => {
+      return incomeDetails.filter(inc => {
+        const incMemberIds = inc.member_ids || [];
+        const matchesMember = incMemberIds.includes(memberId) || incMemberIds.includes(String(memberId));
+        const normalizedCat = normalizeIncomeCategory(inc.category);
+        const normalizedTarget = normalizeIncomeCategory(category);
+        return matchesMember && normalizedCat === normalizedTarget;
+      });
+    };
+    
+    // ---- REGULAR INCOME (Recurring) ----
+    dataSheetData.push(['', '▸ REGULAR INCOME (Annual)']);
+    dataSheetData.push(['', 'Income Type', ...targetMembers.map(m => m.name), 'Total', 'Growth %', 'Income Till']);
     
     // Salary Income
-    const salaryByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseSalary);
-    dataSheetData.push(['', 'Salary Income', ...salaryByMember, salaryByMember.reduce((a, b) => a + b, 0)]);
+    const salaryByMember = targetMembers.map(m => {
+      const info = getMemberIncomeInfo(m.id);
+      return info.baseSalary;
+    });
+    const salaryGrowths = targetMembers.map(m => getMemberIncomeInfo(m.id).salaryGrowth);
+    const avgSalaryGrowth = salaryGrowths.reduce((a, b) => a + b, 0) / (salaryGrowths.filter(g => g > 0).length || 1);
+    const salaryEndYears = targetMembers.map(m => getMemberIncomeInfo(m.id).salaryEndYear);
+    dataSheetData.push(['', 'Salary Income', ...salaryByMember, salaryByMember.reduce((a, b) => a + b, 0), 
+      salaryGrowths.some(g => g > 0) ? `${avgSalaryGrowth.toFixed(1)}%` : '-',
+      salaryEndYears.some(y => y) ? Math.min(...salaryEndYears.filter(y => y)) : '-']);
     
     // Business Income
-    const businessByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseBusiness);
-    dataSheetData.push(['', 'Business Income', ...businessByMember, businessByMember.reduce((a, b) => a + b, 0)]);
-    
-    // Rental Income
-    const rentalByMember = targetMembers.map(m => getMemberIncomeInfo(m.id).baseRental);
-    dataSheetData.push(['', 'Rental Income', ...rentalByMember, rentalByMember.reduce((a, b) => a + b, 0)]);
-    
-    // Total Income
-    const totalByMember = targetMembers.map(m => {
+    const businessByMember = targetMembers.map(m => {
       const info = getMemberIncomeInfo(m.id);
-      return info.baseSalary + info.baseBusiness + info.baseRental;
+      return info.baseBusiness;
     });
-    dataSheetData.push(['', 'TOTAL INCOME', ...totalByMember, totalByMember.reduce((a, b) => a + b, 0)]);
+    const businessGrowths = targetMembers.map(m => getMemberIncomeInfo(m.id).businessGrowth);
+    const avgBusinessGrowth = businessGrowths.reduce((a, b) => a + b, 0) / (businessGrowths.filter(g => g > 0).length || 1);
+    const businessEndYears = targetMembers.map(m => getMemberIncomeInfo(m.id).businessEndYear);
+    dataSheetData.push(['', 'Business Income', ...businessByMember, businessByMember.reduce((a, b) => a + b, 0),
+      businessGrowths.some(g => g > 0) ? `${avgBusinessGrowth.toFixed(1)}%` : '-',
+      businessEndYears.some(y => y) ? Math.min(...businessEndYears.filter(y => y)) : '-']);
+    
+    // Property Details (Rental Income)
+    const propertyByMember = targetMembers.map(m => {
+      const properties = getMemberIncomeByCategory(m.id, 'rental');
+      return properties.reduce((sum, p) => {
+        const d = p.details || {};
+        return sum + (parseFloat(d.annual_rent) || (parseFloat(d.rent_per_month) || 0) * 12);
+      }, 0);
+    });
+    const propertyGrowths = targetMembers.map(m => {
+      const properties = getMemberIncomeByCategory(m.id, 'rental');
+      return properties.reduce((max, p) => {
+        const d = p.details || {};
+        return Math.max(max, parseFloat(d.absolute_return) || parseFloat(d.xirr_return) || 0);
+      }, 0);
+    });
+    const avgPropertyGrowth = propertyGrowths.reduce((a, b) => a + b, 0) / (propertyGrowths.filter(g => g > 0).length || 1);
+    if (propertyByMember.some(v => v > 0)) {
+      dataSheetData.push(['', 'Property Details (Rent)', ...propertyByMember, propertyByMember.reduce((a, b) => a + b, 0),
+        propertyGrowths.some(g => g > 0) ? `${avgPropertyGrowth.toFixed(1)}%` : '-', '-']);
+    }
+    
+    // Pension
+    const pensionByMember = targetMembers.map(m => {
+      const pensions = getMemberIncomeByCategory(m.id, 'pension');
+      return pensions.reduce((sum, p) => {
+        const d = p.details || {};
+        return sum + (parseFloat(d.amount_yearly) || (parseFloat(d.amount) || 0) * 12);
+      }, 0);
+    });
+    if (pensionByMember.some(v => v > 0)) {
+      dataSheetData.push(['', 'Pension', ...pensionByMember, pensionByMember.reduce((a, b) => a + b, 0), '-', '-']);
+    }
+    
+    // Total Regular Income
+    const totalRegularByMember = targetMembers.map((m, i) => 
+      salaryByMember[i] + businessByMember[i] + propertyByMember[i] + pensionByMember[i]
+    );
+    dataSheetData.push(['', 'Total Regular Income', ...totalRegularByMember, totalRegularByMember.reduce((a, b) => a + b, 0), '', '']);
     dataSheetData.push(['']);
     
-    // Growth Rates
-    dataSheetData.push(['', 'Growth Rates:']);
-    dataSheetData.push(['', '  Salary Growth %', ...targetMembers.map(m => `${getMemberIncomeInfo(m.id).salaryGrowth}%`)]);
-    dataSheetData.push(['', '  Business Growth %', ...targetMembers.map(m => `${getMemberIncomeInfo(m.id).businessGrowth}%`)]);
+    // ---- RETIREMENT CORPUS ----
+    dataSheetData.push(['', '▸ RETIREMENT CORPUS']);
+    dataSheetData.push(['', 'Type', 'Member', 'Current Value', 'Annual Contribution', 'Growth %', 'Maturity Date', 'Maturity Value']);
+    
+    ['ppf', 'epf', 'gratuity'].forEach(cat => {
+      const label = getIncomeCategoryLabel(cat);
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, cat);
+        items.forEach(item => {
+          const d = item.details || {};
+          const growthRate = parseFloat(d.growth_rate) || (cat === 'ppf' ? 7.1 : cat === 'epf' ? 8.25 : 6);
+          dataSheetData.push(['', label, m.name, 
+            parseFloat(d.market_value) || 0,
+            parseFloat(d.annual_contribution) || 0,
+            `${growthRate}%`,
+            d.maturity_date || '-',
+            parseFloat(d.maturity_value) || '-'
+          ]);
+        });
+      });
+    });
+    dataSheetData.push(['']);
+    
+    // ---- FIXED INCOME / DEBT INSTRUMENTS ----
+    const hasDebtInstruments = incomeDetails.some(inc => 
+      ['fd', 'fixed_deposit', 'rd_pis', 'bond', 'ncd', 'insurance_income', 'insurance'].includes(inc.category)
+    );
+    
+    if (hasDebtInstruments) {
+      dataSheetData.push(['', '▸ FIXED INCOME / DEBT INSTRUMENTS']);
+      dataSheetData.push(['', 'Type', 'Member', 'Description', 'Investment', 'Interest/XIRR', 'Maturity Date', 'Maturity Amount']);
+      
+      // Fixed Deposit
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'fd');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Fixed Deposit', m.name,
+            d.description || '-',
+            parseFloat(d.investment_value) || 0,
+            d.gross_xirr ? `${d.gross_xirr}%` : (d.interest_rate ? `${d.interest_rate}%` : '-'),
+            d.maturity_date || '-',
+            parseFloat(d.maturity_amount) || 0
+          ]);
+        });
+      });
+      
+      // RD / PIS
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'rd_pis');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'RD / PIS', m.name,
+            `Monthly: ₹${parseFloat(d.investment_value_monthly) || 0}`,
+            parseFloat(d.investment_value) || 0,
+            d.gross_xirr ? `${d.gross_xirr}%` : (d.interest_rate ? `${d.interest_rate}%` : '-'),
+            d.end_date || '-',
+            parseFloat(d.maturity_value) || 0
+          ]);
+        });
+      });
+      
+      // NCD / Bonds
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'bond');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'NCD', m.name,
+            d.description || '-',
+            parseFloat(d.investment_value) || 0,
+            d.gross_xirr ? `${d.gross_xirr}%` : '-',
+            d.maturity_date || '-',
+            parseFloat(d.maturity_amount) || 0
+          ]);
+        });
+      });
+      
+      // Insurance (as investment)
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'insurance_income');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Insurance', m.name,
+            d.description || '-',
+            parseFloat(d.total_paid) || 0,
+            d.gross_xirr ? `${d.gross_xirr}%` : '-',
+            d.maturity_date || '-',
+            parseFloat(d.maturity_amount) || 0
+          ]);
+        });
+      });
+      dataSheetData.push(['']);
+    }
+    
+    // ---- MARKET-LINKED INVESTMENTS ----
+    const hasEquityInvestments = incomeDetails.some(inc => 
+      ['mutual_fund', 'shares_pms'].includes(inc.category)
+    );
+    
+    if (hasEquityInvestments) {
+      dataSheetData.push(['', '▸ MARKET-LINKED INVESTMENTS']);
+      dataSheetData.push(['', 'Type', 'Member', 'Market Value', 'Monthly SIP/Contribution', 'Up to Year']);
+      
+      // Mutual Funds
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'mutual_fund');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Mutual Fund', m.name,
+            parseFloat(d.market_value) || 0,
+            parseFloat(d.sip_amount) || 0,
+            d.upto_year || '-'
+          ]);
+        });
+      });
+      
+      // Shares / PMS
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'shares_pms');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Shares / PMS', m.name,
+            parseFloat(d.market_value) || 0,
+            Math.round((parseFloat(d.annual_contribution) || 0) / 12),
+            d.upto_year || '-'
+          ]);
+        });
+      });
+      dataSheetData.push(['']);
+    }
+    
+    // ---- OTHER ASSETS ----
+    const hasOtherAssets = incomeDetails.some(inc => 
+      ['commodities', 'cash', 'cash_in_hand', 'vehicle', 'other'].includes(inc.category)
+    );
+    
+    if (hasOtherAssets) {
+      dataSheetData.push(['', '▸ OTHER ASSETS']);
+      dataSheetData.push(['', 'Type', 'Member', 'Description', 'Value']);
+      
+      // Commodities
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'commodities');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Commodities', m.name,
+            `${d.commodity_type || 'Gold'} - ${d.weight_kg || 0} Kg`,
+            parseFloat(d.market_value) || 0
+          ]);
+        });
+      });
+      
+      // Cash In Hand
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'cash');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Cash In Hand', m.name,
+            d.description || '-',
+            parseFloat(d.bank_balance) || 0
+          ]);
+        });
+      });
+      
+      // Vehicle
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'vehicle');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Vehicle', m.name,
+            d.description || '-',
+            parseFloat(d.market_value) || 0
+          ]);
+        });
+      });
+      
+      // Other
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'other');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', 'Other', m.name,
+            d.description || '-',
+            parseFloat(d.market_value) || 0
+          ]);
+        });
+      });
+      dataSheetData.push(['']);
+    }
+    
+    // ---- PROPERTY DETAILS (Full) ----
+    const hasProperties = incomeDetails.some(inc => 
+      ['rental', 'property_details'].includes(inc.category)
+    );
+    
+    if (hasProperties) {
+      dataSheetData.push(['', '▸ PROPERTY DETAILS']);
+      dataSheetData.push(['', 'Property', 'Member', 'Type', 'Investment', 'Market Value', 'XIRR %', 'On Rent', 'Annual Rent', 'Absolute Return %']);
+      
+      targetMembers.forEach(m => {
+        const items = getMemberIncomeByCategory(m.id, 'rental');
+        items.forEach(item => {
+          const d = item.details || {};
+          dataSheetData.push(['', d.property_details || 'Property', m.name,
+            d.property_type || '-',
+            parseFloat(d.investment_amount) || 0,
+            parseFloat(d.market_value) || 0,
+            d.xirr_return ? `${d.xirr_return}%` : '-',
+            d.is_on_rent || 'No',
+            parseFloat(d.annual_rent) || 0,
+            d.absolute_return ? `${d.absolute_return}%` : '-'
+          ]);
+        });
+      });
+      dataSheetData.push(['']);
+    }
+    
+    // ---- INCOME SUMMARY ----
+    const totalIncomeByMember = targetMembers.map(m => {
+      const info = getMemberIncomeInfo(m.id);
+      return info.baseSalary + info.baseBusiness + info.baseRental + info.basePension + (info.baseMutualFund || 0);
+    });
+    dataSheetData.push(['', 'TOTAL ANNUAL INCOME', ...totalIncomeByMember.map(v => v), totalIncomeByMember.reduce((a, b) => a + b, 0)]);
     dataSheetData.push(['']);
 
     // SECTION 3: EXPENSE DETAILS

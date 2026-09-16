@@ -71,10 +71,12 @@ const INCOME_CATEGORIES = [
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "annual_contribution", label: "Annual Contribution", type: "number" },
       { key: "monthly_contribution", label: "Monthly Contribution", type: "number", readOnly: true, calculated: true },
-      { key: "upto_year", label: "Up to Year", type: "year" },
+      { key: "growth_rate", label: "Growth Rate %", type: "number", defaultValue: "7.1" },
+      { key: "upto_year", label: "Contribution Up to Year", type: "year" },
       { key: "as_on_date", label: "As On Date", type: "monthyear" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true },
+      { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
@@ -86,10 +88,12 @@ const INCOME_CATEGORIES = [
       { key: "market_value", label: "Market Value", type: "number" },
       { key: "annual_contribution", label: "Annual Contribution", type: "number" },
       { key: "monthly_contribution", label: "Monthly Contribution", type: "number", readOnly: true, calculated: true },
-      { key: "upto_year", label: "Up to Year", type: "year" },
+      { key: "growth_rate", label: "Growth Rate %", type: "number", defaultValue: "8.25" },
+      { key: "upto_year", label: "Contribution Up to Year", type: "year" },
       { key: "as_on_date", label: "As On Date", type: "monthyear" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true },
+      { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
@@ -99,9 +103,11 @@ const INCOME_CATEGORIES = [
     color: "amber",
     fields: [
       { key: "market_value", label: "Market Value", type: "number" },
+      { key: "growth_rate", label: "Growth Rate %", type: "number", defaultValue: "6" },
       { key: "as_on_date", label: "As On Date", type: "monthyear" },
       { key: "maturity_date", label: "Maturity Date", type: "date" },
-      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true }
+      { key: "year_to_mature", label: "Years to Mature", type: "number", readOnly: true, calculated: true },
+      { key: "maturity_value", label: "Maturity Value", type: "number", readOnly: true, calculated: true }
     ]
   },
   { 
@@ -674,11 +680,61 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
               }
             }
             
-            // PPF/EPF/Gratuity calculations
+            // PPF/EPF/Gratuity calculations - with maturity value projection
             if (["ppf", "epf", "gratuity"].includes(category)) {
               if (field === "maturity_date") {
                 const maturityYear = new Date(value).getFullYear();
                 newDetails.year_to_mature = Math.max(0, maturityYear - new Date().getFullYear());
+              }
+              
+              // Calculate maturity value when relevant fields change
+              if (["market_value", "annual_contribution", "growth_rate", "maturity_date", "upto_year"].includes(field)) {
+                const currentValue = field === "market_value" ? parseFloat(value || 0) : (parseFloat(newDetails.market_value) || 0);
+                const annualContribution = field === "annual_contribution" ? parseFloat(value || 0) : (parseFloat(newDetails.annual_contribution) || 0);
+                const growthRate = field === "growth_rate" ? parseFloat(value || 0) : (parseFloat(newDetails.growth_rate) || (category === "ppf" ? 7.1 : category === "epf" ? 8.25 : 6));
+                const maturityDateStr = field === "maturity_date" ? value : newDetails.maturity_date;
+                const uptoYear = field === "upto_year" ? parseInt(value || 0) : parseInt(newDetails.upto_year || 0);
+                
+                if (currentValue > 0 && maturityDateStr) {
+                  const maturityDate = new Date(maturityDateStr);
+                  const maturityYear = maturityDate.getFullYear();
+                  const currentYear = new Date().getFullYear();
+                  const yearsToMaturity = Math.max(0, maturityYear - currentYear);
+                  
+                  // Calculate years of contribution (either till upto_year or maturity, whichever is earlier)
+                  const contributionEndYear = uptoYear > 0 ? Math.min(uptoYear, maturityYear) : maturityYear;
+                  const contributionYears = Math.max(0, contributionEndYear - currentYear);
+                  
+                  // Future Value = Current Value * (1 + r)^n + Annual Contribution * [((1 + r)^n - 1) / r]
+                  // Where contributions grow at rate r for contributionYears, then compound for remaining years
+                  const r = growthRate / 100;
+                  
+                  if (r > 0) {
+                    // Value of current corpus at maturity
+                    const corpusAtMaturity = currentValue * Math.pow(1 + r, yearsToMaturity);
+                    
+                    // Future value of contributions (annuity)
+                    // Contributions made for contributionYears, then grow for remaining years
+                    let contributionFV = 0;
+                    if (annualContribution > 0 && contributionYears > 0) {
+                      // FV of annuity at end of contribution period
+                      const fvAtContributionEnd = annualContribution * ((Math.pow(1 + r, contributionYears) - 1) / r);
+                      // Compound for remaining years after contributions stop
+                      const remainingYears = yearsToMaturity - contributionYears;
+                      contributionFV = fvAtContributionEnd * Math.pow(1 + r, Math.max(0, remainingYears));
+                    }
+                    
+                    newDetails.maturity_value = Math.round(corpusAtMaturity + contributionFV);
+                  } else {
+                    // No growth - simple sum
+                    newDetails.maturity_value = Math.round(currentValue + (annualContribution * contributionYears));
+                  }
+                  
+                  // Update years to mature
+                  newDetails.year_to_mature = yearsToMaturity;
+                } else {
+                  newDetails.maturity_value = 0;
+                }
               }
             }
             
