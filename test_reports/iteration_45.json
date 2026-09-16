@@ -1,0 +1,56 @@
+{
+  "summary": "Tested income terminology alignment and PPF/EPF/Gratuity new fields. Backend API tests (6/6) pass against the deployed preview URL - test family 'test-income-excel-001' exists with 16 income entries across 16 distinct categories (missing rd_pis). Frontend UI verified: PPF, EPF, and Gratuity sections display Growth Rate %, Years to Mature, Maturity Value, and Maturity Date. Maturity Value auto-calculates and is populated (PPF=₹45,00,000, EPF=₹80,00,000, Gratuity=₹12,00,000). CRITICAL BUG FOUND while testing per-member Excel export: exportEntityCashFlow() throws a ReferenceError 'totalByMember is not defined' at SurplusSection.jsx:3592, which completely blocks the newly-authored categorized Excel export (Data Sheet with ▸ REGULAR INCOME/▸ RETIREMENT CORPUS/▸ FIXED INCOME etc). The family-level Excel button (handleExportToExcel) produces only the OLD flat 'Data Gathering' sheet layout with per-category sub-sections and does NOT contain the new categorized SECTION 2: INCOME DETAILS structure at all.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SurplusSection.jsx exportEntityCashFlow (per-member Excel)",
+        "issue": "Uncaught ReferenceError: totalByMember is not defined at line 3592 (const totalAnnualIncome = totalByMember.reduce(...)). Blocks per-member Excel download entirely. Likely variable renamed but this usage missed; should probably be totalRegularByMember or a newly-computed sum of all income streams.",
+        "selector": "Allocation Simulator table > per-member row > 'Excel' button",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "IncomeSection PPF/EPF/Gratuity - Years to Mature field",
+        "issue": "'Years to Mature' input renders as '-' (empty/0) on initial load even though Maturity Date is populated and Maturity Value has been computed. Calculation of year_to_mature at IncomeSection.jsx:687 only runs on field change; on data load nothing populates it unless the record was saved after the code was deployed and the field was re-touched.",
+        "selector": "IncomeSection PPF row > Years to Mature input",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Family-level Excel export vs. request expectation",
+        "issue": "The family-level Excel button (handleExportToExcel, line 1061) generates a 'Data Gathering' sheet using the LEGACY dgData layout (flat per-category subsections: Salary Income, Business Income, PPF, EPF, Gratuity, Fixed Deposit, NCD, Mutual Fund, Shares/PMS, Insurance, Cash In Hand, Vehicle, Other, Commodities, Pension). It does NOT contain the new categorized sections ▸ REGULAR INCOME / ▸ RETIREMENT CORPUS / ▸ FIXED INCOME / ▸ MARKET-LINKED INVESTMENTS / ▸ OTHER ASSETS. Those new sections exist only in dataSheetData (line 3140+) which is written to a sheet named 'Data Sheet' inside exportEntityCashFlow (per-member export) - which itself is currently broken by the totalByMember ReferenceError. Net result: the terminology-aligned income export requested in the review is not reachable by the end user through either button.",
+        "affected_selectors": ["button:has-text('Excel') (family row)", "button:has-text('Excel') (member row)"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_income_excel_terminology.py",
+    "/app/test_reports/pytest/income_excel.xml"
+  ],
+  "action_items": [
+    "FIX (CRITICAL): SurplusSection.jsx line 3592 - define/rename totalByMember. Best guess: sum of all income streams per member (salaryByMember + businessByMember + propertyByMember + pensionByMember + retirement contributions + any other income). Currently totalRegularByMember exists at line 3255 and captures salary+business+property+pension only. Verify business intent, then fix.",
+    "DECIDE: Should the family-level Excel (handleExportToExcel) also emit the new categorized income sections? Currently only the per-member export (exportEntityCashFlow) contains the new layout. Either (a) migrate dgData to use the new categorized template, or (b) update handleExportToExcel to also emit a 'Data Sheet' with the new layout. Otherwise the review's Excel expectations (Regular Income/Retirement Corpus/Fixed Income/Market-Linked/Other Assets sections) are never visible to end users through the main Excel button.",
+    "MINOR: On loading an existing PPF/EPF/Gratuity record, compute year_to_mature client-side (currentYear - new Date(maturity_date).getFullYear() clamped >= 0) so the field is populated without requiring a field re-edit. Right now Maturity Value gets shown (₹45L, ₹80L, ₹12L) but Years to Mature stays '-'."
+  ],
+  "critical_code_review_comments": [
+    "SurplusSection.jsx is now 4561 lines and contains three parallel export flows (handleExportToExcel using dgData for 'Data Gathering' sheet, exportEntityCashFlow using dataSheetData for 'Data Sheet' sheet, exportSimulationToExcel). The three flows have divergent income-layout code paths, which is exactly the source of the current bug (new layout only in one path, breaks with ReferenceError). Extract exports into src/pages/DataGathering/export/{dataGathering,cashflow,simulation}.js and share a single buildIncomeSection(incomeDetails, targetMembers) helper.",
+    "INCOME_CATEGORY_CONFIG (lines 19-140) declares alias entries (business_income, property_details, fixed_deposit, ncd, insurance, cash_in_hand) but the ACTUAL export code paths hardcode primary keys ('salary','business','rental','ppf','epf',...). If a record ever gets stored with an alias category, it will be silently skipped by the Excel export. Normalize category at read-time via normalizeIncomeCategory before filtering.",
+    "IncomeSection.jsx maturity_value calculation (lines 691-737) triggers only when one of [market_value, annual_contribution, growth_rate, maturity_date, upto_year] changes. If the record is loaded from the server and none of those fields are edited, year_to_mature is never assigned in state and the UI shows '-'. Add a useEffect that recomputes on initial load.",
+    "Test family test-income-excel-001 has 16 categories but INCOME_CATEGORIES defines 17 (rd_pis missing from seed). Seed a rd_pis record to fully cover the 17-category assertion in the review request."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_income_excel_terminology.py (new)"
+  ],
+  "success_rate": {"backend": "100% (6/6 pytest)", "frontend": "60% (fields OK, per-member Excel broken, family Excel doesn't use new layout)"},
+  "test_credentials": "SUPERUSER / kinntegraa123 / PIN 1234 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None - used existing family test-income-excel-001 (16 income entries)",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reusable pytest at /app/backend/tests/test_income_excel_terminology.py verifies auth (two-step login-step1 + login-step2 with temp_token from step1), family accessibility, income category coverage, and PPF/EPF/Gratuity growth_rate+maturity_date+maturity_value fields. After main agent fixes totalByMember reference and decides on family-vs-member Excel scope, re-run pytest + a Playwright flow that: (1) logs in as SUPERUSER, (2) navigates to /broker/data-gathering/test-income-excel-001, (3) clicks Surplus tab -> Calculate on FAMILY row and on Rajesh row, (4) triggers per-member Excel download and inspects that sheet 'Data Sheet' exists with '▸ REGULAR INCOME (Annual)', '▸ RETIREMENT CORPUS', '▸ FIXED INCOME / DEBT INSTRUMENTS', '▸ MARKET-LINKED INVESTMENTS', '▸ OTHER ASSETS' section headers and 17 income rows. Confirmed PPF/EPF/Gratuity fields render in UI as expected (Growth Rate 7.1%/8.25%/6%, Maturity Value auto-calculated).",
+  "rca of the issue": "Root cause of critical bug (per-member Excel broken): In exportEntityCashFlow (SurplusSection.jsx around line 3592), the SECTION 8 summary computes totalAnnualIncome = totalByMember.reduce(...). Variable totalByMember was never declared in the function scope - a similar variable totalRegularByMember exists at line 3255 but only aggregates the 'Regular Income' subset. Stack trace confirmed: 'ReferenceError: totalByMember is not defined at exportEntityCashFlow'. This throws before dataSheet is finalized, so the download promise never resolves and the user sees the runtime error overlay. Fix: declare totalByMember (or rename to intended semantics) as the per-member total income aggregation that Section 8 should reference. Also root cause of terminology mismatch: two divergent 'Data Gathering' export implementations coexist - the family Excel button goes through the OLD flat layout (handleExportToExcel + dgData), the new categorized layout is authored inside a completely separate flow (exportEntityCashFlow + dataSheetData -> 'Data Sheet') that is not reachable via the family-level button."
+}

@@ -383,6 +383,43 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           }
         }
         
+        // Calculate year_to_mature and maturity_value for PPF/EPF/Gratuity on load
+        if (['ppf', 'epf', 'gratuity'].includes(category) && details.maturity_date) {
+          const currentYear = new Date().getFullYear();
+          const maturityYear = new Date(details.maturity_date).getFullYear();
+          const yearsToMaturity = Math.max(0, maturityYear - currentYear);
+          details.year_to_mature = yearsToMaturity;
+          
+          // Calculate maturity value if not already set or needs update
+          const currentValue = parseFloat(details.market_value) || 0;
+          const annualContribution = parseFloat(details.annual_contribution) || 0;
+          const growthRate = parseFloat(details.growth_rate) || (category === 'ppf' ? 7.1 : category === 'epf' ? 8.25 : 6);
+          const uptoYear = parseInt(details.upto_year || 0);
+          
+          if (currentValue > 0 && yearsToMaturity > 0) {
+            const contributionEndYear = uptoYear > 0 ? Math.min(uptoYear, maturityYear) : maturityYear;
+            const contributionYears = Math.max(0, contributionEndYear - currentYear);
+            const r = growthRate / 100;
+            
+            if (r > 0) {
+              // Value of current corpus at maturity
+              const corpusAtMaturity = currentValue * Math.pow(1 + r, yearsToMaturity);
+              
+              // Future value of contributions
+              let contributionFV = 0;
+              if (annualContribution > 0 && contributionYears > 0) {
+                const fvAtContributionEnd = annualContribution * ((Math.pow(1 + r, contributionYears) - 1) / r);
+                const remainingYears = yearsToMaturity - contributionYears;
+                contributionFV = fvAtContributionEnd * Math.pow(1 + r, Math.max(0, remainingYears));
+              }
+              
+              details.maturity_value = Math.round(corpusAtMaturity + contributionFV);
+            } else {
+              details.maturity_value = Math.round(currentValue + (annualContribution * contributionYears));
+            }
+          }
+        }
+        
         itemsByCategory[category].push({
           id: inc.id,
           memberId: inc.member_ids?.[0] || "",

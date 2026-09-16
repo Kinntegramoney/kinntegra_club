@@ -3589,7 +3589,7 @@ function AllocationSimulator({
     dataSheetData.push(['']);
 
     // SECTION 8: SUMMARY
-    const totalAnnualIncome = totalByMember.reduce((a, b) => a + b, 0);
+    const totalAnnualIncome = totalIncomeByMember.reduce((a, b) => a + b, 0);
     const totalAnnualEMI = entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12), 0);
     const annualSurplus = totalAnnualIncome - totalExpenses - totalAnnualEMI;
     
