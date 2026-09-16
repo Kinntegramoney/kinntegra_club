@@ -1263,10 +1263,23 @@ export default function SurplusSection({ family, isReadOnly }) {
     const epfIncomes = incomeDetails.filter(inc => inc.category === 'epf');
     if (epfIncomes.length > 0) {
       dgData.push(['EPF']);
-      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Maturity Date', 'Expected Maturity']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Monthly Contribution', 'Growth Rate', 'Up to Year', 'Maturity Date', 'Years to Mature', 'Maturity Value']);
       epfIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), d.maturity_date || '', formatCurrencyINR(d.maturity_corpus || d.maturity_value)]);
+        const annualContrib = parseFloat(d.annual_contribution) || 0;
+        const monthlyContrib = parseFloat(d.monthly_contribution) || Math.round(annualContrib / 12);
+        const growthRate = parseFloat(d.growth_rate) || 8.25;
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          formatCurrencyINR(d.market_value), 
+          formatCurrencyINR(annualContrib),
+          formatCurrencyINR(monthlyContrib),
+          `${growthRate}%`,
+          d.upto_year || '-',
+          d.maturity_date || '-', 
+          d.year_to_mature || '-',
+          formatCurrencyINR(d.maturity_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1275,10 +1288,23 @@ export default function SurplusSection({ family, isReadOnly }) {
     const ppfIncomes = incomeDetails.filter(inc => inc.category === 'ppf');
     if (ppfIncomes.length > 0) {
       dgData.push(['PPF']);
-      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Maturity Date', 'Expected Maturity']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Monthly Contribution', 'Growth Rate', 'Up to Year', 'Maturity Date', 'Years to Mature', 'Maturity Value']);
       ppfIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), formatCurrencyINR(d.annual_contribution), d.maturity_date || '', formatCurrencyINR(d.maturity_value)]);
+        const annualContrib = parseFloat(d.annual_contribution) || 0;
+        const monthlyContrib = parseFloat(d.monthly_contribution) || Math.round(annualContrib / 12);
+        const growthRate = parseFloat(d.growth_rate) || 7.1;
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          formatCurrencyINR(d.market_value), 
+          formatCurrencyINR(annualContrib),
+          formatCurrencyINR(monthlyContrib),
+          `${growthRate}%`,
+          d.upto_year || '-',
+          d.maturity_date || '-', 
+          d.year_to_mature || '-',
+          formatCurrencyINR(d.maturity_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1302,10 +1328,19 @@ export default function SurplusSection({ family, isReadOnly }) {
     const bondIncomes = incomeDetails.filter(inc => inc.category === 'ncd' || inc.category === 'bond');
     if (bondIncomes.length > 0) {
       dgData.push(['NCD']);
-      dgData.push(['Member', 'Description', 'Investment Value', 'Interest Rate', 'Tenure', 'Maturity Date', 'Maturity Amount']);
+      dgData.push(['Member', 'Description', 'Investment Value', 'Payout Frequency', 'Payout Amount', 'Maturity Date', 'Maturity Amount', 'Gross XIRR']);
       bondIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.investment_value || d.investment_amount), `${d.interest_rate || ''}%`, d.tenure_years ? `${d.tenure_years} yrs` : '', d.maturity_date || '', formatCurrencyINR(d.maturity_amount || d.maturity_value)]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.description || '-', 
+          formatCurrencyINR(d.investment_value), 
+          d.payout_frequency || '-',
+          formatCurrencyINR(d.payout_amount),
+          d.maturity_date || '-', 
+          formatCurrencyINR(d.maturity_amount),
+          d.gross_xirr ? `${d.gross_xirr}%` : '-'
+        ]);
       });
       dgData.push([]);
     }
@@ -1338,10 +1373,18 @@ export default function SurplusSection({ family, isReadOnly }) {
     const sharesIncomes = incomeDetails.filter(inc => inc.category === 'shares_pms');
     if (sharesIncomes.length > 0) {
       dgData.push(['Shares / PMS']);
-      dgData.push(['Member', 'Portfolio Value', 'Expected Return', 'Dividend Yield']);
+      dgData.push(['Member', 'Market Value', 'Annual Contribution', 'Monthly Contribution', 'Up to Year']);
       sharesIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value || d.portfolio_value), `${d.expected_return || ''}%`, `${d.dividend_yield || ''}%`]);
+        const annualContrib = parseFloat(d.annual_contribution) || 0;
+        const monthlyContrib = parseFloat(d.monthly_contribution) || Math.round(annualContrib / 12);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          formatCurrencyINR(d.market_value), 
+          formatCurrencyINR(annualContrib),
+          formatCurrencyINR(monthlyContrib),
+          d.upto_year || '-'
+        ]);
       });
       dgData.push([]);
     }
@@ -1350,10 +1393,20 @@ export default function SurplusSection({ family, isReadOnly }) {
     const insuranceIncomes = incomeDetails.filter(inc => inc.category === 'insurance' || inc.category === 'insurance_income');
     if (insuranceIncomes.length > 0) {
       dgData.push(['Insurance']);
-      dgData.push(['Member', 'Description', 'Sum Assured', 'Annual Premium', 'Maturity Year', 'Maturity Amount']);
+      dgData.push(['Member', 'Description', 'Premium Frequency', 'Premium Amount', 'Total Paid', 'Total Pending', 'Maturity Date', 'Maturity Amount', 'Gross XIRR']);
       insuranceIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.description || d.policy_name || '', formatCurrencyINR(d.sum_assured), formatCurrencyINR(d.premium_amount || d.annual_premium), d.maturity_year || d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.description || '-', 
+          d.premium_frequency || '-',
+          formatCurrencyINR(d.premium_amount),
+          formatCurrencyINR(d.total_paid),
+          formatCurrencyINR(d.total_pending),
+          d.maturity_date || '-', 
+          formatCurrencyINR(d.maturity_amount),
+          d.gross_xirr ? `${d.gross_xirr}%` : '-'
+        ]);
       });
       dgData.push([]);
     }
@@ -1374,10 +1427,17 @@ export default function SurplusSection({ family, isReadOnly }) {
     const rdIncomes = incomeDetails.filter(inc => inc.category === 'rd_pis' || inc.category === 'rd');
     if (rdIncomes.length > 0) {
       dgData.push(['RD / PIS']);
-      dgData.push(['Member', 'Monthly Deposit', 'Interest Rate', 'Tenure (Months)', 'Maturity Amount']);
+      dgData.push(['Member', 'Monthly Amt', 'Interest Rate', 'Start Date', 'End Date', 'Maturity Value']);
       rdIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.monthly_deposit), `${d.interest_rate || ''}%`, d.tenure_months || '', formatCurrencyINR(d.maturity_amount)]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          formatCurrencyINR(d.investment_value_monthly), 
+          `${d.interest_rate || ''}%`, 
+          d.start_date || '-',
+          d.end_date || '-',
+          formatCurrencyINR(d.maturity_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1386,10 +1446,14 @@ export default function SurplusSection({ family, isReadOnly }) {
     const vehicleIncomes = incomeDetails.filter(inc => inc.category === 'vehicle');
     if (vehicleIncomes.length > 0) {
       dgData.push(['Vehicle']);
-      dgData.push(['Member', 'Vehicle Type', 'Current Value', 'Depreciation Rate']);
+      dgData.push(['Member', 'Description', 'Current Market Value']);
       vehicleIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.vehicle_type || '', formatCurrencyINR(d.current_value), `${d.depreciation_rate || ''}%`]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.description || '-', 
+          formatCurrencyINR(d.market_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1398,10 +1462,14 @@ export default function SurplusSection({ family, isReadOnly }) {
     const otherIncomes = incomeDetails.filter(inc => inc.category === 'other');
     if (otherIncomes.length > 0) {
       dgData.push(['Other']);
-      dgData.push(['Member', 'Description', 'Monthly Amount', 'Annual Amount', 'Growth Rate']);
+      dgData.push(['Member', 'Description', 'Value']);
       otherIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.monthly_amount), formatCurrencyINR(d.annual_amount), `${d.growth_rate || ''}%`]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.description || '-', 
+          formatCurrencyINR(d.market_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1410,10 +1478,16 @@ export default function SurplusSection({ family, isReadOnly }) {
     const commodityIncomes = incomeDetails.filter(inc => inc.category === 'commodities');
     if (commodityIncomes.length > 0) {
       dgData.push(['Commodities']);
-      dgData.push(['Member', 'Type', 'Weight (grams)', 'Current Value', 'Growth Rate']);
+      dgData.push(['Member', 'Type', 'Weight (Kg)', 'Price/Kg', 'Market Value']);
       commodityIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.commodity_type || '', d.weight_grams || d.weight_kg || '', formatCurrencyINR(d.current_value || d.market_value), `${d.growth_rate || ''}%`]);
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          d.commodity_type || 'Gold', 
+          d.weight_kg || '-',
+          formatCurrencyINR(d.price_per_kg),
+          formatCurrencyINR(d.market_value)
+        ]);
       });
       dgData.push([]);
     }
@@ -1422,10 +1496,18 @@ export default function SurplusSection({ family, isReadOnly }) {
     const gratuityIncomes = incomeDetails.filter(inc => inc.category === 'gratuity');
     if (gratuityIncomes.length > 0) {
       dgData.push(['Gratuity']);
-      dgData.push(['Member', 'Market Value', 'Maturity Date', 'Expected Amount']);
+      dgData.push(['Member', 'Market Value', 'Growth Rate', 'Maturity Date', 'Years to Mature', 'Maturity Value']);
       gratuityIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), formatCurrencyINR(d.market_value), d.maturity_date || '', formatCurrencyINR(d.maturity_value || d.market_value)]);
+        const growthRate = parseFloat(d.growth_rate) || 6;
+        dgData.push([
+          getMemberNames(inc.member_ids), 
+          formatCurrencyINR(d.market_value), 
+          `${growthRate}%`,
+          d.maturity_date || '-', 
+          d.year_to_mature || '-',
+          formatCurrencyINR(d.maturity_value)
+        ]);
       });
       dgData.push([]);
     }
