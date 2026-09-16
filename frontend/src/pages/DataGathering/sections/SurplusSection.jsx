@@ -178,6 +178,56 @@ const normalizeIncomeCategory = (category) => {
   return aliases[category] || category;
 };
 
+// ========================================
+// EXPENSE CATEGORY CONFIGURATION
+// Maps stored category values to Excel display labels
+// Source of truth: Matches ExpenseSection.jsx EXPENSE_CATEGORIES
+// ========================================
+const EXPENSE_CATEGORY_CONFIG = {
+  // Regular Expenses
+  food_grocery: { label: "Food & Grocery", type: "regular" },
+  house_rent: { label: "House Rent / Maintenance / Repair", type: "regular" },
+  conveyance: { label: "Conveyance, Fuel & Maintenance", type: "regular" },
+  healthcare: { label: "Medicines / Doctor / Healthcare", type: "regular" },
+  utilities: { label: "Electricity / Water / Labour / AMC", type: "regular" },
+  mobile: { label: "Mobile", type: "regular" },
+  gasline_internet: { label: "Gas Line / Telephone / Internet / Cable", type: "regular" },
+  clothing: { label: "Clothes and Accessories", type: "regular" },
+  shopping: { label: "Shopping, Gifts, White Goods, Gadgets", type: "regular" },
+  entertainment: { label: "Dining / Movies / Sports", type: "regular" },
+  personal_care: { label: "Personal Care / Others", type: "regular" },
+  children_education: { label: "Children's Schooling / College Expenses", type: "regular" },
+  family_support: { label: "Contribution To Parents / Siblings", type: "regular" },
+  
+  // Insurance Premium categories
+  term_life: { label: "Term Life Insurance Premium", type: "insurance" },
+  health: { label: "Health Insurance Premium", type: "insurance" },
+  critical_illness: { label: "Critical Illness Premium", type: "insurance" },
+  personal_accident: { label: "Personal Accident Premium", type: "insurance" },
+  motor: { label: "Motor Insurance Premium", type: "insurance" },
+  home_insurance: { label: "Home Insurance Premium", type: "insurance" },
+  professional: { label: "Professional Indemnity Premium", type: "insurance" },
+  
+  // Loan EMI categories
+  home_loan: { label: "Home Loan EMI", type: "loan" },
+  vehicle_loan: { label: "Vehicle Loan EMI", type: "loan" },
+  personal_loan: { label: "Personal Loan EMI", type: "loan" },
+  consumer_durable: { label: "Consumer Durable EMI", type: "loan" },
+  education_loan: { label: "Education Loan EMI", type: "loan" },
+  credit_card: { label: "Credit Card EMI", type: "loan" },
+  other_loan: { label: "Other Loan EMI", type: "loan" }
+};
+
+// Helper function to get the display label for an expense category
+const getExpenseCategoryLabel = (category) => {
+  return EXPENSE_CATEGORY_CONFIG[category]?.label || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Helper function to get expense type (regular, insurance, loan)
+const getExpenseType = (category) => {
+  return EXPENSE_CATEGORY_CONFIG[category]?.type || 'regular';
+};
+
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
   const incomeDetails = family?.income_details || [];
@@ -3530,49 +3580,209 @@ function AllocationSimulator({
     dataSheetData.push(['', 'TOTAL ANNUAL INCOME', ...totalIncomeByMember.map(v => v), totalIncomeByMember.reduce((a, b) => a + b, 0)]);
     dataSheetData.push(['']);
 
-    // SECTION 3: EXPENSE DETAILS
-    dataSheetData.push(['', 'SECTION 3: EXPENSE DETAILS (Annual)']);
+    // SECTION 3: EXPENSE DETAILS - Comprehensive with all categories
+    dataSheetData.push(['', 'SECTION 3: EXPENSE DETAILS']);
     dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
     dataSheetData.push(['']);
-    dataSheetData.push(['', 'Expense Category', 'Annual Amount', 'Monthly Amount', 'Inflation %']);
     
-    const expenseCategories = [...new Set(expenseDetails.map(e => e.expense_type || 'other'))];
-    let totalExpenses = 0;
-    expenseCategories.forEach(cat => {
-      const categoryExpenses = expenseDetails.filter(e => e.expense_type === cat);
-      const totalAmount = categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount || e.monthly_amount * 12 || 0) || 0), 0);
-      const avgInflation = categoryExpenses.length > 0 
-        ? categoryExpenses.reduce((sum, e) => sum + (parseFloat(e.inflation_percent) || 6), 0) / categoryExpenses.length 
-        : 6;
-      totalExpenses += totalAmount;
-      const displayName = cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      dataSheetData.push(['', displayName, totalAmount, Math.round(totalAmount / 12), `${avgInflation.toFixed(1)}%`]);
-    });
-    dataSheetData.push(['', 'TOTAL EXPENSES', totalExpenses, Math.round(totalExpenses / 12), '']);
-    dataSheetData.push(['']);
-
-    // SECTION 4: LIABILITIES
-    if (entityLiabilities.length > 0) {
-      dataSheetData.push(['', 'SECTION 4: LIABILITIES']);
-      dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
-      dataSheetData.push(['']);
-      dataSheetData.push(['', 'Loan Type', 'Monthly EMI', 'Annual EMI', 'Remaining Months', 'Interest Rate', 'Outstanding']);
+    // Group expenses by type
+    const regularExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'regular');
+    const insuranceExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'insurance');
+    const loanExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'loan');
+    
+    // ---- REGULAR HOUSEHOLD EXPENSES ----
+    if (regularExpenses.length > 0) {
+      dataSheetData.push(['', '▸ REGULAR HOUSEHOLD EXPENSES']);
+      dataSheetData.push(['', 'Category', 'Monthly', 'Annual', 'Inflation %', 'Post-Retirement %', 'Continues Till']);
       
-      let totalEMI = 0;
+      let totalRegularMonthly = 0;
+      let totalRegularAnnual = 0;
+      
+      // Group by category
+      const regularByCategory = {};
+      regularExpenses.forEach(exp => {
+        const cat = exp.expense_type || 'other';
+        if (!regularByCategory[cat]) regularByCategory[cat] = [];
+        regularByCategory[cat].push(exp);
+      });
+      
+      Object.entries(regularByCategory).forEach(([cat, expenses]) => {
+        const monthlyTotal = expenses.reduce((sum, e) => sum + (parseFloat(e.monthly_amount) || 0), 0);
+        const annualTotal = expenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount) || parseFloat(e.monthly_amount) * 12 || 0), 0);
+        const avgInflation = expenses.reduce((sum, e) => sum + (parseFloat(e.inflation_percent) || 6), 0) / expenses.length;
+        
+        // Post-retirement percentage - check if any expense in category continues post-retirement
+        const hasPostRetirement = expenses.some(e => e.consider_post_retirement === true || e.consider_post_retirement === 'true');
+        const postRetirementPct = hasPostRetirement 
+          ? expenses.reduce((sum, e) => sum + (parseFloat(e.post_retirement_percent) || 100), 0) / expenses.length
+          : 0;
+        
+        // Get the last applicable year (upto_year or retirement)
+        const continuesTill = expenses.reduce((maxYear, e) => {
+          const yr = parseInt(e.upto_year) || 0;
+          return yr > maxYear ? yr : maxYear;
+        }, 0);
+        
+        totalRegularMonthly += monthlyTotal;
+        totalRegularAnnual += annualTotal;
+        
+        dataSheetData.push(['', 
+          getExpenseCategoryLabel(cat), 
+          monthlyTotal, 
+          annualTotal, 
+          `${avgInflation.toFixed(1)}%`,
+          hasPostRetirement ? `${postRetirementPct.toFixed(0)}%` : 'Stops at Retirement',
+          continuesTill > 0 ? continuesTill : '-'
+        ]);
+      });
+      
+      dataSheetData.push(['', 'Sub-Total Regular Expenses', totalRegularMonthly, totalRegularAnnual, '', '', '']);
+      dataSheetData.push(['']);
+    }
+    
+    // ---- INSURANCE PREMIUMS ----
+    if (insuranceExpenses.length > 0 || (family?.insurance_premiums && family.insurance_premiums.length > 0)) {
+      dataSheetData.push(['', '▸ INSURANCE PREMIUMS']);
+      dataSheetData.push(['', 'Insurance Type', 'Premium Frequency', 'Premium Amount', 'Annual Premium', 'Step-up %', 'Premium Till']);
+      
+      let totalInsuranceAnnual = 0;
+      
+      // Insurance from expense_details
+      insuranceExpenses.forEach(exp => {
+        const premiumFreq = exp.premium_frequency || 'Yearly';
+        const premiumAmt = parseFloat(exp.premium_amount) || parseFloat(exp.monthly_amount) || 0;
+        let annualPremium = premiumAmt;
+        if (premiumFreq === 'Monthly') annualPremium = premiumAmt * 12;
+        else if (premiumFreq === 'Quarterly') annualPremium = premiumAmt * 4;
+        else if (premiumFreq === 'Half-Yearly') annualPremium = premiumAmt * 2;
+        
+        const stepUp = parseFloat(exp.step_up_percent) || 0;
+        const uptoYear = exp.upto_year || '-';
+        
+        totalInsuranceAnnual += annualPremium;
+        
+        dataSheetData.push(['', 
+          getExpenseCategoryLabel(exp.expense_type), 
+          premiumFreq,
+          premiumAmt, 
+          annualPremium,
+          stepUp > 0 ? `${stepUp}%` : '-',
+          uptoYear
+        ]);
+      });
+      
+      // Also include from insurance_premiums collection if available
+      if (family?.insurance_premiums) {
+        family.insurance_premiums.forEach(ins => {
+          const premiumFreq = ins.premium_frequency || 'Yearly';
+          const premiumAmt = parseFloat(ins.premium_amount) || 0;
+          let annualPremium = premiumAmt;
+          if (premiumFreq === 'Monthly') annualPremium = premiumAmt * 12;
+          else if (premiumFreq === 'Quarterly') annualPremium = premiumAmt * 4;
+          else if (premiumFreq === 'Half-Yearly') annualPremium = premiumAmt * 2;
+          
+          totalInsuranceAnnual += annualPremium;
+          
+          const insType = ins.insurance_type || ins.category || 'Insurance';
+          dataSheetData.push(['', 
+            getExpenseCategoryLabel(insType) || insType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), 
+            premiumFreq,
+            premiumAmt, 
+            annualPremium,
+            ins.step_up_percent ? `${ins.step_up_percent}%` : '-',
+            ins.premium_end_year || ins.upto_year || '-'
+          ]);
+        });
+      }
+      
+      dataSheetData.push(['', 'Sub-Total Insurance Premiums', '', '', totalInsuranceAnnual, '', '']);
+      dataSheetData.push(['']);
+    }
+    
+    // ---- LOAN EMIs ----
+    if (loanExpenses.length > 0 || entityLiabilities.length > 0) {
+      dataSheetData.push(['', '▸ LOAN EMIs']);
+      dataSheetData.push(['', 'Loan Type', 'Monthly EMI', 'Annual EMI', 'Remaining Months', 'Interest Rate %', 'Outstanding', 'Completion Year']);
+      
+      let totalLoanMonthly = 0;
+      let totalLoanAnnual = 0;
+      let totalOutstanding = 0;
+      
+      // Loan EMIs from expense_details
+      loanExpenses.forEach(exp => {
+        const emi = parseFloat(exp.monthly_amount) || parseFloat(exp.emi_amount) || 0;
+        const remaining = parseInt(exp.num_installments) || parseInt(exp.remaining_tenure) || 0;
+        const rate = parseFloat(exp.interest_rate) || 0;
+        const outstanding = emi * remaining;
+        const completionYear = currentYear + Math.ceil(remaining / 12);
+        
+        totalLoanMonthly += emi;
+        totalLoanAnnual += emi * 12;
+        totalOutstanding += outstanding;
+        
+        dataSheetData.push(['', 
+          getExpenseCategoryLabel(exp.expense_type), 
+          emi, 
+          emi * 12, 
+          remaining,
+          rate > 0 ? `${rate}%` : '-',
+          outstanding,
+          remaining > 0 ? completionYear : '-'
+        ]);
+      });
+      
+      // Also include from liabilities
       entityLiabilities.forEach(l => {
         const emi = parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0;
         const remaining = parseInt(l.num_installments) || parseInt(l.remaining_tenure) || 0;
         const rate = parseFloat(l.interest_rate) || 0;
         const outstanding = emi * remaining;
-        totalEMI += emi;
-        const loanType = (l.category || l.loan_type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        dataSheetData.push(['', loanType, emi, emi * 12, remaining, `${rate}%`, outstanding]);
+        const completionYear = currentYear + Math.ceil(remaining / 12);
+        
+        totalLoanMonthly += emi;
+        totalLoanAnnual += emi * 12;
+        totalOutstanding += outstanding;
+        
+        const loanType = l.category || l.loan_type || 'Loan';
+        dataSheetData.push(['', 
+          getExpenseCategoryLabel(loanType) || loanType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), 
+          emi, 
+          emi * 12, 
+          remaining,
+          rate > 0 ? `${rate}%` : '-',
+          outstanding,
+          remaining > 0 ? completionYear : '-'
+        ]);
       });
-      dataSheetData.push(['', 'TOTAL', totalEMI, totalEMI * 12, '', '', '']);
+      
+      dataSheetData.push(['', 'Sub-Total Loan EMIs', totalLoanMonthly, totalLoanAnnual, '', '', totalOutstanding, '']);
       dataSheetData.push(['']);
     }
+    
+    // ---- EXPENSE SUMMARY ----
+    const totalRegularAnnual = regularExpenses.reduce((sum, e) => sum + (parseFloat(e.annual_amount) || parseFloat(e.monthly_amount) * 12 || 0), 0);
+    const totalInsuranceAnnual = insuranceExpenses.reduce((sum, e) => {
+      const freq = e.premium_frequency || 'Yearly';
+      const amt = parseFloat(e.premium_amount) || parseFloat(e.monthly_amount) || 0;
+      if (freq === 'Monthly') return sum + amt * 12;
+      if (freq === 'Quarterly') return sum + amt * 4;
+      if (freq === 'Half-Yearly') return sum + amt * 2;
+      return sum + amt;
+    }, 0);
+    const totalLoanAnnual = loanExpenses.reduce((sum, e) => sum + ((parseFloat(e.monthly_amount) || 0) * 12), 0) +
+      entityLiabilities.reduce((sum, l) => sum + ((parseFloat(l.monthly_emi) || parseFloat(l.emi_amount) || 0) * 12), 0);
+    
+    const grandTotalExpenses = totalRegularAnnual + totalInsuranceAnnual + totalLoanAnnual;
+    
+    dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
+    dataSheetData.push(['', 'EXPENSE SUMMARY', 'Monthly', 'Annual']);
+    dataSheetData.push(['', 'Regular Household Expenses', Math.round(totalRegularAnnual / 12), totalRegularAnnual]);
+    dataSheetData.push(['', 'Insurance Premiums', Math.round(totalInsuranceAnnual / 12), totalInsuranceAnnual]);
+    dataSheetData.push(['', 'Loan EMIs', Math.round(totalLoanAnnual / 12), totalLoanAnnual]);
+    dataSheetData.push(['', 'TOTAL ANNUAL EXPENSES', Math.round(grandTotalExpenses / 12), grandTotalExpenses]);
+    dataSheetData.push(['']);
 
-    // SECTION 5: FINANCIAL GOALS
+    // SECTION 4: FINANCIAL GOALS
     if (goalDetails.length > 0) {
       dataSheetData.push(['', 'SECTION 5: FINANCIAL GOALS']);
       dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
