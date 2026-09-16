@@ -102,6 +102,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     
     let salaryGrowth = 0, businessGrowth = 0, retirementAge = 60, retirementYear = null;
     let baseSalary = 0, baseBusiness = 0, baseRental = 0, basePension = 0;
+    let salaryIncomeTill = null, businessIncomeTill = null;
     
     // First priority: Use member's retirement_year if set
     if (member?.retirement_year) {
@@ -114,31 +115,41 @@ export default function SurplusSection({ family, isReadOnly }) {
       
       switch (category) {
         case 'salary':
-          const salaryYearly = parseFloat(details.net_income_yearly) || 0;
-          const salaryMonthly = parseFloat(details.net_income_monthly) || 0;
+          const salaryYearly = parseFloat(details.net_income_yearly) || parseFloat(details.annual_amount) || 0;
+          const salaryMonthly = parseFloat(details.net_income_monthly) || parseFloat(details.monthly_amount) || 0;
           baseSalary += salaryYearly > 0 ? salaryYearly : salaryMonthly * 12;
-          salaryGrowth = Math.max(salaryGrowth, parseFloat(details.avg_growth_rate) || 0);
+          salaryGrowth = Math.max(salaryGrowth, parseFloat(details.avg_growth_rate) || parseFloat(details.growth_rate) || 0);
+          // Track income_till for salary
+          if (details.income_till) {
+            salaryIncomeTill = salaryIncomeTill ? Math.min(salaryIncomeTill, parseInt(details.income_till)) : parseInt(details.income_till);
+          }
           break;
+        case 'business_income':  // Unified: was 'business' OR 'business_income'
         case 'business':
-          const businessYearly = parseFloat(details.net_income_yearly) || 0;
-          const businessMonthly = parseFloat(details.net_income_monthly) || 0;
+          const businessYearly = parseFloat(details.net_income_yearly) || parseFloat(details.annual_amount) || 0;
+          const businessMonthly = parseFloat(details.net_income_monthly) || parseFloat(details.monthly_amount) || 0;
           baseBusiness += businessYearly > 0 ? businessYearly : businessMonthly * 12;
-          businessGrowth = Math.max(businessGrowth, parseFloat(details.avg_growth_rate) || 0);
+          businessGrowth = Math.max(businessGrowth, parseFloat(details.avg_growth_rate) || parseFloat(details.growth_rate) || 0);
+          // Track income_till for business
+          if (details.income_till) {
+            businessIncomeTill = businessIncomeTill ? Math.min(businessIncomeTill, parseInt(details.income_till)) : parseInt(details.income_till);
+          }
           break;
+        case 'property_details':  // Unified: was 'rental' OR 'property_details'
         case 'rental':
           // Include rental income regardless of is_on_rent status for income calculations
-          const annualRent = parseFloat(details.annual_rent) || 0;
-          const rentPerMonth = parseFloat(details.rent_per_month) || 0;
+          const annualRent = parseFloat(details.annual_rent) || parseFloat(details.annual_amount) || 0;
+          const rentPerMonth = parseFloat(details.rent_per_month) || parseFloat(details.monthly_amount) || 0;
           if (details.is_on_rent === 'Yes' || annualRent > 0 || rentPerMonth > 0) {
             baseRental += annualRent > 0 ? annualRent : rentPerMonth * 12;
           }
           break;
         case 'pension':
-          const pensionYearly = parseFloat(details.amount_yearly) || 0;
+          const pensionYearly = parseFloat(details.amount_yearly) || parseFloat(details.annual_pension) || 0;
           if (pensionYearly > 0) {
             basePension += pensionYearly;
           } else {
-            const pensionAmount = parseFloat(details.amount) || 0;
+            const pensionAmount = parseFloat(details.amount) || parseFloat(details.monthly_pension) || 0;
             const frequency = details.payable_type;
             const multiplier = frequency === 'Monthly' ? 12 : frequency === 'Quarterly' ? 4 : frequency === 'Half-Yearly' ? 2 : 1;
             basePension += pensionAmount * multiplier;
@@ -162,7 +173,18 @@ export default function SurplusSection({ family, isReadOnly }) {
         baseMutualFund += parseFloat(details.dividend_income_yearly) || 0;
       }
     });
-    return { salaryGrowth, businessGrowth, rentalGrowth: 3, retirementYear, baseSalary, baseBusiness, baseRental, basePension, baseMutualFund };
+    
+    // Use the minimum of member's retirement_year and income_till for salary/business
+    const effectiveSalaryEndYear = salaryIncomeTill ? Math.min(retirementYear, salaryIncomeTill) : retirementYear;
+    const effectiveBusinessEndYear = businessIncomeTill ? Math.min(retirementYear, businessIncomeTill) : retirementYear;
+    
+    return { 
+      salaryGrowth, businessGrowth, rentalGrowth: 3, 
+      retirementYear, 
+      salaryEndYear: effectiveSalaryEndYear,
+      businessEndYear: effectiveBusinessEndYear,
+      baseSalary, baseBusiness, baseRental, basePension, baseMutualFund 
+    };
   };
 
   // Get member expenses with inflation (including family expenses distributed and insurance premiums)
@@ -606,21 +628,28 @@ export default function SurplusSection({ family, isReadOnly }) {
     const info = getMemberIncomeInfo(memberId);
     const targetYear = parseInt(year);
     const yearsFromNow = targetYear - currentYear;
+    
+    // Check if salary/business income should continue based on their respective end years
+    const isSalaryActive = targetYear < info.salaryEndYear;
+    const isBusinessActive = targetYear < info.businessEndYear;
     const isPostRetirement = targetYear >= info.retirementYear;
     
     if (yearsFromNow <= 0) {
       return info.baseSalary + info.baseBusiness + info.baseRental + info.basePension + (info.baseMutualFund || 0);
     }
     
-    if (isPostRetirement) {
-      const preRetYears = info.retirementYear - currentYear;
-      const postRetYears = targetYear - info.retirementYear;
-      const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, preRetYears + postRetYears);
-      return rental + info.basePension + (info.baseMutualFund || 0);
+    // Calculate each income type separately based on their end years
+    let salary = 0;
+    if (isSalaryActive && info.baseSalary > 0) {
+      salary = info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
     }
     
-    const salary = info.baseSalary * Math.pow(1 + info.salaryGrowth / 100, yearsFromNow);
-    const business = info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+    let business = 0;
+    if (isBusinessActive && info.baseBusiness > 0) {
+      business = info.baseBusiness * Math.pow(1 + info.businessGrowth / 100, yearsFromNow);
+    }
+    
+    // Rental income continues with growth
     const rental = info.baseRental * Math.pow(1 + info.rentalGrowth / 100, yearsFromNow);
     
     return salary + business + rental + info.basePension + (info.baseMutualFund || 0);
@@ -952,7 +981,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     // Salary
     const salaryIncomes = incomeDetails.filter(inc => inc.category === 'salary');
     if (salaryIncomes.length > 0) {
-      dgData.push(['SALARY']);
+      dgData.push(['Salary Income']);
       dgData.push(['Member', 'Monthly Income', 'Annual Income', 'Growth Rate %']);
       salaryIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -961,10 +990,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Business (handle both 'business' and 'business_income' categories)
-    const businessIncomes = incomeDetails.filter(inc => inc.category === 'business' || inc.category === 'business_income');
+    // Business Income - unified category name
+    const businessIncomes = incomeDetails.filter(inc => inc.category === 'business_income' || inc.category === 'business');
     if (businessIncomes.length > 0) {
-      dgData.push(['BUSINESS']);
+      dgData.push(['Business Income']);
       dgData.push(['Member', 'Monthly Income', 'Annual Income', 'Growth Rate %']);
       businessIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -973,14 +1002,14 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Rental/Property (handle both 'rental' and 'property_details' categories)
-    const rentalIncomes = incomeDetails.filter(inc => inc.category === 'rental' || inc.category === 'property_details');
+    // Property/Rental Income - unified category name
+    const rentalIncomes = incomeDetails.filter(inc => inc.category === 'property_details' || inc.category === 'rental');
     if (rentalIncomes.length > 0) {
-      dgData.push(['PROPERTY/RENTAL']);
+      dgData.push(['Property Details']);
       dgData.push(['Member', 'Property Type', 'Monthly Income', 'Annual Income', 'Growth Rate %']);
       rentalIncomes.forEach(inc => {
         const d = inc.details || {};
-        dgData.push([getMemberNames(inc.member_ids), d.property_type || '', formatCurrencyINR(d.monthly_amount || d.monthly_rent), formatCurrencyINR(d.annual_amount || d.annual_rent), d.rental_growth_rate || d.growth_rate || '3']);
+        dgData.push([getMemberNames(inc.member_ids), d.property_type || '', formatCurrencyINR(d.monthly_amount || d.rent_per_month), formatCurrencyINR(d.annual_amount || d.annual_rent), d.rental_growth_rate || d.growth_rate || '3']);
       });
       dgData.push([]);
     }
@@ -988,7 +1017,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     // Pension
     const pensionIncomes = incomeDetails.filter(inc => inc.category === 'pension');
     if (pensionIncomes.length > 0) {
-      dgData.push(['PENSION']);
+      dgData.push(['Pension']);
       dgData.push(['Member', 'Description', 'Amount (Yearly)', 'Start Date', 'End Date']);
       pensionIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1021,23 +1050,25 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Fixed Deposits (handle both 'fd' and 'fixed_deposit' categories)
-    const fdIncomes = incomeDetails.filter(inc => inc.category === 'fd' || inc.category === 'fixed_deposit');
+    // Fixed Deposits - unified category name
+    const fdIncomes = incomeDetails.filter(inc => inc.category === 'fixed_deposit' || inc.category === 'fd');
     if (fdIncomes.length > 0) {
-      dgData.push(['FIXED DEPOSITS']);
+      dgData.push(['Fixed Deposit']);
       dgData.push(['Member', 'Description', 'Investment Value', 'Interest Rate', 'Payout Frequency', 'Annual Interest', 'Maturity Date', 'Maturity Amount']);
       fdIncomes.forEach(inc => {
         const d = inc.details || {};
-        const annualInterest = (parseFloat(d.investment_value) || parseFloat(d.principal_amount) || 0) * (parseFloat(d.interest_rate) || 0) / 100;
-        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(d.investment_value || d.principal_amount), `${d.interest_rate || ''}%`, d.payable_cycle || d.payout_frequency || '', formatCurrencyINR(annualInterest), d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
+        const investmentValue = parseFloat(d.investment_value) || parseFloat(d.principal_amount) || 0;
+        const interestRate = parseFloat(d.interest_rate) || 0;
+        const annualInterest = investmentValue * interestRate / 100;
+        dgData.push([getMemberNames(inc.member_ids), d.description || '', formatCurrencyINR(investmentValue), `${interestRate}%`, d.payable_cycle || d.payout_frequency || '', formatCurrencyINR(annualInterest), d.maturity_date || '', formatCurrencyINR(d.maturity_amount)]);
       });
       dgData.push([]);
     }
     
-    // Bonds/NCD (handle both 'bond' and 'ncd' categories)
-    const bondIncomes = incomeDetails.filter(inc => inc.category === 'bond' || inc.category === 'ncd');
+    // Bonds/NCD - unified category name
+    const bondIncomes = incomeDetails.filter(inc => inc.category === 'ncd' || inc.category === 'bond');
     if (bondIncomes.length > 0) {
-      dgData.push(['BONDS/NCD']);
+      dgData.push(['NCD']);
       dgData.push(['Member', 'Description', 'Investment Value', 'Interest Rate', 'Tenure', 'Maturity Date', 'Maturity Amount']);
       bondIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1049,7 +1080,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     // Mutual Funds
     const mfIncomes = incomeDetails.filter(inc => inc.category === 'mutual_fund');
     if (mfIncomes.length > 0) {
-      dgData.push(['MUTUAL FUNDS']);
+      dgData.push(['Mutual Fund']);
       dgData.push(['Member', 'Market Value', 'Monthly SIP', 'Annual SIP', 'Up to Year']);
       mfIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1070,10 +1101,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Shares/PMS - handle portfolio value and expected return
+    // Shares/PMS
     const sharesIncomes = incomeDetails.filter(inc => inc.category === 'shares_pms');
     if (sharesIncomes.length > 0) {
-      dgData.push(['SHARES/PMS']);
+      dgData.push(['Shares / PMS']);
       dgData.push(['Member', 'Portfolio Value', 'Expected Return', 'Dividend Yield']);
       sharesIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1082,10 +1113,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Insurance (Income side) - handle both 'insurance_income' and 'insurance' categories
-    const insuranceIncomes = incomeDetails.filter(inc => inc.category === 'insurance_income' || inc.category === 'insurance');
+    // Insurance (Income/Endowment) - unified category name
+    const insuranceIncomes = incomeDetails.filter(inc => inc.category === 'insurance' || inc.category === 'insurance_income');
     if (insuranceIncomes.length > 0) {
-      dgData.push(['INSURANCE (ENDOWMENT/ULIP)']);
+      dgData.push(['Insurance']);
       dgData.push(['Member', 'Description', 'Sum Assured', 'Annual Premium', 'Maturity Year', 'Maturity Amount']);
       insuranceIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1094,10 +1125,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Cash/Bank Balance - handle both 'cash' and 'cash_in_hand' categories
-    const cashIncomes = incomeDetails.filter(inc => inc.category === 'cash' || inc.category === 'cash_in_hand');
+    // Cash/Bank Balance - unified category name
+    const cashIncomes = incomeDetails.filter(inc => inc.category === 'cash_in_hand' || inc.category === 'cash');
     if (cashIncomes.length > 0) {
-      dgData.push(['CASH/BANK BALANCE']);
+      dgData.push(['Cash In Hand']);
       dgData.push(['Member', 'Description', 'Amount']);
       cashIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1106,10 +1137,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // RD/PIS - handle 'rd_pis' category
+    // RD/PIS - unified category name
     const rdIncomes = incomeDetails.filter(inc => inc.category === 'rd_pis' || inc.category === 'rd');
     if (rdIncomes.length > 0) {
-      dgData.push(['RD/PIS']);
+      dgData.push(['RD / PIS']);
       dgData.push(['Member', 'Monthly Deposit', 'Interest Rate', 'Tenure (Months)', 'Maturity Amount']);
       rdIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1118,10 +1149,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Vehicle - handle 'vehicle' category  
+    // Vehicle - unified category name
     const vehicleIncomes = incomeDetails.filter(inc => inc.category === 'vehicle');
     if (vehicleIncomes.length > 0) {
-      dgData.push(['VEHICLE']);
+      dgData.push(['Vehicle']);
       dgData.push(['Member', 'Vehicle Type', 'Current Value', 'Depreciation Rate']);
       vehicleIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1130,10 +1161,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Other Income - handle 'other' category
+    // Other Income - unified category name
     const otherIncomes = incomeDetails.filter(inc => inc.category === 'other');
     if (otherIncomes.length > 0) {
-      dgData.push(['OTHER INCOME']);
+      dgData.push(['Other']);
       dgData.push(['Member', 'Description', 'Monthly Amount', 'Annual Amount', 'Growth Rate']);
       otherIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1142,10 +1173,10 @@ export default function SurplusSection({ family, isReadOnly }) {
       dgData.push([]);
     }
     
-    // Commodities (Gold/Silver) - handle both weight formats
+    // Commodities (Gold/Silver)
     const commodityIncomes = incomeDetails.filter(inc => inc.category === 'commodities');
     if (commodityIncomes.length > 0) {
-      dgData.push(['COMMODITIES (Gold/Silver)']);
+      dgData.push(['Commodities']);
       dgData.push(['Member', 'Type', 'Weight (grams)', 'Current Value', 'Growth Rate']);
       commodityIncomes.forEach(inc => {
         const d = inc.details || {};
@@ -1157,7 +1188,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     // Gratuity
     const gratuityIncomes = incomeDetails.filter(inc => inc.category === 'gratuity');
     if (gratuityIncomes.length > 0) {
-      dgData.push(['GRATUITY']);
+      dgData.push(['Gratuity']);
       dgData.push(['Member', 'Market Value', 'Maturity Date', 'Expected Amount']);
       gratuityIncomes.forEach(inc => {
         const d = inc.details || {};
