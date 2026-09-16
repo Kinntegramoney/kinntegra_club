@@ -60,6 +60,11 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 - ✅ **PPF/EPF/Gratuity Growth Rate**: Added Growth Rate % field with defaults (PPF: 7.1%, EPF: 8.25%, Gratuity: 6%)
 - ✅ **Maturity Value Auto-Calculation**: Dynamically calculates based on current value, annual contribution, growth rate, and years to maturity
 - ✅ **Years to Mature**: Auto-calculated on data load based on maturity date
+- ✅ **Year-by-Year Maturity Breakdown**: Info icon (ℹ️) next to Maturity Value opens modal showing:
+  - Summary cards (Starting Value, Total Contributions, Total Interest, Final Maturity Value)
+  - Detailed year-by-year table with Opening Balance, Contribution, Interest Earned, Closing Balance
+  - Shows when contributions stop based on "Contribution Up to Year" setting
+  - Formula explanation at bottom
 - ✅ **Excel Income Export Alignment**: 
   - New categorized sections: REGULAR INCOME, RETIREMENT CORPUS, FIXED INCOME/DEBT INSTRUMENTS, MARKET-LINKED INVESTMENTS, OTHER ASSETS, PROPERTY DETAILS
   - Uses exact portal terminology (e.g., "Property Details" not "Rental Income")

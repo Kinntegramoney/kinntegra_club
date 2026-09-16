@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Save, Briefcase, Building, Wallet, Landmark, PiggyBank, TrendingUp, 
-  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, X, Car
+  DollarSign, Plus, Trash2, ChevronDown, ChevronRight, User, X, Car, Info
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -285,6 +286,61 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
   const [addedCategories, setAddedCategories] = useState([]);
   const [incomeItems, setIncomeItems] = useState({});
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [maturityBreakdown, setMaturityBreakdown] = useState({ open: false, data: null, category: '' });
+
+  // Helper function to generate year-by-year maturity breakdown
+  const generateMaturityBreakdown = (details, category) => {
+    const currentValue = parseFloat(details.market_value) || 0;
+    const annualContribution = parseFloat(details.annual_contribution) || 0;
+    const growthRate = parseFloat(details.growth_rate) || (category === 'ppf' ? 7.1 : category === 'epf' ? 8.25 : 6);
+    const maturityDateStr = details.maturity_date;
+    const uptoYear = parseInt(details.upto_year || 0);
+    
+    if (!maturityDateStr || currentValue <= 0) return null;
+    
+    const currentYear = new Date().getFullYear();
+    const maturityYear = new Date(maturityDateStr).getFullYear();
+    const yearsToMaturity = Math.max(0, maturityYear - currentYear);
+    
+    if (yearsToMaturity <= 0) return null;
+    
+    const contributionEndYear = uptoYear > 0 ? Math.min(uptoYear, maturityYear) : maturityYear;
+    const r = growthRate / 100;
+    
+    const breakdown = [];
+    let openingBalance = currentValue;
+    
+    for (let i = 0; i < yearsToMaturity; i++) {
+      const year = currentYear + i + 1;
+      const willContribute = (currentYear + i) < contributionEndYear;
+      const contribution = willContribute ? annualContribution : 0;
+      const interestEarned = Math.round(openingBalance * r);
+      const closingBalance = openingBalance + contribution + interestEarned;
+      
+      breakdown.push({
+        year,
+        openingBalance: Math.round(openingBalance),
+        contribution,
+        interestEarned,
+        closingBalance: Math.round(closingBalance),
+        rate: growthRate
+      });
+      
+      openingBalance = closingBalance;
+    }
+    
+    return {
+      breakdown,
+      summary: {
+        startValue: currentValue,
+        totalContributions: breakdown.reduce((sum, row) => sum + row.contribution, 0),
+        totalInterest: breakdown.reduce((sum, row) => sum + row.interestEarned, 0),
+        maturityValue: Math.round(openingBalance),
+        years: yearsToMaturity,
+        growthRate
+      }
+    };
+  };
 
   const members = family?.members || [];
   const existingIncomes = family?.income_details || [];
@@ -1439,16 +1495,40 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                   />
                                 ) : field.readOnly ? (
                                   <div className="relative group">
-                                    <div className={`h-8 px-3 w-full flex items-center text-xs border border-gray-200 rounded-md font-medium ${
+                                    <div className={`h-8 px-3 w-full flex items-center justify-between text-xs border border-gray-200 rounded-md font-medium ${
                                       ['xirr_return', 'absolute_return', 'gross_xirr'].includes(field.key) 
                                         ? (parseFloat(item.details[field.key]) >= 8 
                                             ? 'bg-green-100 text-green-700 border-green-300' 
                                             : 'bg-red-100 text-red-700 border-red-300')
                                         : 'bg-gray-100 text-gray-600'
                                     }`}>
-                                      {formatValue(item.details[field.key], field.key)}
-                                      {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
-                                        <span className="ml-1 text-amber-600 cursor-help" title="Inflation adjusted">*</span>
+                                      <span>
+                                        {formatValue(item.details[field.key], field.key)}
+                                        {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
+                                          <span className="ml-1 text-amber-600 cursor-help" title="Inflation adjusted">*</span>
+                                        )}
+                                      </span>
+                                      {/* Info icon for maturity_value to show year-by-year breakdown */}
+                                      {field.key === 'maturity_value' && ['ppf', 'epf', 'gratuity'].includes(category.value) && item.details.maturity_value > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const breakdownData = generateMaturityBreakdown(item.details, category.value);
+                                            if (breakdownData) {
+                                              setMaturityBreakdown({ 
+                                                open: true, 
+                                                data: breakdownData, 
+                                                category: category.label,
+                                                memberName: members.find(m => m.id === item.memberId)?.name || 'Member'
+                                              });
+                                            }
+                                          }}
+                                          className="ml-1 text-blue-500 hover:text-blue-700 transition-colors"
+                                          title="View year-by-year breakdown"
+                                        >
+                                          <Info className="h-3.5 w-3.5" />
+                                        </button>
                                       )}
                                     </div>
                                     {/* Tooltip for inflation-adjusted XIRR */}
@@ -1569,6 +1649,89 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
       {activeCategories.length === 0 && availableCategories.length > 0 && (
         <p className="text-center py-6 text-xs text-gray-400">Select a category above to begin</p>
       )}
+
+      {/* Maturity Breakdown Modal */}
+      <Dialog open={maturityBreakdown.open} onOpenChange={(open) => setMaturityBreakdown({ ...maturityBreakdown, open })}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              {maturityBreakdown.category} - Maturity Value Breakdown
+              {maturityBreakdown.memberName && <span className="text-sm font-normal text-gray-500">({maturityBreakdown.memberName})</span>}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {maturityBreakdown.data && (
+            <div className="space-y-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-blue-600 mb-1">Starting Value</p>
+                  <p className="text-sm font-semibold text-blue-800">₹{maturityBreakdown.data.summary.startValue.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-green-600 mb-1">Total Contributions</p>
+                  <p className="text-sm font-semibold text-green-800">₹{maturityBreakdown.data.summary.totalContributions.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-purple-600 mb-1">Total Interest @ {maturityBreakdown.data.summary.growthRate}%</p>
+                  <p className="text-sm font-semibold text-purple-800">₹{maturityBreakdown.data.summary.totalInterest.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-amber-600 mb-1">Maturity Value ({maturityBreakdown.data.summary.years} yrs)</p>
+                  <p className="text-sm font-semibold text-amber-800">₹{maturityBreakdown.data.summary.maturityValue.toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+
+              {/* Year-by-Year Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-100 px-4 py-2 border-b">
+                  <h4 className="text-sm font-medium text-gray-700">Year-by-Year Growth</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-gray-600 border-b">Year</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Opening Balance</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Contribution</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Interest @ {maturityBreakdown.data.summary.growthRate}%</th>
+                        <th className="px-3 py-2 text-right font-medium text-gray-600 border-b">Closing Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {maturityBreakdown.data.breakdown.map((row, idx) => (
+                        <tr key={row.year} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-3 py-2 font-medium text-gray-800 border-b">{row.year}</td>
+                          <td className="px-3 py-2 text-right text-gray-600 border-b">₹{row.openingBalance.toLocaleString('en-IN')}</td>
+                          <td className="px-3 py-2 text-right text-green-600 border-b">
+                            {row.contribution > 0 ? `+₹${row.contribution.toLocaleString('en-IN')}` : '-'}
+                          </td>
+                          <td className="px-3 py-2 text-right text-purple-600 border-b">+₹{row.interestEarned.toLocaleString('en-IN')}</td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-800 border-b">₹{row.closingBalance.toLocaleString('en-IN')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-amber-50">
+                      <tr>
+                        <td className="px-3 py-2 font-semibold text-amber-800" colSpan={4}>Final Maturity Value</td>
+                        <td className="px-3 py-2 text-right font-bold text-amber-800">₹{maturityBreakdown.data.summary.maturityValue.toLocaleString('en-IN')}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Formula Explanation */}
+              <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+                <p className="font-medium mb-1">Calculation Formula:</p>
+                <p>Closing Balance = Opening Balance + Contribution + (Opening Balance × {maturityBreakdown.data.summary.growthRate}%)</p>
+                <p className="mt-1 text-gray-500">* Contributions stop when "Contribution Up to Year" is reached, but interest continues to compound until maturity.</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
