@@ -446,9 +446,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
           const yearsToMaturity = Math.max(0, maturityYear - currentYear);
           details.year_to_mature = yearsToMaturity;
           
+          // Calculate monthly contribution from annual
+          const annualContribution = parseFloat(details.annual_contribution) || 0;
+          if (annualContribution > 0) {
+            details.monthly_contribution = Math.round(annualContribution / 12 * 100) / 100;
+          }
+          
           // Calculate maturity value if not already set or needs update
           const currentValue = parseFloat(details.market_value) || 0;
-          const annualContribution = parseFloat(details.annual_contribution) || 0;
           const growthRate = parseFloat(details.growth_rate) || (category === 'ppf' ? 7.1 : category === 'epf' ? 8.25 : 6);
           const uptoYear = parseInt(details.upto_year || 0);
           
@@ -473,6 +478,14 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
             } else {
               details.maturity_value = Math.round(currentValue + (annualContribution * contributionYears));
             }
+          }
+        }
+        
+        // Also calculate monthly_contribution for shares_pms on load
+        if (category === 'shares_pms' && details.annual_contribution) {
+          const annualAmount = parseFloat(details.annual_contribution) || 0;
+          if (annualAmount > 0) {
+            details.monthly_contribution = Math.round(annualAmount / 12 * 100) / 100;
           }
         }
         
@@ -1408,7 +1421,33 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                             
                             return (
                               <div key={field.key} className="flex flex-col" style={fieldStyle}>
-                                {withLabel && <span className={`text-[10px] mb-1 truncate ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>{field.label}</span>}
+                                {withLabel && (
+                                  <span className={`text-[10px] mb-1 truncate flex items-center gap-1 ${field.calculated ? 'text-blue-500' : 'text-gray-400'}`}>
+                                    {field.label}
+                                    {/* Info icon for maturity_value header */}
+                                    {field.key === 'maturity_value' && ['ppf', 'epf', 'gratuity'].includes(category.value) && item.details.maturity_value > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const breakdownData = generateMaturityBreakdown(item.details, category.value);
+                                          if (breakdownData) {
+                                            setMaturityBreakdown({ 
+                                              open: true, 
+                                              data: breakdownData, 
+                                              category: category.label,
+                                              memberName: members.find(m => m.id === item.memberId)?.name || 'Member'
+                                            });
+                                          }
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 transition-colors"
+                                        title="View year-by-year breakdown"
+                                      >
+                                        <Info className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </span>
+                                )}
                                 {field.type === "select" ? (
                                   <Select value={item.details[field.key] || field.defaultValue || ""} onValueChange={v => updateIncomeItem(category.value, item.id, field.key, v)} disabled={isReadOnly || field.readOnly}>
                                     <SelectTrigger className={`h-8 w-full text-xs ${field.readOnly ? 'bg-gray-100' : 'bg-white'} border-gray-200`}>
@@ -1495,40 +1534,16 @@ export default function IncomeSection({ family, onUpdate, isReadOnly, onRefresh 
                                   />
                                 ) : field.readOnly ? (
                                   <div className="relative group">
-                                    <div className={`h-8 px-3 w-full flex items-center justify-between text-xs border border-gray-200 rounded-md font-medium ${
+                                    <div className={`h-8 px-3 w-full flex items-center text-xs border border-gray-200 rounded-md font-medium ${
                                       ['xirr_return', 'absolute_return', 'gross_xirr'].includes(field.key) 
                                         ? (parseFloat(item.details[field.key]) >= 8 
                                             ? 'bg-green-100 text-green-700 border-green-300' 
                                             : 'bg-red-100 text-red-700 border-red-300')
                                         : 'bg-gray-100 text-gray-600'
                                     }`}>
-                                      <span>
-                                        {formatValue(item.details[field.key], field.key)}
-                                        {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
-                                          <span className="ml-1 text-amber-600 cursor-help" title="Inflation adjusted">*</span>
-                                        )}
-                                      </span>
-                                      {/* Info icon for maturity_value to show year-by-year breakdown */}
-                                      {field.key === 'maturity_value' && ['ppf', 'epf', 'gratuity'].includes(category.value) && item.details.maturity_value > 0 && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const breakdownData = generateMaturityBreakdown(item.details, category.value);
-                                            if (breakdownData) {
-                                              setMaturityBreakdown({ 
-                                                open: true, 
-                                                data: breakdownData, 
-                                                category: category.label,
-                                                memberName: members.find(m => m.id === item.memberId)?.name || 'Member'
-                                              });
-                                            }
-                                          }}
-                                          className="ml-1 text-blue-500 hover:text-blue-700 transition-colors"
-                                          title="View year-by-year breakdown"
-                                        >
-                                          <Info className="h-3.5 w-3.5" />
-                                        </button>
+                                      {formatValue(item.details[field.key], field.key)}
+                                      {field.key === 'xirr_return' && item.details.is_inflation_adjusted && (
+                                        <span className="ml-1 text-amber-600 cursor-help" title="Inflation adjusted">*</span>
                                       )}
                                     </div>
                                     {/* Tooltip for inflation-adjusted XIRR */}
