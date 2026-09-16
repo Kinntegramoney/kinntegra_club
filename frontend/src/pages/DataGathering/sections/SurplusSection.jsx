@@ -3260,7 +3260,52 @@ function AllocationSimulator({
     
     // ---- RETIREMENT CORPUS ----
     dataSheetData.push(['', '▸ RETIREMENT CORPUS']);
-    dataSheetData.push(['', 'Type', 'Member', 'Current Value', 'Annual Contribution', 'Growth %', 'Maturity Date', 'Maturity Value']);
+    dataSheetData.push(['', 'Type', 'Member', 'Current Value', 'Annual Contribution', 'Growth %', 'Maturity Date', 'Years to Mature', 'Maturity Value']);
+    
+    // Helper function to compute maturity value dynamically
+    const computeMaturityValue = (details, category) => {
+      const currentValue = parseFloat(details.market_value) || 0;
+      const annualContribution = parseFloat(details.annual_contribution) || 0;
+      const growthRate = parseFloat(details.growth_rate) || (category === 'ppf' ? 7.1 : category === 'epf' ? 8.25 : 6);
+      const maturityDateStr = details.maturity_date;
+      const uptoYear = parseInt(details.upto_year || 0);
+      
+      if (!maturityDateStr || currentValue <= 0) {
+        return { yearsToMature: '-', maturityValue: '-' };
+      }
+      
+      const currentYear = new Date().getFullYear();
+      const maturityYear = new Date(maturityDateStr).getFullYear();
+      const yearsToMaturity = Math.max(0, maturityYear - currentYear);
+      
+      if (yearsToMaturity <= 0) {
+        return { yearsToMature: 0, maturityValue: currentValue };
+      }
+      
+      const contributionEndYear = uptoYear > 0 ? Math.min(uptoYear, maturityYear) : maturityYear;
+      const contributionYears = Math.max(0, contributionEndYear - currentYear);
+      const r = growthRate / 100;
+      
+      let maturityValue = currentValue;
+      if (r > 0) {
+        // Value of current corpus at maturity
+        const corpusAtMaturity = currentValue * Math.pow(1 + r, yearsToMaturity);
+        
+        // Future value of contributions
+        let contributionFV = 0;
+        if (annualContribution > 0 && contributionYears > 0) {
+          const fvAtContributionEnd = annualContribution * ((Math.pow(1 + r, contributionYears) - 1) / r);
+          const remainingYears = yearsToMaturity - contributionYears;
+          contributionFV = fvAtContributionEnd * Math.pow(1 + r, Math.max(0, remainingYears));
+        }
+        
+        maturityValue = Math.round(corpusAtMaturity + contributionFV);
+      } else {
+        maturityValue = Math.round(currentValue + (annualContribution * contributionYears));
+      }
+      
+      return { yearsToMature: yearsToMaturity, maturityValue };
+    };
     
     ['ppf', 'epf', 'gratuity'].forEach(cat => {
       const label = getIncomeCategoryLabel(cat);
@@ -3269,12 +3314,14 @@ function AllocationSimulator({
         items.forEach(item => {
           const d = item.details || {};
           const growthRate = parseFloat(d.growth_rate) || (cat === 'ppf' ? 7.1 : cat === 'epf' ? 8.25 : 6);
+          const { yearsToMature, maturityValue } = computeMaturityValue(d, cat);
           dataSheetData.push(['', label, m.name, 
             parseFloat(d.market_value) || 0,
             parseFloat(d.annual_contribution) || 0,
             `${growthRate}%`,
             d.maturity_date || '-',
-            parseFloat(d.maturity_value) || '-'
+            yearsToMature,
+            maturityValue
           ]);
         });
       });

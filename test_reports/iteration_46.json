@@ -1,0 +1,33 @@
+{
+  "summary": "Verified both fixes from iteration 45. (1) Per-member Excel export now works end-to-end with NO ReferenceError - downloaded Financial_Plan_Rajesh_Kumar.xlsx (Data Sheet + Cash Flow & Portfolio) containing all 5 categorized income sections (REGULAR INCOME, RETIREMENT CORPUS, FIXED INCOME/DEBT INSTRUMENTS, MARKET-LINKED INVESTMENTS, OTHER ASSETS) plus PROPERTY DETAILS. (2) On loading the IncomeSection, PPF/EPF/Gratuity now auto-populate year_to_mature=14 and maturity_value (PPF=₹64,61,026 ≈64L, EPF=₹1,09,98,139 ≈1.1Cr, Gratuity=₹10,74,509 area from calc) matching review expectations. Family-level Calculate + per-member Calculate work; Excel + PDF buttons enable after Calculate. No console errors, no page errors during the full flow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Excel export vs live-computed Maturity Value",
+        "issue": "Excel 'RETIREMENT CORPUS' section shows the STORED maturity_value from backend (PPF=₹45,00,000, EPF=₹80,00,000, Gratuity=₹12,00,000) whereas the IncomeSection UI now shows the newly-computed dynamic values (PPF=₹64,61,026, EPF=₹1,09,98,139). Auto-computed maturity_value is only held in the IncomeSection local React state and is NOT persisted; SurplusSection reads directly from incomeDetails coming from backend. If the user does not save (or the record was not saved after the auto-calc code was deployed), Excel will show stale values. Consider either (a) also computing maturity_value in SurplusSection buildDataSheet or (b) auto-saving the computed value when it changes on load.",
+        "affected_selectors": ["Data Sheet > RETIREMENT CORPUS > Maturity Value column"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/tmp/Financial_Plan_Rajesh_Kumar.xlsx"],
+  "action_items": [
+    "OPTIONAL: Persist the auto-computed year_to_mature/maturity_value for PPF/EPF/Gratuity to backend on load, or recompute in exportEntityCashFlow to match UI display."
+  ],
+  "critical_code_review_comments": [
+    "SurplusSection.jsx still 4561 lines and has three parallel export flows (handleExportToExcel/exportEntityCashFlow/exportSimulationToExcel). Recommend extracting into src/pages/DataGathering/export/{dataGathering,cashflow,simulation}.js with a shared buildIncomeSection() helper.",
+    "The family-level Excel button (handleExportToExcel) still uses the LEGACY flat 'Data Gathering' layout; only the per-member Excel export uses the new categorized 'Data Sheet'. Confirm this is intentional; otherwise migrate the family Excel to use the new layout.",
+    "Auto-calc of maturity_value (IncomeSection.jsx:385-425) mutates details in place during data mapping. It's not persisted; consider triggering an auto-save or moving the calc to a derived selector so all downstream consumers (Surplus/Excel) see the same value.",
+    "Data Sheet skips SECTION 4/5/6 (jumps from SECTION 3 to SECTION 7). Either renumber sections consecutively or add the missing sections."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only test)", "frontend": "100% for both requested fixes"},
+  "test_credentials": "SUPERUSER / kinntegraa123 / PIN 1234 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None - used existing family test-income-excel-001",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Both critical fixes from iteration 45 are verified. Per-member Excel downloads Financial_Plan_<Member>.xlsx with Data Sheet containing REGULAR INCOME / RETIREMENT CORPUS / FIXED INCOME / MARKET-LINKED / OTHER ASSETS / PROPERTY DETAILS categorized sections. PPF/EPF/Gratuity now show Years to Mature=14 and computed Maturity Value on initial load. Remaining discrepancy: computed maturity_value not persisted so Excel shows stored (older) values. If future iterations tackle this, either persist on load or recompute inside exportEntityCashFlow buildDataSheet.",
+  "rca of the issue": "Not applicable - both bugs fixed. Verified totalByMember → totalIncomeByMember rename at SurplusSection.jsx:3592, and useEffect-independent inline maturity calc at IncomeSection.jsx:387-421 which runs during initial income mapping."
+}

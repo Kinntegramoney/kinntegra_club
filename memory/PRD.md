@@ -56,6 +56,17 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## What's Been Implemented
 
+### Income Section Excel Parity & New Fields (Sep 16, 2026)
+- ✅ **PPF/EPF/Gratuity Growth Rate**: Added Growth Rate % field with defaults (PPF: 7.1%, EPF: 8.25%, Gratuity: 6%)
+- ✅ **Maturity Value Auto-Calculation**: Dynamically calculates based on current value, annual contribution, growth rate, and years to maturity
+- ✅ **Years to Mature**: Auto-calculated on data load based on maturity date
+- ✅ **Excel Income Export Alignment**: 
+  - New categorized sections: REGULAR INCOME, RETIREMENT CORPUS, FIXED INCOME/DEBT INSTRUMENTS, MARKET-LINKED INVESTMENTS, OTHER ASSETS, PROPERTY DETAILS
+  - Uses exact portal terminology (e.g., "Property Details" not "Rental Income")
+  - Maturity values computed dynamically in Excel export
+- ✅ **INCOME_CATEGORY_CONFIG**: Comprehensive mapping of 17 income categories with aliases for data consistency
+- ✅ **Fixed totalByMember ReferenceError**: Per-member Excel export now works correctly
+
 ### Original Pre-Login Pages Restored from GitHub (Sep 8, 2026)
 - ✅ **Recovered original content** from GitHub repository `punitbisani1989/Kinntegraa-Club`
 - ✅ **Main LandingPage.jsx** - Full About Us page with company info, services, audience sections
@@ -94,6 +105,7 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 1. **Ephemeral Storage**: File uploads stored on pod (bond presentations, invoices, etc.)
 2. **Route Shadowing**: Some API routes shadow parameterized routes
 3. **Bare Except Clauses**: 73 occurrences need specific exception handling
+4. **Family-level Excel**: Uses legacy flat layout; per-member Excel uses new categorized layout
 
 ---
 
