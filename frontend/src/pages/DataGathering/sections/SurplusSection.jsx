@@ -3201,6 +3201,23 @@ function AllocationSimulator({
     const entityLiabilities = isFamily ? liabilities : liabilities.filter(l => l.member_id === entityId || l.member_ids?.includes(entityId));
     const entityPremiums = isFamily ? insurancePremiums : insurancePremiums.filter(p => p.member_id === entityId);
     
+    // Filter income and expense details based on family vs individual member
+    const entityIncomeDetails = isFamily 
+      ? incomeDetails 
+      : incomeDetails.filter(inc => {
+          const memberIds = inc.member_ids || [];
+          return memberIds.includes(entityId) || memberIds.includes(String(entityId));
+        });
+    
+    const entityExpenseDetails = isFamily 
+      ? expenseDetails 
+      : expenseDetails.filter(exp => {
+          const memberIds = exp.member_ids || [];
+          // Include family-level expenses (no member_ids or includes 'family') for individual too
+          if (memberIds.length === 0 || memberIds.includes('family')) return true;
+          return memberIds.includes(entityId) || memberIds.includes(String(entityId));
+        });
+    
     // Get goals and investments
     const entityGoals = goalDetails || [];
     const entityInvestments = investmentDetails || [];
@@ -3248,9 +3265,9 @@ function AllocationSimulator({
     dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
     dataSheetData.push(['']);
     
-    // Helper to get income by category for a member
+    // Helper to get income by category for a member - uses filtered entityIncomeDetails
     const getMemberIncomeByCategory = (memberId, category) => {
-      return incomeDetails.filter(inc => {
+      return entityIncomeDetails.filter(inc => {
         const incMemberIds = inc.member_ids || [];
         const matchesMember = incMemberIds.includes(memberId) || incMemberIds.includes(String(memberId));
         const normalizedCat = normalizeIncomeCategory(inc.category);
@@ -3398,7 +3415,7 @@ function AllocationSimulator({
     dataSheetData.push(['']);
     
     // ---- FIXED INCOME / DEBT INSTRUMENTS ----
-    const hasDebtInstruments = incomeDetails.some(inc => 
+    const hasDebtInstruments = entityIncomeDetails.some(inc => 
       ['fd', 'fixed_deposit', 'rd_pis', 'bond', 'ncd', 'insurance_income', 'insurance'].includes(inc.category)
     );
     
@@ -3414,8 +3431,8 @@ function AllocationSimulator({
         return member?.name || 'Family';
       };
       
-      // Fixed Deposit - iterate directly
-      incomeDetails
+      // Fixed Deposit - iterate directly using filtered entityIncomeDetails
+      entityIncomeDetails
         .filter(inc => inc.category === 'fd' || inc.category === 'fixed_deposit')
         .forEach(item => {
           const d = item.details || {};
@@ -3429,7 +3446,7 @@ function AllocationSimulator({
         });
       
       // RD / PIS
-      incomeDetails
+      entityIncomeDetails
         .filter(inc => inc.category === 'rd_pis')
         .forEach(item => {
           const d = item.details || {};
@@ -3443,7 +3460,7 @@ function AllocationSimulator({
         });
       
       // NCD / Bonds
-      incomeDetails
+      entityIncomeDetails
         .filter(inc => inc.category === 'bond' || inc.category === 'ncd')
         .forEach(item => {
           const d = item.details || {};
@@ -3457,7 +3474,7 @@ function AllocationSimulator({
         });
       
       // Insurance (as investment)
-      incomeDetails
+      entityIncomeDetails
         .filter(inc => inc.category === 'insurance_income' || inc.category === 'insurance')
         .forEach(item => {
           const d = item.details || {};
@@ -3473,7 +3490,7 @@ function AllocationSimulator({
     }
     
     // ---- MARKET-LINKED INVESTMENTS ----
-    const hasEquityInvestments = incomeDetails.some(inc => 
+    const hasEquityInvestments = entityIncomeDetails.some(inc => 
       ['mutual_fund', 'shares_pms'].includes(inc.category)
     );
     
@@ -3489,7 +3506,7 @@ function AllocationSimulator({
       };
       
       // Mutual Funds
-      const mfItems = incomeDetails.filter(inc => inc.category === 'mutual_fund');
+      const mfItems = entityIncomeDetails.filter(inc => inc.category === 'mutual_fund');
       if (mfItems.length > 0) {
         dataSheetData.push(['', 'Mutual Fund', 'Member', 'Market Value', 'SIP Amount', 'Annual SIP', 'Up to Year']);
         mfItems.forEach(item => {
@@ -3505,7 +3522,7 @@ function AllocationSimulator({
       }
       
       // Shares / PMS
-      const sharesItems = incomeDetails.filter(inc => inc.category === 'shares_pms');
+      const sharesItems = entityIncomeDetails.filter(inc => inc.category === 'shares_pms');
       if (sharesItems.length > 0) {
         dataSheetData.push(['', 'Shares / PMS', 'Member', 'Market Value', 'Annual Contribution', 'Monthly Contribution', 'Up to Year']);
         sharesItems.forEach(item => {
@@ -3524,7 +3541,7 @@ function AllocationSimulator({
     }
     
     // ---- OTHER ASSETS ----
-    const hasOtherAssets = incomeDetails.some(inc => 
+    const hasOtherAssets = entityIncomeDetails.some(inc => 
       ['commodities', 'cash', 'cash_in_hand', 'vehicle', 'other'].includes(inc.category)
     );
     
@@ -3540,7 +3557,7 @@ function AllocationSimulator({
       };
       
       // Cash In Hand
-      const cashItems = incomeDetails.filter(inc => inc.category === 'cash' || inc.category === 'cash_in_hand');
+      const cashItems = entityIncomeDetails.filter(inc => inc.category === 'cash' || inc.category === 'cash_in_hand');
       if (cashItems.length > 0) {
         dataSheetData.push(['', 'Cash In Hand', 'Member', 'Description', 'Bank Balance']);
         cashItems.forEach(item => {
@@ -3554,7 +3571,7 @@ function AllocationSimulator({
       }
       
       // Vehicle
-      const vehicleItems = incomeDetails.filter(inc => inc.category === 'vehicle');
+      const vehicleItems = entityIncomeDetails.filter(inc => inc.category === 'vehicle');
       if (vehicleItems.length > 0) {
         dataSheetData.push(['', 'Vehicle', 'Member', 'Description', 'Current Market Value']);
         vehicleItems.forEach(item => {
@@ -3568,7 +3585,7 @@ function AllocationSimulator({
       }
       
       // Commodities
-      const commodityItems = incomeDetails.filter(inc => inc.category === 'commodities');
+      const commodityItems = entityIncomeDetails.filter(inc => inc.category === 'commodities');
       if (commodityItems.length > 0) {
         dataSheetData.push(['', 'Commodities', 'Member', 'Type', 'Weight (Kg)', 'Price/Kg', 'Market Value']);
         commodityItems.forEach(item => {
@@ -3584,7 +3601,7 @@ function AllocationSimulator({
       }
       
       // Other
-      const otherItems = incomeDetails.filter(inc => inc.category === 'other');
+      const otherItems = entityIncomeDetails.filter(inc => inc.category === 'other');
       if (otherItems.length > 0) {
         dataSheetData.push(['', 'Other', 'Member', 'Description', 'Value']);
         otherItems.forEach(item => {
@@ -3599,7 +3616,7 @@ function AllocationSimulator({
     }
     
     // ---- PROPERTY DETAILS (Full) ----
-    const hasProperties = incomeDetails.some(inc => 
+    const hasProperties = entityIncomeDetails.some(inc => 
       ['rental', 'property_details'].includes(inc.category)
     );
     
@@ -3638,10 +3655,10 @@ function AllocationSimulator({
     dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
     dataSheetData.push(['']);
     
-    // Group expenses by type
-    const regularExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'regular');
-    const insuranceExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'insurance');
-    const loanExpenses = expenseDetails.filter(e => getExpenseType(e.expense_type) === 'loan');
+    // Group expenses by type - using filtered entityExpenseDetails
+    const regularExpenses = entityExpenseDetails.filter(e => getExpenseType(e.expense_type) === 'regular');
+    const insuranceExpenses = entityExpenseDetails.filter(e => getExpenseType(e.expense_type) === 'insurance');
+    const loanExpenses = entityExpenseDetails.filter(e => getExpenseType(e.expense_type) === 'loan');
     
     // ---- REGULAR HOUSEHOLD EXPENSES ----
     if (regularExpenses.length > 0) {
