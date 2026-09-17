@@ -228,6 +228,28 @@ const getExpenseType = (category) => {
   return EXPENSE_CATEGORY_CONFIG[category]?.type || 'regular';
 };
 
+// ========================================
+// GOAL CATEGORY CONFIGURATION
+// Maps stored category values to Excel display labels
+// Source of truth: Matches GoalSection.jsx GOAL_CATEGORIES
+// ========================================
+const GOAL_CATEGORY_CONFIG = {
+  education: "Children Education",
+  wedding: "Children Wedding",
+  vacation: "Vacation",
+  home: "Home Purchase",
+  car: "Car Purchase",
+  retirement: "Retirement Corpus",
+  medical: "Medical Emergency",
+  gift: "Gift / Donation",
+  other: "Other Goals"
+};
+
+// Helper function to get the display label for a goal category
+const getGoalCategoryLabel = (category) => {
+  return GOAL_CATEGORY_CONFIG[category] || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
 export default function SurplusSection({ family, isReadOnly }) {
   const members = family?.members || [];
   const incomeDetails = family?.income_details || [];
@@ -1681,15 +1703,26 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([dgSeparator]);
     dgData.push(['GOALS']);
     dgData.push([dgSeparator]);
-    dgData.push(['Goal Name', 'Category', 'Member', 'Current Amount', 'Target Year', 'Inflation %']);
+    dgData.push(['Category', 'Member', 'Current Amount', 'Target Year(s)', 'Inflation %']);
     
     goalDetails.forEach(goal => {
       const baseAmount = parseFloat(goal.goal_amount) || 0;
       const inflationRate = parseFloat(goal.inflation_percent) || 0;
-      const goalYear = goal.goal_years?.[0] || goal.goal_year || currentYear;
+      
+      // Handle multiple target years - join with comma if array has multiple values
+      let targetYears = '';
+      if (goal.goal_years && Array.isArray(goal.goal_years) && goal.goal_years.length > 0) {
+        targetYears = goal.goal_years.join(', ');
+      } else if (goal.goal_year) {
+        targetYears = goal.goal_year.toString();
+      }
+      
       dgData.push([
-        goal.name || goal.goal_name || '', getCategoryLabel(goal.category), getMemberNames(goal.member_ids),
-        formatCurrencyINR(baseAmount), goalYear, `${inflationRate}%`
+        getGoalCategoryLabel(goal.category), 
+        getMemberNames(goal.member_ids),
+        formatCurrencyINR(baseAmount), 
+        targetYears || '-', 
+        `${inflationRate}%`
       ]);
     });
     dgData.push([]);
