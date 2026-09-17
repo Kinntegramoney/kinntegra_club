@@ -1954,7 +1954,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     // GOALS PROJECTION
     data.push(['▶ FINANCIAL GOALS']);
     goalDetails.forEach(goal => {
-      const row = [`  ${goal.name || goal.goal_name || goal.category}`];
+      // Use proper category label from config
+      const categoryLabel = getGoalCategoryLabel(goal.category);
+      const row = [`  ${categoryLabel}`];
       // Handle various formats of goal years
       let goalYrs = [];
       
@@ -4068,7 +4070,7 @@ function AllocationSimulator({
       dataSheetData.push(['', 'SECTION 5: FINANCIAL GOALS']);
       dataSheetData.push(['', '─────────────────────────────────────────────────────────────────────────────']);
       dataSheetData.push(['']);
-      dataSheetData.push(['', 'Goal Name', 'Current Amount', 'Target Year', 'Inflation %', 'Future Value']);
+      dataSheetData.push(['', 'Category', 'Current Amount', 'Target Year(s)', 'Inflation %', 'Future Value']);
       
       goalDetails.forEach(goal => {
         const goalYears = goal.goal_years || (goal.goal_year ? [goal.goal_year.toString()] : []);
@@ -4077,8 +4079,9 @@ function AllocationSimulator({
         const inflation = parseFloat(goal.inflation_percent) || 6;
         const currentAmt = parseFloat(goal.goal_amount) || 0;
         const futureValue = Math.round(currentAmt * Math.pow(1 + inflation / 100, yearsToGoal));
-        const goalName = (goal.category || 'Goal').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        dataSheetData.push(['', goalName, currentAmt, goalYears.join(', '), `${inflation}%`, futureValue]);
+        // Use proper category label from config
+        const categoryLabel = getGoalCategoryLabel(goal.category);
+        dataSheetData.push(['', categoryLabel, currentAmt, goalYears.join(', ') || '-', `${inflation}%`, futureValue]);
       });
       dataSheetData.push(['']);
     }
@@ -4263,7 +4266,8 @@ function AllocationSimulator({
           const amountToday = parseFloat(goal.goal_amount) || 0;
           const inflationRate = parseFloat(goal.inflation_percent) || 0;
           const futureAmount = yearsFromNow > 0 ? amountToday * Math.pow(1 + inflationRate / 100, yearsFromNow) : amountToday;
-          const goalName = goal.name || goal.goal_name || goal.category || 'Goal';
+          // Use proper category label from config
+          const goalName = getGoalCategoryLabel(goal.category);
           goalExpenseDetails[goalName] = Math.round(futureAmount);
           totalGoalExp += futureAmount;
         }
