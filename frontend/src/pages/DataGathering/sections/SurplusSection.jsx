@@ -1578,29 +1578,63 @@ export default function SurplusSection({ family, isReadOnly }) {
     dgData.push([dgSeparator]);
     dgData.push(['Category', 'Member', 'Monthly Amount', 'Annual Amount', 'Inflation %', 'Up to Year', 'Post Retirement', 'Post Ret. %']);
     
+    // Track which expense IDs have been added to avoid duplicates
+    const addedExpenseIds = new Set();
+    
     expenseDetails.forEach(exp => {
+      // Skip if already added (prevent duplicates)
+      const expId = exp.id || exp._id || `${exp.expense_type}-${exp.member_ids?.join('-')}-${exp.monthly_amount}`;
+      if (addedExpenseIds.has(expId)) return;
+      addedExpenseIds.add(expId);
+      
       const annual = parseFloat(exp.annual_amount) || (parseFloat(exp.monthly_amount) * 12) || (parseFloat(exp.monthly_emi) * 12) || (parseFloat(exp.yearly_premium)) || 0;
       const monthly = parseFloat(exp.monthly_amount) || parseFloat(exp.monthly_emi) || Math.round(annual / 12);
+      
+      // Post Retirement % should be 0% if consider_post_retirement is false/not selected
+      const postRetirementPct = exp.consider_post_retirement ? (exp.post_retirement_percent ? `${exp.post_retirement_percent}%` : '100%') : '0%';
+      
       dgData.push([
-        getCategoryLabel(exp.expense_type),
+        getExpenseCategoryLabel(exp.expense_type),
         getMemberNames(exp.member_ids),
         formatCurrencyINR(monthly),
         formatCurrencyINR(annual),
         `${exp.inflation_percent ?? 5}%`,
         exp.upto_year || '',
         exp.consider_post_retirement ? 'Yes' : 'No',
-        exp.post_retirement_percent ? `${exp.post_retirement_percent}%` : '100%'
+        postRetirementPct
       ]);
     });
     
     // Add Insurance Premiums to Expenses section (from insurance_premiums collection)
+    // Skip if already added from expenseDetails to avoid duplicates
     if (insurancePremiumsData.length > 0) {
       insurancePremiumsData.forEach(ins => {
+        // Check if this insurance is already in expenseDetails by comparing key fields
+        const isDuplicate = expenseDetails.some(exp => {
+          const expType = exp.expense_type || '';
+          const insType = ins.insurance_type || ins.category || ins.type || '';
+          // Check if same type and similar amount
+          const expAmount = parseFloat(exp.yearly_premium) || parseFloat(exp.annual_amount) || 0;
+          const insAmount = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
+          return expType === insType && Math.abs(expAmount - insAmount) < 1;
+        });
+        
+        if (isDuplicate) return; // Skip duplicate
+        
         const annual = parseFloat(ins.yearly_premium) || parseFloat(ins.annual_premium) || parseFloat(ins.premium_amount) || 0;
         const monthly = Math.round(annual / 12);
-        const memberName = ins.member_id ? (members.find(m => m.id === ins.member_id)?.name || 'Unknown') : 'Family';
+        
+        // Get member name properly - check member_ids array or single member_id
+        let memberName = 'Family';
+        if (ins.member_ids && ins.member_ids.length > 0) {
+          memberName = getMemberNames(ins.member_ids);
+        } else if (ins.member_id) {
+          const member = members.find(m => m.id === ins.member_id || String(m.id) === String(ins.member_id));
+          memberName = member?.name || 'Family';
+        }
+        
+        const categoryLabel = getExpenseCategoryLabel(ins.insurance_type || ins.category || ins.type || 'insurance');
         const policyInfo = ins.policy_name || ins.description || '';
-        const categoryLabel = getCategoryLabel(ins.insurance_type || ins.category || ins.type || 'insurance');
         dgData.push([
           policyInfo ? `${categoryLabel} - ${policyInfo}` : categoryLabel,
           memberName,
@@ -1609,7 +1643,7 @@ export default function SurplusSection({ family, isReadOnly }) {
           '0%', // Insurance premiums typically don't inflate
           ins.upto_year || ins.premium_end_year || '',
           'No',
-          '100%'
+          '0%'
         ]);
       });
     }
@@ -1619,7 +1653,9 @@ export default function SurplusSection({ family, isReadOnly }) {
     const dgLiabilities = family?.liabilities || family?.liability_details || family?.loans || [];
     if (dgLiabilities.length > 0) {
       dgLiabilities.forEach(loan => {
-        const loanType = (loan.category || loan.loan_type || loan.type || 'Loan').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const loanCategory = loan.category || loan.loan_type || loan.type || 'other_loan';
+        const loanLabel = getExpenseCategoryLabel(loanCategory) || 
+          (loanCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' EMI');
         const emi = parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || parseFloat(loan.emi) || 0;
         const annual = emi * 12;
         const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || parseInt(loan.tenure_months) || 0;
@@ -1627,14 +1663,14 @@ export default function SurplusSection({ family, isReadOnly }) {
         const uptoYear = currentYear + yearsRemaining;
         if (emi > 0) {  // Only add if there's an actual EMI
           dgData.push([
-            `${loanType} EMI`,
+            loanLabel,
             getMemberNames(loan.member_ids),
             formatCurrencyINR(emi),
             formatCurrencyINR(annual),
             '0%', // Loan EMIs don't inflate
             uptoYear,
             'No',
-            '100%'
+            '0%' // Post retirement % is 0 when Post Retirement is No
           ]);
         }
       });
@@ -1759,7 +1795,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     const regularExpTypes = [...new Set(expenseDetails.filter(e => !['term_life', 'health', 'critical_illness', 'personal_accident', 'motor', 'home_insurance', 'professional'].includes(e.expense_type)).map(e => e.expense_type))];
     regularExpTypes.forEach(expType => {
       const catExps = expenseDetails.filter(e => e.expense_type === expType);
-      const row = [`  ${getCategoryLabel(expType)}`];
+      const row = [`  ${getExpenseCategoryLabel(expType)}`];
       projectionYears.forEach(year => {
         let yearExp = 0;
         catExps.forEach(exp => {
@@ -1824,7 +1860,7 @@ export default function SurplusSection({ family, isReadOnly }) {
     const insuranceTypes = [...new Set(insurancePremiumsData.map(ins => ins.insurance_type || ins.category || ins.type || 'Insurance'))];
     insuranceTypes.forEach(insType => {
       const typeIns = insurancePremiumsData.filter(ins => (ins.insurance_type || ins.category || ins.type || 'Insurance') === insType);
-      const row = [`  ${getCategoryLabel(insType)} (Insurance)`];
+      const row = [`  ${getExpenseCategoryLabel(insType)}`];
       projectionYears.forEach(year => {
         let yearIns = 0;
         typeIns.forEach(ins => {
@@ -1853,14 +1889,14 @@ export default function SurplusSection({ family, isReadOnly }) {
     const liabilitiesData = family?.liabilities || family?.liability_details || family?.loans || [];
     if (liabilitiesData.length > 0) {
       liabilitiesData.forEach(loan => {
-        const loanCategory = loan.category || loan.loan_type || loan.type || 'Loan';
-        const loanLabel = loanCategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const loanCategory = loan.category || loan.loan_type || loan.type || 'other_loan';
+        const loanLabel = getExpenseCategoryLabel(loanCategory);
         const emi = (parseFloat(loan.monthly_emi) || parseFloat(loan.emi_amount) || parseFloat(loan.emi) || 0) * 12;
         const numInstallments = parseInt(loan.num_installments) || parseInt(loan.remaining_tenure) || parseInt(loan.tenure_months) || 0;
         const completionYear = currentYear + Math.ceil(numInstallments / 12);
         
         if (emi > 0) {  // Only add if there's an actual EMI
-          const row = [`  ${loanLabel} EMI`];
+          const row = [`  ${loanLabel}`];
           projectionYears.forEach(year => {
             if (year < completionYear) {
               row.push(formatCurrencyINR(Math.round(emi)));

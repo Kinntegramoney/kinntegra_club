@@ -56,6 +56,15 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## What's Been Implemented
 
+### Expense Excel Export Fixes (Sep 16, 2026)
+✅ **4 issues fixed in Expense section:**
+1. **Post Retirement % = 0%** when checkbox not selected (was incorrectly showing 100%)
+2. **Category names match frontend** - Uses full labels like "House Rent / Maintenance / Repair" 
+3. **Insurance shows member name** instead of "Family" - properly reads member_ids
+4. **Duplicate prevention** - Term Life Insurance and other categories no longer appear twice
+
+✅ **Same fixes applied to Cashflow sheet** for consistency
+
 ### COMPLETE Income Excel Field Parity (Sep 16, 2026) - ALL 17 CATEGORIES
 ✅ **Comprehensive field mapping audit completed** - Every income category now exports ALL portal fields exactly:
 
