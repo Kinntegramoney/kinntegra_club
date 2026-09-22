@@ -348,8 +348,8 @@ const LandingPage = () => {
             {/* Email Us */}
             <div>
               <h4 className="text-lg font-semibold text-white mb-4">Email Us</h4>
-              <a href="mailto:punit@kinntegraa.club" className="text-white/80 hover:text-white">
-                punit@kinntegraa.club
+              <a href="mailto:updates@kinntegraa.club" className="text-white/80 hover:text-white">
+                updates@kinntegraa.club
               </a>
             </div>
             
