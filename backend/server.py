@@ -14911,7 +14911,8 @@ async def _rebuild_ncd_expected_repayments() -> dict:
             # Track cashflows by date to merge interest and principal on same date
             cashflows_by_date = {}
             
-            # Process interest payments
+            # Process interest payments - match generate_client_cashflows() logic
+            # which uses simple ip_date > investment_date check (no cutoff)
             for ip in interest_payments:
                 ip_date_str = (ip.get("date") or "").split("T")[0].split(" ")[0]
                 if not ip_date_str:
@@ -14921,9 +14922,9 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                 except Exception:
                     continue
                 
-                # Record-date convention
-                record_date = ip_date - _td(days=cutoff_days)
-                if inv_dt > record_date:
+                # Simple check: only include payments after investment date
+                # This matches generate_client_cashflows() fallback logic
+                if ip_date <= inv_dt:
                     continue
                 
                 interest_amount = (ip.get("amount", 0) or 0) * units
@@ -14948,9 +14949,9 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                 except Exception:
                     continue
                 
-                # Record-date convention
-                record_date = pp_date - _td(days=cutoff_days)
-                if inv_dt > record_date:
+                # Simple check: only include payments after investment date
+                # This matches generate_client_cashflows() fallback logic
+                if pp_date <= inv_dt:
                     continue
                 
                 percentage = pp.get("percentage", 100) or 100
