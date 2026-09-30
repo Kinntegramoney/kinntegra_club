@@ -17951,11 +17951,18 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     # For sub-brokers, get only their linked client IDs
     allowed_client_ids = None
     if current_user.get('role') == 'sub_broker':
-        linked_clients = await db.Private_Investor.find(
+        # Check both Indian and Foreign Passport collections
+        linked_indian = await db.Private_Investor_Indian_Passport.find(
             {"linked_subbroker_id": current_user['id']},
             {"id": 1, "_id": 0}
         ).to_list(10000)
-        allowed_client_ids = set(c['id'] for c in linked_clients)
+        linked_foreign = await db.Private_Investor_Foreign_Passport.find(
+            {"linked_subbroker_id": current_user['id']},
+            {"id": 1, "_id": 0}
+        ).to_list(10000)
+        
+        allowed_client_ids = set(c['id'] for c in linked_indian)
+        allowed_client_ids.update(c['id'] for c in linked_foreign)
         
         # If sub-broker has no linked clients, return empty result
         if not allowed_client_ids:
@@ -17978,10 +17985,19 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     bonds_list = await db.Ncd_Master.find({"id": {"$in": bond_ids}}, {"_id": 0}).to_list(len(bond_ids))
     bonds_map = {b['id']: b for b in bonds_list}
     
-    # Get all clients for enrichment
+    # Get all clients for enrichment - check both Indian and Foreign passport collections
     client_ids = list(set(t.get('client_id') for t in all_trades if t.get('client_id')))
-    clients_list = await db.Private_Investor.find({"id": {"$in": client_ids}}, {"_id": 0}).to_list(len(client_ids))
-    clients_map = {c['id']: c for c in clients_list}
+    
+    # Get from Indian Passport collection
+    clients_indian = await db.Private_Investor_Indian_Passport.find({"id": {"$in": client_ids}}, {"_id": 0}).to_list(len(client_ids))
+    # Get from Foreign Passport collection  
+    clients_foreign = await db.Private_Investor_Foreign_Passport.find({"id": {"$in": client_ids}}, {"_id": 0}).to_list(len(client_ids))
+    
+    # Merge both into clients_map
+    clients_map = {c['id']: c for c in clients_indian}
+    for c in clients_foreign:
+        if c['id'] not in clients_map:
+            clients_map[c['id']] = c
     
     # =====================================================================
     # SOURCE OF EXPECTED ROWS (per user request, Apr 2026):
