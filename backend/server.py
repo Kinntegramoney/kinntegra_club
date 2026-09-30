@@ -1228,6 +1228,12 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                         user['broker_id'] = parent
                         user['created_by'] = parent
                     break
+        # Hydrate login_id and login_type from JWT payload so downstream
+        # checks (e.g. is_superuser) can identify special accounts like SUPERUSER
+        if payload.get('login_id'):
+            user['login_id'] = payload['login_id']
+        if payload.get('login_type'):
+            user['login_type'] = payload['login_type']
         return user
     
     # 3-way login flow (Login_Credentials) — Private Investors + Partners
@@ -14665,13 +14671,14 @@ async def broker_ncd_summary(current_user: dict = Depends(get_current_user)):
         by_client.append(row)
     by_client.sort(key=lambda r: r["total_invested"], reverse=True)
 
-    # ---- Associate (MFD/RIA) rollup - SUPERUSER only ----
+    # ---- Associate (MFD/RIA) rollup - SUPERUSER or Primary Broker only ----
     by_associate = []
-    # Check both pan and login_id for SUPERUSER (users collection may store it in either field)
+    # Check for SUPERUSER or primary broker (role=broker gives access to all data)
     is_superuser = (
         current_user.get("pan") == "SUPERUSER" or 
         current_user.get("login_id") == "SUPERUSER" or
-        (current_user.get("name") or "").upper() == "SUPER USER"
+        (current_user.get("name") or "").upper() == "SUPER USER" or
+        current_user.get("role") == "broker"  # Primary broker can see associate view
     )
     if is_superuser:
         associate_agg: dict = {}

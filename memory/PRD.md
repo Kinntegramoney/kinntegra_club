@@ -170,6 +170,35 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 
 ## Recent Changes
 
+### By Associate Tab Fix (Sep 30, 2026)
+**Status:** ✅ COMPLETED - Pending deployment
+
+**Issue:** "By Associate" tab not appearing on NCD Dashboard for SUPERUSER/broker
+
+**Root Cause:** 
+- `get_current_user()` function wasn't passing `login_id` from JWT payload to user dict
+- The `is_superuser` check (`login_id == "SUPERUSER"`) was failing because `login_id` wasn't set
+
+**Fix:**
+- Added code to hydrate `login_id` and `login_type` from JWT payload when user is found in `db.users`
+- Location: `/app/backend/server.py` lines 1231-1236
+
+### Reinvestment Tagging Investigation (Sep 30, 2026)
+**Status:** 🔄 IN PROGRESS
+
+**Issue:** Fali Adi Unwalla reinvestment tagging - user selected 08-10-2026 as investment date:
+1. After save, untagged count dropped but item didn't appear in Tagged tab
+2. Client approval showed 01-10-2026 instead of user-selected 08-10-2026
+
+**Current State:**
+- September 2026: 102 untagged (Fali has 23 entries, all "Not Tagged")
+- October 2026: 93 untagged (Fali has 17 entries, all "Not Tagged")
+
+**Analysis:** 
+- Backend code appears correct - stores `mf_investment_date` in `reinvestment_logs`
+- Need to test tagging flow on live to verify data lifecycle
+- Frontend reads `investment_date || mf_investment_date || defaultInvestmentDate`
+
 ### Collection Merge: `actual_repayments` → `Ncd_Repayments` (Dec 2025)
 **Status:** ✅ COMPLETED
 
@@ -184,5 +213,5 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 2. Verify Holdings and Reinvestment Tagging work correctly
 
 **Known Issues (Pre-existing):**
-- 104 lint errors inherited from prior codebase (route shadowing, bare exceptions, etc.)
+- 110 lint errors inherited from prior codebase (ephemeral storage, bare exceptions, etc.)
 - These do not affect functionality
