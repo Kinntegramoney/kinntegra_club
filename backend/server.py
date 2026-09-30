@@ -25153,14 +25153,14 @@ COLLECTION_CATEGORIES = {
         "Private_Investor": "DEPRECATED - Migrated to Indian/Foreign passport collections",
         "cashflows": "DEPRECATED - Old cashflow storage",
         "actual_repayments": "DEPRECATED - Merged into Ncd_Repayments (unified collection)",
+        "Gender": "DEPRECATED - Unused gender master",
+        "Country": "DEPRECATED - Unused country master",
+        "MFSD201": "DEPRECATED - Unused Karvy MF data placeholder",
+        "MFSD202": "DEPRECATED - Unused CAMS MF data placeholder",
     },
     # Master/Reference Data (usually not deleted)
     "master": {
-        "Gender": "Gender master",
-        "Country": "Country master",
-        "scheme_master": "MF scheme master",
-        "MFSD201": "Karvy MF data",
-        "MFSD202": "CAMS MF data",
+        "scheme_master": "MF scheme master (used by CAS Analysis)",
     },
     # Protected Collections (never delete)
     "protected": {
