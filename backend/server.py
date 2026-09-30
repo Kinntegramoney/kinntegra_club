@@ -14985,6 +14985,31 @@ async def ncd_repayments_sync_from_email(current_user: dict = Depends(get_curren
 # ---------------------------------------------------------------------------
 
 
+def _generate_stable_expected_repayment_id(trade_id: str, expected_date: str, cf_type: str) -> str:
+    """
+    Generate a stable, deterministic ID for an expected repayment.
+    This ID remains the same across rebuilds, allowing reinvestment_logs to maintain
+    their linkage even when Ncd_Expected_Repayments is rebuilt.
+    
+    Args:
+        trade_id: The trade ID from Ncd_Investment_Details
+        expected_date: The expected repayment date (YYYY-MM-DD format)
+        cf_type: The cashflow type (interest/principal/combined)
+    
+    Returns:
+        A stable identifier string
+    """
+    import hashlib
+    # Normalize inputs
+    trade_id = str(trade_id or "").strip()
+    expected_date = str(expected_date or "")[:10].strip()  # Only date part
+    cf_type = str(cf_type or "combined").strip().lower()
+    
+    # Create a deterministic hash-based ID
+    key = f"{trade_id}:{expected_date}:{cf_type}"
+    return hashlib.sha256(key.encode()).hexdigest()[:24]  # 24 chars is enough for uniqueness
+
+
 async def _rebuild_ncd_expected_repayments() -> dict:
     """Wipe + rebuild from per-trade × bond-template assembly. Idempotent."""
     from datetime import timedelta as _td
@@ -15108,8 +15133,9 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                 if _is_already_repaid(client_id, bond_code, bond_id, cf_date_str):
                     continue
 
+                cf_type = "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined")
                 rows.append({
-                    "id": str(uuid.uuid4()),
+                    "id": _generate_stable_expected_repayment_id(trade.get("id"), cf_date_str, cf_type),
                     "trade_id": trade.get("id"),
                     "bond_id": bond_id,
                     "bond_name": bond_name,
@@ -15118,7 +15144,7 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                     "client_name": client_name,
                     "client_pan": client_pan,
                     "client_email": client_email,
-                    "type": "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined"),
+                    "type": cf_type,
                     "expected_date": cf_date_str,
                     "gross_amount": total_gross,
                     "tds_amount": tds,
@@ -15204,8 +15230,9 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                 if _is_already_repaid(client_id, bond_code, bond_id, cf_date_str):
                     continue
                 
+                cf_type = "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined")
                 rows.append({
-                    "id": str(uuid.uuid4()),
+                    "id": _generate_stable_expected_repayment_id(trade.get("id"), cf_date_str, cf_type),
                     "trade_id": trade.get("id"),
                     "bond_id": bond_id,
                     "bond_name": bond_name,
@@ -15214,7 +15241,7 @@ async def _rebuild_ncd_expected_repayments() -> dict:
                     "client_name": client_name,
                     "client_pan": client_pan,
                     "client_email": client_email,
-                    "type": "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined"),
+                    "type": cf_type,
                     "expected_date": cf_date_str,
                     "gross_amount": total_gross,
                     "tds_amount": tds,
@@ -18318,8 +18345,12 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         client_id = er.get("client_id")
         bond_id = er.get("bond_id")
         log_by_client_bond = reinv_logs_index.get((client_id, bond_id, date_key)) if client_id and bond_id else None
+        # Also try by regenerated stable ID (for existing logs that might have old UUIDs)
+        cf_type = er.get("type", "combined")
+        stable_id = _generate_stable_expected_repayment_id(trade_id, date_key, cf_type)
+        log_by_stable_id = reinv_logs_index.get(stable_id) if stable_id else None
         
-        reinv_log = log_by_tuple or log_by_id or log_by_client_bond or {}
+        reinv_log = log_by_tuple or log_by_id or log_by_client_bond or log_by_stable_id or {}
         
         # Debug: log lookups for tagged entries
         if reinv_log.get('reinvestment_tag'):
