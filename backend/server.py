@@ -19901,8 +19901,10 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         if not prepayment:
             raise HTTPException(status_code=404, detail="Prepayment not found")
         
-        # Get client for validation
-        client = await db.Private_Investor.find_one({"id": prepayment['client_id']})
+        # Get client for validation - search both passport collections
+        client = await db.Private_Investor_Indian_Passport.find_one({"id": prepayment['client_id']})
+        if not client:
+            client = await db.Private_Investor_Foreign_Passport.find_one({"id": prepayment['client_id']})
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
         
@@ -20062,8 +20064,10 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 logger.error(f"Cashflow not found: {cashflow_id}")
                 raise HTTPException(status_code=404, detail=f"Cashflow not found: {cashflow_id}")
     
-    # Verify access
-    client = await db.Private_Investor.find_one({"id": cashflow['client_id']})
+    # Verify access - search both passport collections
+    client = await db.Private_Investor_Indian_Passport.find_one({"id": cashflow['client_id']})
+    if not client:
+        client = await db.Private_Investor_Foreign_Passport.find_one({"id": cashflow['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
