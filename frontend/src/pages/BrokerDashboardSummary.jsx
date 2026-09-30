@@ -2,7 +2,7 @@
 // investment. Data source: `GET /api/broker/dashboard/ncd-summary`.
 // Two views: NCD-wise (default) and Client-wise. Real Estate will be
 // layered on the same page later.
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   LayoutGrid, RefreshCw, Download, Search, Users, Wallet,
   CheckCircle2, Clock, TrendingUp, ChevronDown, ChevronRight,
-  ArrowUp, ArrowDown, ArrowUpDown, Calendar,
+  ArrowUp, ArrowDown, ArrowUpDown, Calendar, UserCheck,
 } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -110,10 +110,11 @@ export default function BrokerDashboardSummary() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  const [tab, setTab] = useState("ncd"); // "ncd" | "client" | "month"
+  const [tab, setTab] = useState("ncd"); // "ncd" | "client" | "month" | "associate"
   const [q, setQ] = useState("");
   const [expanded, setExpanded] = useState({}); // per client_id
   const [monthExpanded, setMonthExpanded] = useState({}); // per month
+  const [associateExpanded, setAssociateExpanded] = useState({}); // per associate_id
   // Sort state per tab. Default: total invested desc on both tabs so
   // the biggest exposure sits at the top.
   const [ncdSort, setNcdSort] = useState({ key: "total_invested", dir: "desc" });
@@ -125,6 +126,8 @@ export default function BrokerDashboardSummary() {
   // across all months so the ordering feels consistent when jumping
   // between months.
   const [monthInnerSort, setMonthInnerSort] = useState({ key: "expected_date", dir: "asc" });
+  const [associateSort, setAssociateSort] = useState({ key: "total_invested", dir: "desc" });
+  const [associateInnerSort, setAssociateInnerSort] = useState({ key: "invested", dir: "desc" });
 
   useEffect(() => {
     const raw = localStorage.getItem("user");
@@ -192,6 +195,22 @@ export default function BrokerDashboardSummary() {
     );
     return sortRows(matched, monthSort);
   }, [data, q, monthSort]);
+
+  const filteredAssociate = useMemo(() => {
+    const enriched = (data?.by_associate || []).map(r => ({
+      ...r,
+      expected_profit: (Number(r.total_repaid || 0) + Number(r.total_pending || 0)) - Number(r.total_invested || 0),
+    }));
+    const s = q.toLowerCase();
+    const matched = !q ? enriched : enriched.filter(r =>
+      (r.associate_name || "").toLowerCase().includes(s) ||
+      (r.partner_code || "").toLowerCase().includes(s) ||
+      (r.clients || []).some(c => (c.client_name || "").toLowerCase().includes(s))
+    );
+    return sortRows(matched, associateSort);
+  }, [data, q, associateSort]);
+
+  const isSuperuser = data?.is_superuser || false;
 
   const downloadExcel = () => {
     if (!data) return;
@@ -337,12 +356,24 @@ export default function BrokerDashboardSummary() {
               >
                 <Calendar className="h-4 w-4 mr-1" /> By Month
               </Button>
+              {isSuperuser && (
+                <Button
+                  variant={tab === "associate" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTab("associate")}
+                  className={tab === "associate" ? "bg-purple-600 hover:bg-purple-700" : ""}
+                  data-testid="dashboard-tab-associate"
+                >
+                  <UserCheck className="h-4 w-4 mr-1" /> By Associate
+                </Button>
+              )}
               <div className="ml-auto flex items-center gap-2">
                 <Search className="h-4 w-4 text-gray-400" />
                 <Input
                   placeholder={
                     tab === "ncd" ? "Search NCD name or code…" :
                     tab === "client" ? "Search client name, PAN or NCD…" :
+                    tab === "associate" ? "Search associate name, code or client…" :
                     "Search month, client or NCD…"
                   }
                   value={q}
@@ -362,6 +393,8 @@ export default function BrokerDashboardSummary() {
               <NcdTable rows={filteredNcd} sort={ncdSort} setSort={setNcdSort} />
             ) : tab === "client" ? (
               <ClientTable rows={filteredClient} sort={clientSort} setSort={setClientSort} expanded={expanded} setExpanded={setExpanded} innerSort={clientInnerSort} setInnerSort={setClientInnerSort} />
+            ) : tab === "associate" ? (
+              <AssociateTable rows={filteredAssociate} sort={associateSort} setSort={setAssociateSort} expanded={associateExpanded} setExpanded={setAssociateExpanded} innerSort={associateInnerSort} setInnerSort={setAssociateInnerSort} />
             ) : (
               <MonthTable rows={filteredMonth} sort={monthSort} setSort={setMonthSort} expanded={monthExpanded} setExpanded={setMonthExpanded} innerSort={monthInnerSort} setInnerSort={setMonthInnerSort} />
             )}
@@ -655,3 +688,115 @@ const MonthTable = ({ rows, sort, setSort, expanded, setExpanded, innerSort, set
   );
 };
 
+
+
+const AssociateTable = ({ rows, sort, setSort, expanded, setExpanded, innerSort, setInnerSort }) => {
+  if (!rows.length) {
+    return <div className="p-10 text-center text-sm text-gray-500">No associate data found.</div>;
+  }
+  const totals = rows.reduce((a, r) => ({
+    invested: a.invested + r.total_invested,
+    repaid: a.repaid + r.total_repaid,
+    pending: a.pending + r.total_pending,
+    clients: a.clients + r.num_clients,
+    ncds: a.ncds + r.num_ncds,
+  }), { invested: 0, repaid: 0, pending: 0, clients: 0, ncds: 0 });
+
+  const toggle = (id) => setExpanded(e => ({ ...e, [id]: !e[id] }));
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-100 text-gray-600">
+          <tr>
+            <th className="w-8"></th>
+            <SortTh label="Associate Name"   sortKey="associate_name" sort={sort} setSort={setSort} />
+            <SortTh label="Code"             sortKey="partner_code"   sort={sort} setSort={setSort} />
+            <SortTh label="Clients"          sortKey="num_clients"    sort={sort} setSort={setSort} align="center" numeric />
+            <SortTh label="NCDs"             sortKey="num_ncds"       sort={sort} setSort={setSort} align="center" numeric />
+            <SortTh label="Invested"         sortKey="total_invested" sort={sort} setSort={setSort} align="right" numeric />
+            <SortTh label="Repaid"           sortKey="total_repaid"   sort={sort} setSort={setSort} align="right" numeric />
+            <SortTh label="Pending"          sortKey="total_pending"  sort={sort} setSort={setSort} align="right" numeric />
+            <SortTh label="Expected Profit"  sortKey="expected_profit" sort={sort} setSort={setSort} align="right" numeric />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const isOpen = expanded[r.associate_id];
+            const sortedClients = sortRows(r.clients || [], innerSort);
+            return (
+              <React.Fragment key={r.associate_id}>
+                <tr
+                  className={`border-t cursor-pointer hover:bg-purple-50 ${isOpen ? 'bg-purple-50' : ''}`}
+                  onClick={() => toggle(r.associate_id)}
+                  data-testid={`associate-row-${r.associate_id}`}
+                >
+                  <td className="px-2 py-2 text-gray-400">
+                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-purple-800">{r.associate_name || "Unknown"}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono">{r.partner_code || "—"}</td>
+                  <td className="px-4 py-2 text-center">{r.num_clients}</td>
+                  <td className="px-4 py-2 text-center">{r.num_ncds}</td>
+                  <td className="px-4 py-2 text-right font-mono text-blue-700">₹{fmtINR(r.total_invested)}</td>
+                  <td className="px-4 py-2 text-right font-mono text-green-700">₹{fmtINR(r.total_repaid)}</td>
+                  <td className="px-4 py-2 text-right font-mono text-amber-700">₹{fmtINR(r.total_pending)}</td>
+                  <td className={`px-4 py-2 text-right font-mono ${r.expected_profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    ₹{fmtINR(r.expected_profit)}
+                  </td>
+                </tr>
+                {isOpen && (
+                  <tr className="bg-purple-50/50">
+                    <td colSpan={9} className="p-0">
+                      <div className="ml-8 mr-2 my-2 border rounded bg-white shadow-sm overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-gray-100 text-gray-600">
+                            <tr>
+                              <SortTh label="Client Name" sortKey="client_name"  sort={innerSort} setSort={setInnerSort} />
+                              <SortTh label="PAN"         sortKey="pan"          sort={innerSort} setSort={setInnerSort} />
+                              <SortTh label="NCDs"        sortKey="num_ncds"     sort={innerSort} setSort={setInnerSort} align="center" numeric />
+                              <SortTh label="Invested"    sortKey="invested"     sort={innerSort} setSort={setInnerSort} align="right" numeric />
+                              <SortTh label="Repaid"      sortKey="repaid"       sort={innerSort} setSort={setInnerSort} align="right" numeric />
+                              <SortTh label="Pending"     sortKey="pending"      sort={innerSort} setSort={setInnerSort} align="right" numeric />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedClients.map((c, i) => (
+                              <tr key={`${r.associate_id}-${c.client_id}-${i}`} className="border-t">
+                                <td className="px-3 py-1.5 font-medium">{c.client_name || "—"}</td>
+                                <td className="px-3 py-1.5 font-mono text-gray-500">{c.pan || "—"}</td>
+                                <td className="px-3 py-1.5 text-center">{c.num_ncds}</td>
+                                <td className="px-3 py-1.5 text-right font-mono text-blue-700">₹{fmtINR(c.invested)}</td>
+                                <td className="px-3 py-1.5 text-right font-mono text-green-700">₹{fmtINR(c.repaid)}</td>
+                                <td className="px-3 py-1.5 text-right font-mono text-amber-700">₹{fmtINR(c.pending)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+        <tfoot className="bg-gray-50 border-t font-semibold">
+          <tr>
+            <td></td>
+            <td className="px-4 py-2">Total ({rows.length} associates)</td>
+            <td></td>
+            <td className="px-4 py-2 text-center">{totals.clients}</td>
+            <td className="px-4 py-2 text-center">{totals.ncds}</td>
+            <td className="px-4 py-2 text-right font-mono text-blue-800">₹{fmtINR(totals.invested)}</td>
+            <td className="px-4 py-2 text-right font-mono text-green-800">₹{fmtINR(totals.repaid)}</td>
+            <td className="px-4 py-2 text-right font-mono text-amber-800">₹{fmtINR(totals.pending)}</td>
+            <td className={`px-4 py-2 text-right font-mono ${(totals.repaid + totals.pending - totals.invested) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              ₹{fmtINR(totals.repaid + totals.pending - totals.invested)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+};

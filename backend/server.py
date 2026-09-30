@@ -14665,6 +14665,64 @@ async def broker_ncd_summary(current_user: dict = Depends(get_current_user)):
         by_client.append(row)
     by_client.sort(key=lambda r: r["total_invested"], reverse=True)
 
+    # ---- Associate (MFD/RIA) rollup - SUPERUSER only ----
+    by_associate = []
+    is_superuser = current_user.get("pan") == "SUPERUSER"
+    if is_superuser:
+        associate_agg: dict = {}
+        # Get all MFD/RIA partners for lookup
+        partners = {p["id"]: p for p in await db.Mfd_Ria_Partner.find({}, {"_id": 0}).to_list(None)}
+        
+        # Group clients by their linked associate
+        for cid, cdata in client_agg.items():
+            client = clients.get(cid) or {}
+            assoc_id = client.get("linked_subbroker_id") or client.get("sub_broker_id") or "unassigned"
+            
+            if assoc_id == "unassigned":
+                assoc_name = "Unassigned"
+                assoc_code = ""
+            else:
+                partner = partners.get(assoc_id) or {}
+                assoc_name = partner.get("name") or "Unknown Associate"
+                assoc_code = partner.get("partner_code") or partner.get("code") or ""
+            
+            a = associate_agg.setdefault(assoc_id, {
+                "associate_id": assoc_id,
+                "associate_name": assoc_name,
+                "partner_code": assoc_code,
+                "num_clients": set(),
+                "num_ncds": set(),
+                "total_invested": 0.0,
+                "total_repaid": 0.0,
+                "total_pending": 0.0,
+                "clients": {},
+            })
+            a["num_clients"].add(cid)
+            a["total_invested"] += cdata["total_invested"]
+            a["total_repaid"] += cdata["total_repaid"]
+            a["total_pending"] += cdata["total_pending"]
+            for ncd_id in cdata.get("ncds", {}) if isinstance(cdata.get("ncds"), dict) else [n.get("ncd_id") for n in cdata.get("ncds", [])]:
+                a["num_ncds"].add(ncd_id if isinstance(ncd_id, str) else ncd_id)
+            
+            # Store client details under associate
+            a["clients"][cid] = {
+                "client_id": cid,
+                "client_name": cdata["client_name"],
+                "pan": cdata["pan"],
+                "invested": cdata["total_invested"],
+                "repaid": cdata["total_repaid"],
+                "pending": cdata["total_pending"],
+                "num_ncds": cdata["num_ncds"],
+            }
+        
+        # Convert sets to counts and flatten
+        for row in associate_agg.values():
+            row["num_clients"] = len(row["num_clients"])
+            row["num_ncds"] = len(row["num_ncds"])
+            row["clients"] = sorted(row["clients"].values(), key=lambda x: x["invested"], reverse=True)
+            by_associate.append(row)
+        by_associate.sort(key=lambda r: r["total_invested"], reverse=True)
+
     # Month-wise maturity ladder. Sort each month's client rows by
     # expected_date so the earliest payout in the month sits at the
     # top; sort the months themselves chronologically.
@@ -14691,6 +14749,8 @@ async def broker_ncd_summary(current_user: dict = Depends(get_current_user)):
         "by_ncd": by_ncd,
         "by_client": by_client,
         "by_month": by_month,
+        "by_associate": by_associate,  # Only populated for SUPERUSER
+        "is_superuser": is_superuser,
     }
 
 
