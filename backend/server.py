@@ -18328,15 +18328,15 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             "type": er.get("type", "coupon"),
             "is_maturity": er.get("type") == "maturity" or er.get("principal_component", 0) > 0,
             "is_prepayment_adjusted": False,
-            # Tagging state from reinvestment_logs ONLY
-            "reinvestment_tag": reinv_log.get("reinvestment_tag"),
-            "approval_status": reinv_log.get("approval_status"),
-            "client_approved": reinv_log.get("client_approved", False),
-            "kinntegra_api_submitted": reinv_log.get("kinntegra_api_submitted", False),
-            "has_split_allocations": reinv_log.get("has_split_allocations", False),
-            "ucc_allocations": reinv_log.get("ucc_allocations"),
-            "target_ucc": reinv_log.get("target_ucc"),
-            "portfolio_category": reinv_log.get("portfolio_category"),
+            # Tagging state: try reinvestment_logs first, then fallback to Ncd_Expected_Repayments document
+            "reinvestment_tag": reinv_log.get("reinvestment_tag") or er.get("reinvestment_tag"),
+            "approval_status": reinv_log.get("approval_status") or er.get("approval_status"),
+            "client_approved": reinv_log.get("client_approved", er.get("client_approved", False)),
+            "kinntegra_api_submitted": reinv_log.get("kinntegra_api_submitted", er.get("kinntegra_api_submitted", False)),
+            "has_split_allocations": reinv_log.get("has_split_allocations", er.get("has_split_allocations", False)),
+            "ucc_allocations": reinv_log.get("ucc_allocations") or er.get("ucc_allocations"),
+            "target_ucc": reinv_log.get("target_ucc") or er.get("target_ucc"),
+            "portfolio_category": reinv_log.get("portfolio_category") or er.get("portfolio_category"),
         }
         cashflows_by_trade.setdefault(trade_id, []).append(synthetic_cf)
     
