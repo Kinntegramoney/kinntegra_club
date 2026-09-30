@@ -13,7 +13,7 @@ import string
 import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 from scipy.optimize import newton
@@ -7203,7 +7203,7 @@ async def bulk_upload_foreign_clients(
 
 
 @api_router.post("/bulk/private-investors")
-async def bulk_upload_clients(
+async def bulk_upload_clients_multi_sheet(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -12698,6 +12698,50 @@ async def get_invalid_pan_clients(current_user: dict = Depends(get_current_user)
     return {"invalid_pan_clients": invalid_pan_clients, "count": len(invalid_pan_clients)}
 
 
+# IMPORTANT: This literal route must come BEFORE /private-investors/{client_id} to avoid shadowing
+@api_router.get("/private-investors/pending-approval")
+async def get_pending_private_investors_list(current_user: dict = Depends(get_current_user)):
+    """Get all pending private investor applications (includes both self-signup and MFD/RIA created)"""
+    logger.info(f"Getting pending investors, user role: {current_user.get('role')}")
+    if current_user['role'] != 'broker':
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get self-signup pending investors
+    pending_self_signup = await db.pending_private_investors.find(
+        {"status": "pending_approval"}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Mark these as from self-signup
+    for p in pending_self_signup:
+        p['source'] = 'self_signup'
+    
+    # Get MFD/RIA created pending clients from both passport collections
+    pending_subbroker_indian = await db.Private_Investor_Indian_Passport.find(
+        {"approval_status": "pending_approval", "created_by_subbroker": True}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    pending_subbroker_foreign = await db.Private_Investor_Foreign_Passport.find(
+        {"approval_status": "pending_approval", "created_by_subbroker": True}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    pending_subbroker = pending_subbroker_indian + pending_subbroker_foreign
+    
+    # Get sub-broker names for each
+    for p in pending_subbroker:
+        p['source'] = 'mfd_ria'
+        if p.get('linked_subbroker_id'):
+            partner = await db.Mfd_Ria_Partner.find_one({"id": p['linked_subbroker_id']}, {"_id": 0, "name": 1})
+            p['created_by_name'] = partner.get('name') if partner else 'Unknown MFD/RIA'
+    
+    # Combine both lists
+    all_pending = pending_self_signup + pending_subbroker
+    all_pending.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    
+    logger.info(f"Found {len(all_pending)} total pending private investors ({len(pending_self_signup)} self-signup, {len(pending_subbroker)} from MFD/RIA)")
+    return all_pending
+
+
 @api_router.get("/private-investors/{client_id}")
 async def get_client(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific client - accessible by broker (creator), sub-broker (linked), or the client themselves"""
@@ -12821,7 +12865,7 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
 
 
 @api_router.get("/private-investors/{client_id}/details")
-async def get_client_details(client_id: str, current_user: dict = Depends(get_current_user)):
+async def get_client_details_for_edit(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get full client details for editing (brokers only)"""
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can view client details")
@@ -13883,6 +13927,61 @@ async def get_pending_trades(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only brokers can view pending trades")
     
     trades = await db.Ncd_Investment_Details.find({"status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return trades
+
+
+# IMPORTANT: These literal routes must come BEFORE /trades/{trade_id} to avoid route shadowing
+@api_router.get("/trades/untagged")
+async def get_untagged_trades_list(
+    client_id: Optional[str] = None,
+    bond_id: Optional[str] = None,
+    date_filter: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all untagged trades for broker/sub-broker to tag"""
+    if current_user['role'] == 'client':
+        raise HTTPException(status_code=403, detail="Clients cannot access untagged trades")
+    
+    query = {"status": "untagged"}
+    
+    if client_id:
+        query["client_id"] = client_id
+    if bond_id:
+        query["bond_id"] = bond_id
+    
+    if date_filter == 'past':
+        query["is_past_dated"] = True
+    elif date_filter == 'future':
+        query["is_past_dated"] = False
+    
+    if current_user['role'] == 'sub_broker':
+        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
+        client_ids = [c['id'] for c in sub_broker_clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    trades = await db.Ncd_Investment_Details.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
+    return trades
+
+
+@api_router.get("/trades/pending-approval")
+async def get_pending_approval_trades_list(current_user: dict = Depends(get_current_user)):
+    """Get trades pending client approval (future-dated, tagged but not approved)"""
+    query = {
+        "tagging_status": "tagged",
+        "is_past_dated": False,
+        "client_approved": False
+    }
+    
+    if current_user['role'] == 'client':
+        query["client_id"] = current_user.get('client_id')
+    elif current_user['role'] == 'sub_broker':
+        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
+        client_ids = [c['id'] for c in sub_broker_clients]
+        query["client_id"] = {"$in": client_ids}
+    
+    trades = await db.Ncd_Investment_Details.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
     return trades
 
 
@@ -26797,7 +26896,7 @@ async def generate_bond_cashflows(
 
 
 @api_router.post("/bonds/{bond_id}/calculate", response_model=SecondaryMarketResult)
-async def calculate_secondary_price(bond_id: str, calculation: SecondaryMarketCalculation):
+async def calculate_secondary_price_by_id(bond_id: str, calculation: SecondaryMarketCalculation):
     bond = await db.Ncd_Master.find_one({"id": bond_id}, {"_id": 0})
     
     if not bond:
@@ -27466,27 +27565,6 @@ async def calculate_monthly_irr_price(bond_id: str, calculation: MonthlyIRRCalcu
         "price_per_unit": round(price_per_unit, 2),
         "cashflow_schedule": cashflow_schedule
     }
-async def delete_bond(bond_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a bond (brokers only) - cannot delete funded or closed bonds"""
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Only brokers can delete bonds")
-    
-    # Check if bond exists
-    bond = await db.Ncd_Master.find_one({"id": bond_id})
-    if not bond:
-        raise HTTPException(status_code=404, detail="Bond not found")
-    
-    # Check bond status - prevent deletion of funded or closed bonds
-    status = calculate_bond_status(bond)
-    if status in ['funded', 'closed']:
-        raise HTTPException(status_code=400, detail=f"Cannot delete a {status} bond")
-    
-    result = await db.Ncd_Master.delete_one({"id": bond_id})
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Bond not found")
-    
-    return {"message": "Bond deleted successfully"}
 
 
 class BondUpdate(BaseModel):
@@ -31336,34 +31414,6 @@ async def share_opportunity_with_clients(
     }
 
 
-@api_router.get("/notifications")
-async def get_notifications(current_user: dict = Depends(get_current_user)):
-    """Get notifications for the current user"""
-    notifications = await db.notifications.find(
-        {"user_id": current_user['id']},
-        {"_id": 0}
-    ).sort("created_at", -1).limit(50).to_list(50)
-    
-    return notifications
-
-
-@api_router.put("/notifications/{notification_id}/read")
-async def mark_notification_read(
-    notification_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Mark a notification as read"""
-    result = await db.notifications.update_one(
-        {"id": notification_id, "user_id": current_user['id']},
-        {"$set": {"read": True}}
-    )
-    
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    
-    return {"message": "Notification marked as read"}
-
-
 @api_router.post("/real-estate-opportunities/{opportunity_id}/upload-invoice")
 async def upload_investor_invoice(
     opportunity_id: str,
@@ -32231,7 +32281,7 @@ async def serve_upload(folder: str, filename: str):
 
 
 @api_router.get("/client/real-estate-investments")
-async def get_client_real_estate_investments(current_user: dict = Depends(get_current_user)):
+async def get_my_real_estate_investments(current_user: dict = Depends(get_current_user)):
     """Get real estate investments for the logged-in client"""
     if current_user['role'] != 'client':
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
@@ -40683,62 +40733,6 @@ class TagTradeRequest(BaseModel):
     notes: Optional[str] = None
 
 
-@api_router.get("/trades/untagged")
-async def get_untagged_trades(
-    client_id: Optional[str] = None,
-    bond_id: Optional[str] = None,
-    date_filter: Optional[str] = None,  # 'past' or 'future'
-    current_user: dict = Depends(get_current_user)
-):
-    """Get all untagged trades for broker/sub-broker to tag"""
-    if current_user['role'] == 'client':
-        raise HTTPException(status_code=403, detail="Clients cannot access untagged trades")
-    
-    query = {"status": "untagged"}
-    
-    if client_id:
-        query["client_id"] = client_id
-    if bond_id:
-        query["bond_id"] = bond_id
-    
-    # Filter by date type
-    if date_filter == 'past':
-        query["is_past_dated"] = True
-    elif date_filter == 'future':
-        query["is_past_dated"] = False
-    
-    # Sub-brokers can only see their clients' trades
-    if current_user['role'] == 'sub_broker':
-        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
-            {"_id": 0, "id": 1}, limit=1000)
-        client_ids = [c['id'] for c in sub_broker_clients]
-        query["client_id"] = {"$in": client_ids}
-    
-    trades = await db.Ncd_Investment_Details.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
-    return trades
-
-
-@api_router.get("/trades/pending-approval")
-async def get_pending_approval_trades(current_user: dict = Depends(get_current_user)):
-    """Get trades pending client approval (future-dated, tagged but not approved)"""
-    query = {
-        "tagging_status": "tagged",
-        "is_past_dated": False,
-        "client_approved": False
-    }
-    
-    if current_user['role'] == 'client':
-        query["client_id"] = current_user.get('client_id')
-    elif current_user['role'] == 'sub_broker':
-        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
-            {"_id": 0, "id": 1}, limit=1000)
-        client_ids = [c['id'] for c in sub_broker_clients]
-        query["client_id"] = {"$in": client_ids}
-    
-    trades = await db.Ncd_Investment_Details.find(query, {"_id": 0}).sort("investment_date", 1).to_list(10000)
-    return trades
-
-
 @api_router.put("/trades/{trade_id}/tag")
 async def tag_trade(
     trade_id: str,
@@ -44372,50 +44366,6 @@ async def register_private_investor(request: PrivateInvestorRegister):
     
     return {"message": "Registration successful", "investor_id": investor_data["id"]}
 
-@api_router.get("/private-investors/pending-approval")
-async def get_pending_private_investors(current_user: dict = Depends(get_current_user)):
-    """Get all pending private investor applications (includes both self-signup and MFD/RIA created)"""
-    logger.info(f"Getting pending investors, user role: {current_user.get('role')}")
-    if current_user['role'] != 'broker':
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    # Get self-signup pending investors
-    pending_self_signup = await db.pending_private_investors.find(
-        {"status": "pending_approval"}, 
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-    
-    # Mark these as from self-signup
-    for p in pending_self_signup:
-        p['source'] = 'self_signup'
-    
-    # Get MFD/RIA created pending clients from both passport collections
-    pending_subbroker_indian = await db.Private_Investor_Indian_Passport.find(
-        {"approval_status": "pending_approval", "created_by_subbroker": True}, 
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-    pending_subbroker_foreign = await db.Private_Investor_Foreign_Passport.find(
-        {"approval_status": "pending_approval", "created_by_subbroker": True}, 
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-    pending_subbroker = pending_subbroker_indian + pending_subbroker_foreign
-    
-    # Get sub-broker names for each
-    for p in pending_subbroker:
-        p['source'] = 'mfd_ria'
-        # Fetch sub-broker name
-        if p.get('linked_subbroker_id'):
-            partner = await db.Mfd_Ria_Partner.find_one({"id": p['linked_subbroker_id']}, {"_id": 0, "name": 1})
-            p['created_by_name'] = partner.get('name') if partner else 'Unknown MFD/RIA'
-    
-    # Combine both lists
-    all_pending = pending_self_signup + pending_subbroker
-    
-    # Sort by created_at descending
-    all_pending.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-    
-    logger.info(f"Found {len(all_pending)} total pending private investors ({len(pending_self_signup)} self-signup, {len(pending_subbroker)} from MFD/RIA)")
-    return all_pending
 
 @api_router.post("/private-investors/{investor_id}/approve")
 async def approve_private_investor(investor_id: str, current_user: dict = Depends(get_current_user)):
@@ -46678,7 +46628,7 @@ async def bulk_upload_real_estate_investors(
 #   investor-payment-receipts   -> db.investor_payment_receipts
 
 from fastapi import UploadFile, File, Form  # noqa: E402
-import shutil  # noqa: E402
+# shutil already imported at module level
 
 _RE_UPLOAD_ROOT = Path("/app/backend/uploads/real_estate")
 _RE_UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
@@ -47809,7 +47759,7 @@ from nav_master_service import (  # noqa: E402
     get_nav_master_status as _get_nav_master_status,
     fetch_31jan_2018_navs as _fetch_31jan_2018_navs,
 )
-import asyncio  # noqa: E402
+# asyncio already imported at module level
 
 nav_master_scheduler: Optional[AsyncIOScheduler] = None
 
