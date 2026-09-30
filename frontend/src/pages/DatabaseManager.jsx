@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
   Database, 
@@ -10,17 +9,19 @@ import {
   XCircle,
   Search,
   Filter,
-  Download,
   Shield,
   Archive,
   Layers,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import Sidebar from '../components/Sidebar';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const DatabaseManager = () => {
-  const navigate = useNavigate();
+export default function DatabaseManager() {
+  const [user, setUser] = useState(null);
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -34,6 +35,13 @@ const DatabaseManager = () => {
   const [cleanupModal, setCleanupModal] = useState(false);
   const [secretKey, setSecretKey] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const fetchCollections = useCallback(async () => {
     setLoading(true);
@@ -198,215 +206,243 @@ const DatabaseManager = () => {
   const deprecatedRecords = collections.filter(c => c.status === 'deprecated').reduce((sum, c) => sum + c.count, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Database className="w-7 h-7 text-indigo-600" />
-              Database Collections Manager
-            </h1>
-            <p className="text-gray-600 mt-1">
-              View, manage and cleanup database collections
-            </p>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar user={user} />
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Database className="h-6 w-6 text-indigo-700" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">Database Manager</h1>
+                  <p className="text-gray-600">View, manage and cleanup database collections</p>
+                </div>
+              </div>
+              <Button
+                onClick={fetchCollections}
+                disabled={loading}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
-          <button
-            onClick={fetchCollections}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Collections</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_collections}</p>
-            </div>
-            <Database className="w-10 h-10 text-indigo-500 opacity-20" />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Records</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.total_records)}</p>
-            </div>
-            <Layers className="w-10 h-10 text-green-500 opacity-20" />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Active Collections</p>
-              <p className="text-2xl font-bold text-green-600">{stats.categories?.active || 0}</p>
-            </div>
-            <CheckCircle className="w-10 h-10 text-green-500 opacity-20" />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Deprecated</p>
-              <p className="text-2xl font-bold text-red-600">{stats.categories?.deprecated || 0}</p>
-            </div>
-            <AlertTriangle className="w-10 h-10 text-red-500 opacity-20" />
-          </div>
-        </div>
-      </div>
-
-      {/* Deprecated Warning Banner */}
-      {deprecatedCount > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
-              <div>
-                <p className="font-medium text-red-800">
-                  {deprecatedCount} deprecated collection(s) found
-                </p>
-                <p className="text-sm text-red-600">
-                  {formatNumber(deprecatedRecords)} records can be safely removed to clean up the database
-                </p>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 bg-indigo-100 rounded-lg">
+                  <Database className="h-5 w-5 text-indigo-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-indigo-700">Total Collections</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total_collections}</p>
+                </div>
               </div>
             </div>
-            <button
-              onClick={() => setCleanupModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-            >
-              <Trash2 className="w-4 h-4" />
-              Cleanup All Deprecated
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search collections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+            
+            <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 bg-green-100 rounded-lg">
+                  <Layers className="h-5 w-5 text-green-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-green-700">Total Records</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.total_records)}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 bg-emerald-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-emerald-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-emerald-700">Active Collections</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.categories?.active || 0}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-red-700">Deprecated</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.categories?.deprecated || 0}</p>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">All Categories</option>
-              <option value="active">Active</option>
-              <option value="deprecated">Deprecated</option>
-              <option value="master">Master Data</option>
-              <option value="protected">Protected</option>
-            </select>
-          </div>
-        </div>
-      </div>
 
-      {/* Collections Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Collection Name
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Records
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center">
-                    <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
-                    <p className="text-gray-500">Loading collections...</p>
-                  </td>
-                </tr>
-              ) : filteredCollections.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center">
-                    <Database className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500">No collections found</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredCollections.map((collection) => (
-                  <tr 
-                    key={collection.name}
-                    className={`hover:bg-gray-50 ${collection.status === 'deprecated' ? 'bg-red-50/50' : ''}`}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Database className={`w-4 h-4 ${collection.status === 'deprecated' ? 'text-red-400' : 'text-gray-400'}`} />
-                        <span className={`font-mono text-sm ${collection.status === 'deprecated' ? 'text-red-700' : 'text-gray-900'}`}>
-                          {collection.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(collection.status)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`font-medium ${collection.count > 10000 ? 'text-orange-600' : 'text-gray-900'}`}>
-                        {formatNumber(collection.count)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">
-                        {collection.description || '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {collection.can_delete ? (
-                        <button
-                          onClick={() => setDeleteModal({ open: true, collection })}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Delete collection"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">Protected</span>
-                      )}
-                    </td>
+          {/* Deprecated Warning Banner */}
+          {deprecatedCount > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                  <div>
+                    <p className="font-medium text-red-800">
+                      {deprecatedCount} deprecated collection(s) found
+                    </p>
+                    <p className="text-sm text-red-600">
+                      {formatNumber(deprecatedRecords)} records can be safely removed to clean up the database
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setCleanupModal(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Cleanup All Deprecated
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="bg-white rounded-xl p-4 border border-gray-200 mb-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search collections..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="active">Active</option>
+                  <option value="deprecated">Deprecated</option>
+                  <option value="master">Master Data</option>
+                  <option value="protected">Protected</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Collections Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Collection Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Records
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center">
+                        <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
+                        <p className="text-gray-500">Loading collections...</p>
+                      </td>
+                    </tr>
+                  ) : filteredCollections.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center">
+                        <Database className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500">No collections found</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCollections.map((collection) => (
+                      <tr 
+                        key={collection.name}
+                        className={`hover:bg-gray-50 ${collection.status === 'deprecated' ? 'bg-red-50/50' : ''}`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Database className={`w-4 h-4 ${collection.status === 'deprecated' ? 'text-red-400' : 'text-gray-400'}`} />
+                            <span className={`font-mono text-sm ${collection.status === 'deprecated' ? 'text-red-700' : 'text-gray-900'}`}>
+                              {collection.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {getStatusBadge(collection.status)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`font-medium ${collection.count > 10000 ? 'text-orange-600' : 'text-gray-900'}`}>
+                            {formatNumber(collection.count)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600">
+                            {collection.description || '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {collection.can_delete ? (
+                            <button
+                              onClick={() => setDeleteModal({ open: true, collection })}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete collection"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400">Protected</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Info Section */}
+          <div className="mt-8 bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-gray-600" />
+              Collection Status Guide
+            </h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• <span className="text-green-600 font-medium">Active</span> — Core collections currently in use</li>
+              <li>• <span className="text-red-600 font-medium">Deprecated</span> — Old/unused collections that can be safely removed</li>
+              <li>• <span className="text-purple-600 font-medium">Master</span> — Reference data (Gender, Country, etc.) - cannot be deleted</li>
+              <li>• <span className="text-blue-600 font-medium">Protected</span> — Critical collections (users) - cannot be deleted</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -445,27 +481,28 @@ const DatabaseManager = () => {
             </div>
             
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => {
                   setDeleteModal({ open: false, collection: null });
                   setSecretKey('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                variant="outline"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDeleteCollection}
                 disabled={deleting || !secretKey}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 {deleting ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
                 ) : (
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 mr-2" />
                 )}
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -514,33 +551,32 @@ const DatabaseManager = () => {
             </div>
             
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => {
                   setCleanupModal(false);
                   setSecretKey('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                variant="outline"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleCleanupDeprecated}
                 disabled={deleting || !secretKey}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 {deleting ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
                 ) : (
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 mr-2" />
                 )}
                 Cleanup All
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-export default DatabaseManager;
+}
