@@ -821,6 +821,94 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PRIVATE INVESTOR HELPER FUNCTIONS
+# These helpers search both Private_Investor_Indian_Passport and 
+# Private_Investor_Foreign_Passport collections since Private_Investor is deprecated
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def find_private_investor(query: dict, projection: dict = None):
+    """
+    Find a single private investor from either passport collection.
+    Searches Indian passport first, then Foreign passport.
+    """
+    if projection is None:
+        projection = {"_id": 0}
+    elif "_id" not in projection:
+        projection["_id"] = 0
+    
+    result = await db.Private_Investor_Indian_Passport.find_one(query, projection)
+    if not result:
+        result = await db.Private_Investor_Foreign_Passport.find_one(query, projection)
+    return result
+
+
+async def find_private_investors(query: dict, projection: dict = None, limit: int = None):
+    """
+    Find all private investors matching query from both passport collections.
+    Returns combined list from both collections.
+    """
+    if projection is None:
+        projection = {"_id": 0}
+    elif "_id" not in projection:
+        projection["_id"] = 0
+    
+    indian_cursor = db.Private_Investor_Indian_Passport.find(query, projection)
+    foreign_cursor = db.Private_Investor_Foreign_Passport.find(query, projection)
+    
+    if limit:
+        indian_results = await indian_cursor.limit(limit).to_list(limit)
+        remaining = limit - len(indian_results)
+        if remaining > 0:
+            foreign_results = await foreign_cursor.limit(remaining).to_list(remaining)
+        else:
+            foreign_results = []
+    else:
+        indian_results = await indian_cursor.to_list(None)
+        foreign_results = await foreign_cursor.to_list(None)
+    
+    return indian_results + foreign_results
+
+
+async def update_private_investor(query: dict, update: dict):
+    """
+    Update a private investor in whichever collection they exist.
+    Returns the result from whichever collection had the matching document.
+    """
+    # Try Indian passport first
+    result = await db.Private_Investor_Indian_Passport.update_one(query, update)
+    if result.matched_count > 0:
+        return result
+    
+    # Try Foreign passport
+    result = await db.Private_Investor_Foreign_Passport.update_one(query, update)
+    return result
+
+
+async def count_private_investors(query: dict):
+    """
+    Count private investors matching query across both collections.
+    """
+    indian_count = await db.Private_Investor_Indian_Passport.count_documents(query)
+    foreign_count = await db.Private_Investor_Foreign_Passport.count_documents(query)
+    return indian_count + foreign_count
+
+
+async def get_private_investor_distinct(field: str, query: dict = None):
+    """
+    Get distinct values for a field across both passport collections.
+    """
+    if query is None:
+        query = {}
+    
+    indian_values = await db.Private_Investor_Indian_Passport.distinct(field, query)
+    foreign_values = await db.Private_Investor_Foreign_Passport.distinct(field, query)
+    
+    # Combine and dedupe
+    return list(set(indian_values + foreign_values))
+
+
 # Helper functions for password/PIN generation
 def generate_password(length=10):
     """Generate a random password with letters, digits, and special chars"""
@@ -1335,7 +1423,7 @@ async def forgot_password(request: PasswordResetRequest, background_tasks: Backg
     
     # Check clients
     if not user:
-        user = await db.Private_Investor.find_one({
+        user = await find_private_investor({
             "pan_number": pan_upper,
             "email": email_lower
         }, {"_id": 0})
@@ -1425,7 +1513,7 @@ async def reset_password(request: PasswordResetConfirm):
             }}
         )
     elif user_type == "client":
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": user_id},
             {"$set": {
                 "password_hash": password_hash,
@@ -1447,7 +1535,7 @@ async def reset_password(request: PasswordResetConfirm):
 async def verify_setup_token(token: str):
     """Verify if a setup token is valid for new client password setup"""
     # Find client with this setup token
-    client = await db.Private_Investor.find_one(
+    client = await find_private_investor(
         {"setup_token": token},
         {"_id": 0, "id": 1, "name": 1, "email": 1, "pan_number": 1, "setup_token_expiry": 1, "password_set": 1}
     )
@@ -1484,7 +1572,7 @@ async def setup_new_client_password(data: dict):
         raise HTTPException(status_code=400, detail="Token, password, and PIN are required")
     
     # Find client with this setup token
-    client = await db.Private_Investor.find_one({"setup_token": token})
+    client = await find_private_investor({"setup_token": token})
     
     if not client:
         raise HTTPException(status_code=400, detail="Invalid setup token")
@@ -1510,7 +1598,7 @@ async def setup_new_client_password(data: dict):
     password_hash = get_password_hash(new_password)
     pin_hash = get_password_hash(new_pin)
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"setup_token": token},
         {"$set": {
             "password_hash": password_hash,
@@ -1595,7 +1683,7 @@ async def customer_signup(signup: CustomerSignup):
     
     await db.users.insert_one(user)
     
-    # Create corresponding client record
+    # Create corresponding client record in Indian passport collection (uses PAN)
     client_id = str(uuid.uuid4())
     client = {
         "id": client_id,
@@ -1609,7 +1697,7 @@ async def customer_signup(signup: CustomerSignup):
         "created_by": "self_registration"
     }
     
-    await db.Private_Investor.insert_one(client)
+    await db.Private_Investor_Indian_Passport.insert_one(client)
     
     # Link user to client
     await db.users.update_one(
@@ -2189,7 +2277,7 @@ async def delete_partner(partner_id: str, current_user: dict = Depends(get_curre
     
     # Check if sub-broker has any confirmed trades or linked clients with trades
     trades = await db.Ncd_Investment_Details.find({"created_by": partner_id, "status": "approved"}).to_list(1)
-    linked_clients = await db.Private_Investor.find({"linked_subbroker_id": partner_id}).to_list(1)
+    linked_clients = await find_private_investors({"linked_subbroker_id": partner_id}, limit=1)
     
     if trades or linked_clients:
         # Soft delete - mark as inactive
@@ -2509,7 +2597,7 @@ async def delete_agent(agent_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Agent not found")
     
     # Check if agent has tagged clients
-    tagged_clients = await db.Private_Investor.find({"agent_id": agent_id}).to_list(1)
+    tagged_clients = await find_private_investors({"agent_id": agent_id}, limit=1)
     
     if tagged_clients:
         # Soft delete
@@ -2583,7 +2671,7 @@ async def assign_client_to_agent(
         raise HTTPException(status_code=403, detail="Only sub-brokers can assign clients to agents")
     
     # Check if client exists and is linked to this sub-broker
-    client = await db.Private_Investor.find_one({
+    client = await find_private_investor({
         "id": client_id, 
         "linked_subbroker_id": current_user['id']
     })
@@ -2596,14 +2684,14 @@ async def assign_client_to_agent(
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {"$set": {"agent_id": agent_id}}
         )
         return {"message": f"Client assigned to agent {agent.get('name')}", "agent_id": agent_id}
     else:
         # Unassign agent
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {"$unset": {"agent_id": ""}}
         )
@@ -2624,7 +2712,7 @@ async def get_broker_profile(current_user: dict = Depends(get_current_user)):
     
     # Count sub-brokers and clients
     sub_brokers_count = await db.Mfd_Ria_Partner.count_documents({"created_by": current_user['id']})
-    clients_count = await db.Private_Investor.count_documents({"created_by": current_user['id']})
+    clients_count = await count_private_investors({"created_by": current_user['id']})
     
     return {
         "id": broker.get('id'),
@@ -2689,7 +2777,7 @@ async def get_sub_broker_profile(current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=404, detail="Profile not found")
     
     # Count linked clients
-    linked_clients = await db.Private_Investor.count_documents({"linked_subbroker_id": current_user['id']})
+    linked_clients = await count_private_investors({"linked_subbroker_id": current_user['id']})
     
     # Return comprehensive profile data
     return {
@@ -2891,10 +2979,7 @@ async def get_sub_broker_clients(current_user: dict = Depends(get_current_user))
     if current_user['role'] != 'sub_broker':
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
-    clients = await db.Private_Investor.find(
-        {"linked_subbroker_id": current_user['id']},
-        {"_id": 0}
-    ).to_list(1000)
+    clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, {"_id": 0}, limit=1000)
     
     return clients
 
@@ -2905,7 +2990,7 @@ async def get_sub_broker_client_details(client_id: str, current_user: dict = Dep
     if current_user['role'] != 'sub_broker':
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
-    client = await db.Private_Investor.find_one(
+    client = await find_private_investor(
         {"id": client_id, "linked_subbroker_id": current_user['id']},
         {"_id": 0}
     )
@@ -2923,7 +3008,7 @@ async def update_sub_broker_client(client_id: str, client_data: dict, current_us
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
     # Verify client is linked to this sub-broker
-    existing_client = await db.Private_Investor.find_one(
+    existing_client = await find_private_investor(
         {"id": client_id, "linked_subbroker_id": current_user['id']},
         {"_id": 0}
     )
@@ -2943,13 +3028,13 @@ async def update_sub_broker_client(client_id: str, client_data: dict, current_us
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
     if update_data:
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {"$set": update_data}
         )
     
     # Return updated client
-    updated_client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    updated_client = await find_private_investor({"id": client_id}, {"_id": 0})
     return updated_client
 
 
@@ -2960,10 +3045,10 @@ async def get_sub_broker_interests(current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
     # Get client IDs linked to this sub-broker
-    client_ids = await db.Private_Investor.distinct("id", {"linked_subbroker_id": current_user['id']})
+    client_ids = await get_private_investor_distinct("id", {"linked_subbroker_id": current_user['id']})
     
     # Also check for clients where sub_broker_id matches
-    client_ids_alt = await db.Private_Investor.distinct("id", {"sub_broker_id": current_user['id']})
+    client_ids_alt = await get_private_investor_distinct("id", {"sub_broker_id": current_user['id']})
     client_ids = list(set(client_ids + client_ids_alt))
     
     if not client_ids:
@@ -2981,7 +3066,7 @@ async def get_sub_broker_interests(current_user: dict = Depends(get_current_user
     
     # Enrich with client info and opportunity details
     for lead in leads:
-        client = await db.Private_Investor.find_one({"id": lead.get("client_id")}, {"_id": 0, "name": 1, "email": 1, "mobile": 1, "pan": 1, "pan_number": 1})
+        client = await find_private_investor({"id": lead.get("client_id")}, {"_id": 0, "name": 1, "email": 1, "mobile": 1, "pan": 1, "pan_number": 1})
         if client:
             lead['client_name'] = client.get('name', 'Unknown')
             lead['client_email'] = client.get('email', '')
@@ -3063,7 +3148,7 @@ async def bulk_upload_clients_by_subbroker(
                 error_count += 1
                 continue
             
-            existing_client = await db.Private_Investor.find_one({"pan": pan})
+            existing_client = await find_private_investor({"pan": pan})
             if existing_client:
                 errors.append({"row": row_num, "message": f"Client with PAN {pan} already exists"})
                 error_count += 1
@@ -3145,7 +3230,7 @@ async def create_client_by_subbroker(
     
     # Check if PAN/Passport already exists
     if passport_type == 'indian' and pan:
-        existing = await db.Private_Investor.find_one({"$or": [{"pan": pan}, {"pan_number": pan}]})
+        existing = await find_private_investor({"$or": [{"pan": pan}, {"pan_number": pan}]})
         if existing:
             raise HTTPException(status_code=400, detail="Client with this PAN already exists")
         
@@ -3169,7 +3254,7 @@ async def create_client_by_subbroker(
     elif passport_type == 'foreign':
         passport_number = client_data.get('passport_number', '').upper()
         if passport_number:
-            existing = await db.Private_Investor.find_one({"passport_number": passport_number})
+            existing = await find_private_investor({"passport_number": passport_number})
             if existing:
                 raise HTTPException(status_code=400, detail="Client with this passport number already exists")
             login_id = passport_number
@@ -3257,7 +3342,11 @@ async def create_client_by_subbroker(
         "notes": client_data.get('notes', '')
     }
     
-    await db.Private_Investor.insert_one(new_client)
+    # Insert into appropriate collection based on passport type
+    if passport_type == "indian":
+        await db.Private_Investor_Indian_Passport.insert_one(new_client)
+    else:
+        await db.Private_Investor_Foreign_Passport.insert_one(new_client)
     
     # Clean response
     response_client = {k: v for k, v in new_client.items() if k != '_id'}
@@ -3309,7 +3398,7 @@ async def sub_broker_bulk_upload_indian_clients(
                     continue
                 
                 # Check if already exists
-                existing = await db.Private_Investor.find_one({"$or": [{"pan": pan}, {"pan_number": pan}]})
+                existing = await find_private_investor({"$or": [{"pan": pan}, {"pan_number": pan}]})
                 if existing:
                     errors.append(f"Row {idx+2}: PAN {pan} already exists")
                     continue
@@ -3405,7 +3494,7 @@ async def sub_broker_bulk_upload_foreign_clients(
                     continue
                 
                 # Check if already exists
-                existing = await db.Private_Investor.find_one({"passport_number": passport_number})
+                existing = await find_private_investor({"passport_number": passport_number})
                 if existing:
                     errors.append(f"Row {idx+2}: Passport {passport_number} already exists")
                     continue
@@ -3473,13 +3562,10 @@ async def get_subbroker_pending_approvals(current_user: dict = Depends(get_curre
     if current_user['role'] != 'sub_broker':
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
-    pending_clients = await db.Private_Investor.find(
-        {
+    pending_clients = await find_private_investors({
             "linked_subbroker_id": current_user['id'],
             "approval_status": "pending_approval"
-        },
-        {"_id": 0}
-    ).to_list(100)
+        }, {"_id": 0}, limit=100)
     
     return {
         "pending_clients": pending_clients
@@ -3495,13 +3581,10 @@ async def get_broker_pending_approvals(current_user: dict = Depends(get_current_
         raise HTTPException(status_code=403, detail="Only brokers can access this endpoint")
     
     # Get pending clients created by sub-brokers
-    pending_clients = await db.Private_Investor.find(
-        {
+    pending_clients = await find_private_investors({
             "broker_id": current_user['id'],
             "approval_status": "pending_approval"
-        },
-        {"_id": 0}
-    ).to_list(100)
+        }, {"_id": 0}, limit=100)
     
     # Get pending reinvestment tags
     pending_reinvestments = await db.reinvestment_approvals.find(
@@ -3528,7 +3611,7 @@ async def approve_client(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can approve clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -3536,7 +3619,7 @@ async def approve_client(
         raise HTTPException(status_code=403, detail="Not authorized to approve this client")
     
     if action == "approve":
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {
                 "$set": {
@@ -3577,7 +3660,7 @@ async def approve_client(
         return {"message": "Client approved successfully", "status": "approved"}
     
     elif action == "reject":
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {
                 "$set": {
@@ -3644,7 +3727,7 @@ async def get_approval_logs(
         # Broker sees all logs for their entities
         broker_id = current_user['id']
         # Get all clients and sub-brokers under this broker
-        client_ids = await db.Private_Investor.distinct("id", {"broker_id": broker_id})
+        client_ids = await get_private_investor_distinct("id", {"broker_id": broker_id})
         partner_ids = await db.Mfd_Ria_Partner.distinct("id", {"created_by": broker_id})
         query["$or"] = [
             {"actor_id": broker_id},
@@ -3659,7 +3742,7 @@ async def get_approval_logs(
         ]
     elif current_user['role'] == 'client':
         # Client sees logs for their approvals
-        client = await db.Private_Investor.find_one({"user_id": current_user['id']})
+        client = await find_private_investor({"user_id": current_user['id']})
         if client:
             query["entity_id"] = client['id']
     
@@ -3700,13 +3783,10 @@ async def get_pending_approvals_workflow(current_user: dict = Depends(get_curren
         return {}
 
     # Get pending clients from sub-brokers
-    pending_clients = await db.Private_Investor.find(
-        {
+    pending_clients = await find_private_investors({
             "broker_id": current_user['id'],
             "approval_status": "pending_approval"
-        },
-        {"_id": 0}
-    ).to_list(100)
+        }, {"_id": 0}, limit=100)
     
     # Enrich with sub-broker info
     for client in pending_clients:
@@ -3885,7 +3965,7 @@ async def process_client_approval(
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can approve clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -3904,7 +3984,7 @@ async def process_client_approval(
         )
         
         # Update client status to broker_approved
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {
                 "$set": {
@@ -3951,7 +4031,7 @@ async def process_client_approval(
         }
     
     elif request.action == "reject":
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": client_id},
             {
                 "$set": {
@@ -3996,7 +4076,7 @@ async def client_approve_via_link(token: str, action: str = "approve"):
         
         client_id = payload.get("client_id")
         
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         if not client:
             return {"success": False, "message": "Client not found"}
         
@@ -4024,7 +4104,7 @@ async def client_approve_via_link(token: str, action: str = "approve"):
             })
             
             # Update client record
-            await db.Private_Investor.update_one(
+            await update_private_investor(
                 {"id": client_id},
                 {
                     "$set": {
@@ -4080,7 +4160,7 @@ async def client_approve_via_link(token: str, action: str = "approve"):
                 "action": "approved"
             }
         else:
-            await db.Private_Investor.update_one(
+            await update_private_investor(
                 {"id": client_id},
                 {
                     "$set": {
@@ -4131,7 +4211,7 @@ async def submit_reinvestment_for_approval(
         raise HTTPException(status_code=403, detail="Only sub-brokers can submit reinvestments for approval")
     
     # Verify client is linked to this sub-broker
-    client = await db.Private_Investor.find_one(
+    client = await find_private_investor(
         {"id": request.client_id, "linked_subbroker_id": current_user['id']},
         {"_id": 0}
     )
@@ -4229,7 +4309,7 @@ async def process_reinvestment_approval(
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     
-    client = await db.Private_Investor.find_one({"id": submission['client_id']}, {"_id": 0})
+    client = await find_private_investor({"id": submission['client_id']}, {"_id": 0})
     
     if request.action == "approve":
         # Generate approval token for client
@@ -4386,7 +4466,7 @@ async def broker_approve_reinvestment_tag(
             raise HTTPException(status_code=400, detail="This tag is not pending broker approval")
     
     # Get client info
-    client = await db.Private_Investor.find_one({"id": cashflow.get('client_id')}, {"_id": 0})
+    client = await find_private_investor({"id": cashflow.get('client_id')}, {"_id": 0})
     
     if action == 'approve':
         # Update cashflow to pending (client approval)
@@ -4536,7 +4616,7 @@ async def resend_reinvestment_approval_email(
             )
 
     # Sub-broker scope: only resend for their own clients
-    client = await db.Private_Investor.find_one({"id": cashflow.get('client_id')}, {"_id": 0})
+    client = await find_private_investor({"id": cashflow.get('client_id')}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     if current_user.get('role') == 'sub_broker':
@@ -4639,7 +4719,7 @@ async def reinvestment_approve_via_link(token: str, action: str = "approve"):
         if not submission:
             return {"success": False, "message": "Submission not found"}
         
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         
         approved = action.lower() == "approve"
         
@@ -5146,7 +5226,7 @@ async def submit_to_kinntegra_internal(submission_id: str) -> dict:
         ).to_list(100)
         
         # Get client
-        client = await db.Private_Investor.find_one({"id": submission['client_id']}, {"_id": 0})
+        client = await find_private_investor({"id": submission['client_id']}, {"_id": 0})
         
         # Prepare Kinntegra API payload
         investment_data = []
@@ -5222,7 +5302,7 @@ async def get_my_submissions(current_user: dict = Depends(get_current_user)):
     
     # Enrich with client info
     for sub in submissions:
-        client = await db.Private_Investor.find_one(
+        client = await find_private_investor(
             {"id": sub['client_id']},
             {"_id": 0, "name": 1}
         )
@@ -5240,10 +5320,8 @@ async def get_subbroker_upcoming_reinvestments(current_user: dict = Depends(get_
         raise HTTPException(status_code=403, detail="Only sub-brokers can access this endpoint")
     
     # Get linked client IDs
-    linked_clients = await db.Private_Investor.find(
-        {"linked_subbroker_id": current_user['id']},
-        {"id": 1, "name": 1, "pan": 1, "ucc_list": 1, "_id": 0}
-    ).to_list(1000)
+    linked_clients = await find_private_investors({"linked_subbroker_id": current_user['id']},
+        {"id": 1, "name": 1, "pan": 1, "ucc_list": 1, "_id": 0}, limit=1000)
     
     client_ids = [c['id'] for c in linked_clients]
     client_map = {c['id']: c for c in linked_clients}
@@ -5256,10 +5334,7 @@ async def get_subbroker_upcoming_reinvestments(current_user: dict = Depends(get_
     bond_map = {b['id']: b for b in bonds}
     
     # Get all clients with bond allocations
-    all_clients = await db.Private_Investor.find(
-        {"id": {"$in": client_ids}},
-        {"_id": 0}
-    ).to_list(1000)
+    all_clients = await find_private_investors({"id": {"$in": client_ids}}, {"_id": 0}, limit=1000)
     
     by_client = []
     total_amount = 0
@@ -6601,7 +6676,7 @@ async def bulk_upload_indian_clients(
                 continue
             
             # Check if client exists
-            existing = await db.Private_Investor.find_one({"$or": [{"pan_number": pan}, {"photo_id": pan}]})
+            existing = await find_private_investor({"$or": [{"pan_number": pan}, {"photo_id": pan}]})
             if existing:
                 results['errors'].append(f"Row {idx+2}: Client with PAN {pan} already exists")
                 results['failed'] += 1
@@ -6964,7 +7039,7 @@ async def bulk_upload_foreign_clients(
                 continue
             
             # Check if client exists
-            existing = await db.Private_Investor.find_one({"$or": [{"passport_number": passport_number}, {"photo_id": passport_number}]})
+            existing = await find_private_investor({"$or": [{"passport_number": passport_number}, {"photo_id": passport_number}]})
             if existing:
                 results['errors'].append(f"Row {idx+2}: Client with Passport {passport_number} already exists")
                 results['failed'] += 1
@@ -7259,7 +7334,7 @@ async def bulk_upload_clients(
             ucc_conflict = False
             if len(ucc_list) > 0:
                 for ucc in ucc_list:
-                    existing_ucc = await db.Private_Investor.find_one({"ucc_list": ucc, "pan_number": {"$ne": pan}})
+                    existing_ucc = await find_private_investor({"ucc_list": ucc, "pan_number": {"$ne": pan}})
                     if existing_ucc:
                         results['errors'].append(f"Row {idx+2}: UCC '{ucc}' is already assigned to another client")
                         ucc_conflict = True
@@ -7269,7 +7344,7 @@ async def bulk_upload_clients(
                 continue
             
             # Check if client with this PAN already exists - if so, UPDATE instead of CREATE
-            existing_client = await db.Private_Investor.find_one({"pan_number": pan})
+            existing_client = await find_private_investor({"pan_number": pan})
             existing_user = await db.users.find_one({"pan": pan})
             
             # Get data from other sheets using PAN lookup
@@ -7447,7 +7522,7 @@ async def bulk_upload_clients(
                 
                 if update_data:
                     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
-                    await db.Private_Investor.update_one({"pan_number": pan}, {"$set": update_data})
+                    await update_private_investor({"pan_number": pan}, {"$set": update_data})
                     
                     # Also update user record if exists
                     if existing_user and 'ucc_list' in update_data:
@@ -8506,7 +8581,7 @@ async def bulk_upload_investment_details(
     
     # Get all bonds and clients for lookup
     all_bonds = await db.Ncd_Master.find({}, {"_id": 0}).to_list(1000)
-    all_clients = await db.Private_Investor.find({}, {"_id": 0}).to_list(10000)
+    all_clients = await find_private_investors({}, {"_id": 0}, limit=10000)
     
     # Create lookup dictionaries
     bond_lookup = {b.get('bond_code', '').strip().upper(): b for b in all_bonds if b.get('bond_code')}
@@ -8677,7 +8752,7 @@ async def bulk_upload_investment_details(
                     "trade_id": trade_id,
                     "allocated_at": datetime.now(timezone.utc).isoformat()
                 }
-                await db.Private_Investor.update_one(
+                await update_private_investor(
                     {"id": client['id']},
                     {"$push": {"bond_allocations": allocation}}
                 )
@@ -8983,7 +9058,7 @@ async def bulk_upload_historical_trades(
     
     # Get all bonds and clients for lookup
     all_bonds = await db.Ncd_Master.find({}, {"_id": 0}).to_list(1000)
-    all_clients = await db.Private_Investor.find({}, {"_id": 0}).to_list(10000)
+    all_clients = await find_private_investors({}, {"_id": 0}, limit=10000)
     
     # Create lookup dictionaries
     bond_lookup = {b.get('bond_code', '').strip().upper(): b for b in all_bonds if b.get('bond_code')}
@@ -12317,18 +12392,18 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
         
         # Check if any UCC already exists in the system (UCCs must be unique across all clients)
         for ucc in ucc_list:
-            existing_ucc = await db.Private_Investor.find_one({"ucc_list": ucc})
+            existing_ucc = await find_private_investor({"ucc_list": ucc})
             if existing_ucc:
                 raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
     
     # Check if client with same photo_id already exists
-    existing = await db.Private_Investor.find_one({"photo_id": photo_id})
+    existing = await find_private_investor({"photo_id": photo_id})
     if existing:
         raise HTTPException(status_code=400, detail=f"Client with this {'PAN' if client_data.passport_type == 'indian' else 'Passport Number'} already exists")
     
     # Also check legacy pan_number field for backwards compatibility
     if client_data.pan_number:
-        existing_pan = await db.Private_Investor.find_one({"pan_number": client_data.pan_number.upper()})
+        existing_pan = await find_private_investor({"pan_number": client_data.pan_number.upper()})
         if existing_pan:
             raise HTTPException(status_code=400, detail="Client with this PAN already exists")
     
@@ -12477,10 +12552,10 @@ async def create_client(client_data: ClientCreate, background_tasks: BackgroundT
 async def get_clients(current_user: dict = Depends(get_current_user)):
     """Get all clients (brokers see all, sub-brokers see only linked clients)"""
     if current_user['role'] == 'broker':
-        clients = await db.Private_Investor.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+        clients = await find_private_investors({"created_by": current_user['id']}, {"_id": 0}, limit=1000)
     else:
         # Sub-brokers see only clients linked to them
-        clients = await db.Private_Investor.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
+        clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, {"_id": 0}, limit=1000)
     
     return clients
 
@@ -12490,9 +12565,9 @@ async def get_clients(current_user: dict = Depends(get_current_user)):
 async def get_clients_alias(current_user: dict = Depends(get_current_user)):
     """Alias for /private-investors for backward compatibility"""
     if current_user['role'] == 'broker':
-        clients = await db.Private_Investor.find({"created_by": current_user['id']}, {"_id": 0}).to_list(1000)
+        clients = await find_private_investors({"created_by": current_user['id']}, {"_id": 0}, limit=1000)
     else:
-        clients = await db.Private_Investor.find({"linked_subbroker_id": current_user['id']}, {"_id": 0}).to_list(1000)
+        clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, {"_id": 0}, limit=1000)
     return clients
 
 
@@ -12511,7 +12586,7 @@ async def _fetch_investors_by_passport(current_user: dict, passport_collection: 
     specific = await db[passport_collection].find(base_query, {"_id": 0}).to_list(1000)
 
     legacy_query = {**base_query, "passport_type": passport_type}
-    legacy = await db.Private_Investor.find(legacy_query, {"_id": 0}).to_list(1000)
+    legacy = await find_private_investors(legacy_query, {"_id": 0}, limit=1000)
 
     seen_ids = {inv.get('id') for inv in specific if inv.get('id')}
     combined = list(specific)
@@ -12564,7 +12639,7 @@ async def get_expiring_documents(current_user: dict = Depends(get_current_user))
         base_query = {"linked_subbroker_id": current_user['id']}
     
     # Find clients with passport expiring within 3 months
-    clients = await db.Private_Investor.find(base_query, {"_id": 0}).to_list(1000)
+    clients = await find_private_investors(base_query, {"_id": 0}, limit=1000)
     
     expiring_documents = []
     for client in clients:
@@ -12606,7 +12681,7 @@ async def get_invalid_pan_clients(current_user: dict = Depends(get_current_user)
     # Only check Indian passport holders
     base_query['passport_type'] = 'indian'
     
-    clients = await db.Private_Investor.find(base_query, {"_id": 0}).to_list(1000)
+    clients = await find_private_investors(base_query, {"_id": 0}, limit=1000)
     
     invalid_pan_clients = []
     for client in clients:
@@ -12662,9 +12737,9 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
     
     # Brokers can update any client they created, sub-brokers can update linked clients
     if current_user['role'] == 'broker':
-        client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+        client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     else:  # sub_broker
-        client = await db.Private_Investor.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+        client = await find_private_investor({"id": client_id, "linked_subbroker_id": current_user['id']})
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found or access denied")
@@ -12696,7 +12771,7 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
         
         # Check if any UCC already exists in the system (excluding current client)
         for ucc in ucc_list:
-            existing_ucc = await db.Private_Investor.find_one({"ucc_list": ucc, "id": {"$ne": client_id}})
+            existing_ucc = await find_private_investor({"ucc_list": ucc, "id": {"$ne": client_id}})
             if existing_ucc:
                 raise HTTPException(status_code=400, detail=f"UCC '{ucc}' is already assigned to another client")
         
@@ -12704,9 +12779,9 @@ async def update_client(client_id: str, client_update: ClientUpdate, current_use
     
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     
-    await db.Private_Investor.update_one({"id": client_id}, {"$set": update_data})
+    await update_private_investor({"id": client_id}, {"$set": update_data})
     
-    updated_client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    updated_client = await find_private_investor({"id": client_id}, {"_id": 0})
     return updated_client
 
 
@@ -12716,7 +12791,7 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can delete clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -12733,8 +12808,9 @@ async def delete_client(client_id: str, current_user: dict = Depends(get_current
     # Hard delete - remove from both collections to allow PAN reuse
     pan_number = client.get('pan_number')
     
-    # Delete from clients collection
-    await db.Private_Investor.delete_one({"id": client_id})
+    # Delete from clients collection (try both passport collections)
+    await db.Private_Investor_Indian_Passport.delete_one({"id": client_id})
+    await db.Private_Investor_Foreign_Passport.delete_one({"id": client_id})
     
     # Also delete from users collection to allow recreation with same PAN - support both pan and pan_number fields
     if pan_number:
@@ -12750,7 +12826,7 @@ async def get_client_details(client_id: str, current_user: dict = Depends(get_cu
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can view client details")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -12763,12 +12839,12 @@ async def reactivate_client(client_id: str, current_user: dict = Depends(get_cur
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can reactivate clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
     # Update clients collection
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {"is_active": True}, "$unset": {"deactivated_at": ""}}
     )
@@ -12789,7 +12865,7 @@ async def sync_client_activation(client_id: str, current_user: dict = Depends(ge
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can sync client activation")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -12821,10 +12897,10 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
     
     # Find client based on role
     if current_user['role'] == 'broker':
-        client = await db.Private_Investor.find_one({"id": client_id})
+        client = await find_private_investor({"id": client_id})
     else:
         # Sub-broker can only resend for their linked clients
-        client = await db.Private_Investor.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+        client = await find_private_investor({"id": client_id, "linked_subbroker_id": current_user['id']})
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found or not authorized")
@@ -12848,7 +12924,7 @@ async def resend_client_credentials(client_id: str, background_tasks: Background
     )
     
     # Update stored credentials in client record (for admin reference only, not shown to broker)
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {
             "credentials_updated_at": datetime.now(timezone.utc).isoformat(),
@@ -12884,10 +12960,10 @@ async def reset_client_password(client_id: str, background_tasks: BackgroundTask
     
     # Find client based on role
     if current_user['role'] == 'broker':
-        client = await db.Private_Investor.find_one({"id": client_id})
+        client = await find_private_investor({"id": client_id})
     else:
         # Sub-broker can only reset for their linked clients
-        client = await db.Private_Investor.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+        client = await find_private_investor({"id": client_id, "linked_subbroker_id": current_user['id']})
     
     if not client:
         raise HTTPException(status_code=404, detail="Client not found or not authorized")
@@ -12907,7 +12983,7 @@ async def reset_client_password(client_id: str, background_tasks: BackgroundTask
     )
     
     # Update timestamp
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {
             "password_reset_at": datetime.now(timezone.utc).isoformat(),
@@ -12939,11 +13015,11 @@ async def deactivate_client(client_id: str, current_user: dict = Depends(get_cur
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can deactivate clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
     )
@@ -12965,7 +13041,7 @@ async def link_client_to_subbroker(client_id: str, subbroker_id: str, current_us
         raise HTTPException(status_code=403, detail="Only brokers can link clients")
     
     # Verify client exists and belongs to broker
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -12974,7 +13050,7 @@ async def link_client_to_subbroker(client_id: str, subbroker_id: str, current_us
     if not partner:
         raise HTTPException(status_code=404, detail="Sub-broker not found")
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {"linked_subbroker_id": subbroker_id}}
     )
@@ -12988,11 +13064,11 @@ async def unlink_client_from_subbroker(client_id: str, current_user: dict = Depe
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can unlink clients")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {"linked_subbroker_id": None}}
     )
@@ -13007,7 +13083,7 @@ async def allocate_bond_to_client(client_id: str, allocation: ClientBondAllocati
         raise HTTPException(status_code=403, detail="Only brokers can allocate bonds")
     
     # Verify client
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -13051,7 +13127,7 @@ async def allocate_bond_to_client(client_id: str, allocation: ClientBondAllocati
                     }}
                 )
             
-            await db.Private_Investor.update_one(
+            await update_private_investor(
                 {"id": client_id},
                 {"$set": {"bond_allocations": existing_allocations}}
             )
@@ -13096,7 +13172,7 @@ async def allocate_bond_to_client(client_id: str, allocation: ClientBondAllocati
         "allocated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$push": {"bond_allocations": new_allocation}}
     )
@@ -13117,7 +13193,7 @@ async def update_bond_allocation(client_id: str, bond_id: str, units_paid: int, 
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can update allocations")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -13136,7 +13212,7 @@ async def update_bond_allocation(client_id: str, bond_id: str, units_paid: int, 
     if not found:
         raise HTTPException(status_code=404, detail="Bond allocation not found")
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {"bond_allocations": allocations}}
     )
@@ -13158,7 +13234,7 @@ async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dic
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Only brokers can remove allocations")
     
-    client = await db.Private_Investor.find_one({"id": client_id, "created_by": current_user['id']})
+    client = await find_private_investor({"id": client_id, "created_by": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -13170,7 +13246,7 @@ async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dic
             units_paid_to_return = alloc.get('units_paid', 0)
             break
     
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$pull": {"bond_allocations": {"bond_id": bond_id}}}
     )
@@ -13189,7 +13265,7 @@ async def remove_bond_allocation(client_id: str, bond_id: str, current_user: dic
 async def get_client_details(client_id: str, current_user: dict = Depends(get_current_user)):
     """Get detailed client information including KYC details"""
     
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -13332,7 +13408,7 @@ async def bulk_upload_clients(file: UploadFile = File(...), current_user: dict =
                     continue
                 
                 # Check if client with same PAN already exists
-                existing = await db.Private_Investor.find_one({"pan_number": pan.upper()})
+                existing = await find_private_investor({"pan_number": pan.upper()})
                 if existing:
                     results["failed"] += 1
                     results["errors"].append({
@@ -13719,7 +13795,7 @@ async def create_trade(trade_data: TradeCreate, current_user: dict = Depends(get
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
                 
-                await db.Private_Investor.update_one(
+                await update_private_investor(
                     {"id": trade_data.client_id},
                     {"$push": {"bond_cashflow_records": client_cashflow_record}}
                 )
@@ -13753,16 +13829,14 @@ async def get_trades(status: Optional[str] = None, client_id: Optional[str] = No
         # Sub-brokers see only trades for their linked clients
         if client_id:
             # Verify this client is linked to the sub-broker
-            client = await db.Private_Investor.find_one({"id": client_id, "linked_subbroker_id": current_user['id']})
+            client = await find_private_investor({"id": client_id, "linked_subbroker_id": current_user['id']})
             if not client:
                 return []  # Client not linked to this sub-broker
             query["client_id"] = client_id
         else:
             # Get all linked clients' trades
-            linked_clients = await db.Private_Investor.find(
-                {"linked_subbroker_id": current_user['id']},
-                {"_id": 0, "id": 1}
-            ).to_list(1000)
+            linked_clients = await find_private_investors({"linked_subbroker_id": current_user['id']},
+                {"_id": 0, "id": 1}, limit=1000)
             client_ids = [c['id'] for c in linked_clients]
             if client_ids:
                 query["client_id"] = {"$in": client_ids}
@@ -13788,7 +13862,7 @@ async def get_trades(status: Optional[str] = None, client_id: Optional[str] = No
         
         # Add sub-broker info for the client
         if trade.get('client_id'):
-            client = await db.Private_Investor.find_one({"id": trade['client_id']}, {"_id": 0, "linked_subbroker_id": 1})
+            client = await find_private_investor({"id": trade['client_id']}, {"_id": 0, "linked_subbroker_id": 1})
             if client and client.get('linked_subbroker_id'):
                 sub_broker = await db.Mfd_Ria_Partner.find_one({"id": client['linked_subbroker_id']}, {"_id": 0, "name": 1})
                 if sub_broker:
@@ -13840,7 +13914,7 @@ async def get_trade_timeline(trade_id: str, current_user: dict = Depends(get_cur
     if current_user.get('role') == 'sub_broker':
         client = await db.Private_Investor_Indian_Passport.find_one(
             {"id": trade.get('client_id'), "linked_subbroker_id": current_user['id']}
-        ) or await db.Private_Investor.find_one(
+        ) or await find_private_investor(
             {"id": trade.get('client_id'), "linked_subbroker_id": current_user['id']}
         )
         if not client and trade.get('created_by') != current_user['id']:
@@ -14001,7 +14075,7 @@ async def verify_trade(trade_id: str, update: TradeUpdate, current_user: dict = 
             "trade_id": trade_id,
             "allocated_at": datetime.now(timezone.utc).isoformat()
         }
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": trade['client_id']},
             {"$push": {"bond_allocations": allocation}}
         )
@@ -14049,7 +14123,7 @@ async def verify_trade(trade_id: str, update: TradeUpdate, current_user: dict = 
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
                 
-                await db.Private_Investor.update_one(
+                await update_private_investor(
                     {"id": trade['client_id']},
                     {"$push": {"bond_cashflow_records": client_cashflow_record}}
                 )
@@ -14252,8 +14326,8 @@ async def broker_ncd_summary(current_user: dict = Depends(get_current_user)):
     trade_filter: dict = {"status": "approved"}
     if role == "sub_broker":
         sb_id = current_user["id"]
-        sub_client_ids_a = await db.Private_Investor.distinct("id", {"linked_subbroker_id": sb_id})
-        sub_client_ids_b = await db.Private_Investor.distinct("id", {"sub_broker_id": sb_id})
+        sub_client_ids_a = await get_private_investor_distinct("id", {"linked_subbroker_id": sb_id})
+        sub_client_ids_b = await get_private_investor_distinct("id", {"sub_broker_id": sb_id})
         sub_client_ids = list({*sub_client_ids_a, *sub_client_ids_b})
         if not sub_client_ids:
             return {
@@ -16871,7 +16945,7 @@ async def mark_cashflow_repaid(cashflow_id: str, update: RepaymentUpdate, curren
         raise HTTPException(status_code=404, detail="Cashflow entry not found")
     
     # Verify access to the client
-    client = await db.Private_Investor.find_one({"id": cashflow['client_id']})
+    client = await find_private_investor({"id": cashflow['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -16970,7 +17044,7 @@ async def amend_cashflow_interest(
         raise HTTPException(status_code=404, detail="Cashflow entry not found")
     
     # Verify access
-    client = await db.Private_Investor.find_one({"id": cashflow['client_id']})
+    client = await find_private_investor({"id": cashflow['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -17034,7 +17108,7 @@ async def revert_cashflow_amendment(cashflow_id: str, current_user: dict = Depen
         raise HTTPException(status_code=400, detail="This cashflow has not been amended")
     
     # Verify access
-    client = await db.Private_Investor.find_one({"id": cashflow['client_id']})
+    client = await find_private_investor({"id": cashflow['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -17103,7 +17177,7 @@ async def record_principal_prepayment(
     if not trade:
         raise HTTPException(status_code=404, detail="Trade not found")
     
-    client = await db.Private_Investor.find_one({"id": trade['client_id']})
+    client = await find_private_investor({"id": trade['client_id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -17146,7 +17220,7 @@ async def record_principal_prepayment(
     # Send email notification
     email_sent = False
     try:
-        client_full = await db.Private_Investor.find_one({"id": trade['client_id']}, {"_id": 0})
+        client_full = await find_private_investor({"id": trade['client_id']}, {"_id": 0})
         broker = await db.users.find_one({"id": client_full.get('created_by', '')}, {"_id": 0})
         broker_name = broker.get('name', 'Your Broker') if broker else 'Your Broker'
         
@@ -17199,7 +17273,7 @@ async def get_trade_prepayments(trade_id: str, current_user: dict = Depends(get_
         raise HTTPException(status_code=404, detail="Trade not found")
     
     # Verify access
-    client = await db.Private_Investor.find_one({"id": trade['client_id']})
+    client = await find_private_investor({"id": trade['client_id']})
     if current_user['role'] == 'broker':
         if client.get('created_by') != current_user['id']:
             raise HTTPException(status_code=403, detail="Access denied")
@@ -17388,7 +17462,7 @@ async def bulk_repayment_upload(
                             continue
                 
                 # Find client
-                client = await db.Private_Investor.find_one({"pan_number": client_pan})
+                client = await find_private_investor({"pan_number": client_pan})
                 if not client:
                     results["errors"].append(f"Row {row_num}: Client with PAN {client_pan} not found")
                     results["failed"] += 1
@@ -17478,7 +17552,7 @@ async def send_holdings_report_email_endpoint(
         raise HTTPException(status_code=403, detail="Only brokers and sub-brokers can send reports")
     
     # Verify client access
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -17800,7 +17874,7 @@ async def export_client_cashflows(client_id: str, current_user: dict = Depends(g
     from io import BytesIO
     
     # Verify client access
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -19147,7 +19221,7 @@ async def sync_approved_reinvestment_entries(current_user: dict = Depends(get_cu
         existing_log = await db.reinvestment_logs.find_one({"cashflow_id": cashflow_id}, {"_id": 0})
         
         # Get client info
-        client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
+        client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
         client_name = client.get('name', '') if client else ''
         
         if existing_log:
@@ -19329,7 +19403,7 @@ async def sync_from_reinvestment_approvals(current_user: dict = Depends(get_curr
                 # Also create reinvestment_log entry
                 cf = await db.holding_cashflows.find_one({"id": cashflow_id}, {"_id": 0})
                 if cf:
-                    client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
+                    client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
                     client_name = client.get('name', '') if client else entry.get('client_name', '')
                     
                     net_amount = cf.get('net_amount', 0) or 0
@@ -19539,7 +19613,7 @@ async def mark_entries_as_submitted(
                 # Also create/update reinvestment_log
                 cf = await db.holding_cashflows.find_one({"id": cf_id}, {"_id": 0})
                 if cf:
-                    client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
+                    client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
                     client_name = client.get('name', '') if client else ''
                     
                     net_amount = cf.get('net_amount', 0) or 0
@@ -19643,7 +19717,7 @@ async def diagnose_client_data(client_pan: str, current_user: dict = Depends(get
         raise HTTPException(status_code=403, detail="Only brokers can diagnose")
     
     # Find client
-    client = await db.Private_Investor.find_one({"pan_number": client_pan}, {"_id": 0})
+    client = await find_private_investor({"pan_number": client_pan}, {"_id": 0})
     if not client:
         return {"error": f"Client with PAN {client_pan} not found"}
     
@@ -20579,7 +20653,7 @@ async def approve_reinvestment_tag(cashflow_id: str, approval: ReinvestmentAppro
         raise HTTPException(status_code=404, detail="Cashflow not found")
     
     # Verify this is client's own cashflow
-    client = await db.Private_Investor.find_one({"id": cashflow['client_id']})
+    client = await find_private_investor({"id": cashflow['client_id']})
     if not client or client.get('user_id') != current_user['id']:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -20669,7 +20743,7 @@ async def get_client_dashboard_summary(current_user: dict = Depends(get_current_
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Find client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -21571,7 +21645,7 @@ async def cancel_reinvestment_tag(
         )
         
         # Notify client about cancellation request
-        client = await db.Private_Investor.find_one({"id": log_entry['client_id']})
+        client = await find_private_investor({"id": log_entry['client_id']})
         if client and client.get('user_id'):
             notification = {
                 "id": str(uuid.uuid4()),
@@ -21616,7 +21690,7 @@ async def cancel_reinvestment_tag(
             )
         
         # Notify client if they exist
-        client = await db.Private_Investor.find_one({"id": log_entry['client_id']})
+        client = await find_private_investor({"id": log_entry['client_id']})
         if client and client.get('user_id'):
             notification = {
                 "id": str(uuid.uuid4()),
@@ -21704,7 +21778,7 @@ async def edit_reinvestment_tag(
         }
         
         # Notify client about edit request
-        client = await db.Private_Investor.find_one({"id": log_entry['client_id']})
+        client = await find_private_investor({"id": log_entry['client_id']})
         if client and client.get('user_id'):
             notification = {
                 "id": str(uuid.uuid4()),
@@ -21767,7 +21841,7 @@ async def export_all_reinvestment_logs_csv(current_user: dict = Depends(get_curr
     
     if current_user['role'] == 'sub_broker':
         # Sub-broker sees only their clients
-        clients = await db.Private_Investor.find({"linked_subbroker_id": current_user['id']}, {"_id": 0, "id": 1}).to_list(1000)
+        clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in clients]
         query["client_id"] = {"$in": client_ids}
     
@@ -21781,7 +21855,7 @@ async def export_all_reinvestment_logs_csv(current_user: dict = Depends(get_curr
         # Get client PAN if not in log
         client_pan = ""
         if log.get('client_id'):
-            client = await db.Private_Investor.find_one({"id": log['client_id']}, {"_id": 0, "pan_number": 1})
+            client = await find_private_investor({"id": log['client_id']}, {"_id": 0, "pan_number": 1})
             client_pan = client.get('pan_number', '') if client else ''
         
         row = [
@@ -21830,7 +21904,7 @@ async def export_subbroker_initiated_reinvestments(current_user: dict = Depends(
     }, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     for log in logs:
-        client = await db.Private_Investor.find_one({"id": log.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+        client = await find_private_investor({"id": log.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
         sub_broker = await db.Mfd_Ria_Partner.find_one({"id": log.get('tagged_by_sub_broker') or log.get('tagged_by')}, {"_id": 0, "name": 1})
         
         results.append({
@@ -21853,7 +21927,7 @@ async def export_subbroker_initiated_reinvestments(current_user: dict = Depends(
     }, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     for sub in submissions:
-        client = await db.Private_Investor.find_one({"id": sub.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+        client = await find_private_investor({"id": sub.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
         sub_broker = await db.Mfd_Ria_Partner.find_one({"id": sub.get('sub_broker_id')}, {"_id": 0, "name": 1})
         
         results.append({
@@ -21886,7 +21960,7 @@ async def export_subbroker_initiated_reinvestments(current_user: dict = Depends(
         if cf.get('id') in added_ids:
             continue
         
-        client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+        client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
         sub_broker = await db.Mfd_Ria_Partner.find_one({"id": cf.get('tagged_by_sub_broker')}, {"_id": 0, "name": 1})
         
         results.append({
@@ -21949,7 +22023,7 @@ async def sync_missing_reinvestment_logs(current_user: dict = Depends(get_curren
                 continue
             
             # Get client info
-            client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1, "linked_subbroker_id": 1})
+            client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1, "linked_subbroker_id": 1})
             client_name = client.get('name', 'Unknown') if client else 'Unknown'
             
             # Determine who tagged it
@@ -22077,10 +22151,8 @@ async def get_reinvestment_logs(
     # Sub-brokers can only see their clients' logs
     if current_user['role'] == 'sub_broker':
         # Get sub-broker's client IDs
-        clients = await db.Private_Investor.find(
-            {"linked_subbroker_id": current_user['id']}, 
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
+        clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in clients]
         query["client_id"] = {"$in": client_ids}
     
@@ -22107,7 +22179,7 @@ async def get_reinvestment_logs(
         cf_id = cf.get('id')
         if cf_id and cf_id not in existing_cf_ids:
             # Get client info
-            client = await db.Private_Investor.find_one({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
+            client = await find_private_investor({"id": cf.get('client_id')}, {"_id": 0, "name": 1})
             client_name = client.get('name', '') if client else ''
             
             # Get bond name if not present
@@ -22341,7 +22413,7 @@ async def sync_prepayments_to_reinv_tag(current_user: dict = Depends(get_current
             continue
         
         # Get client info
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0, "name": 1, "pan_number": 1})
+        client = await find_private_investor({"id": client_id}, {"_id": 0, "name": 1, "pan_number": 1})
         
         # Get bond info from bond_code
         bond = await db.Ncd_Master.find_one({"code": bond_code}, {"_id": 0, "id": 1, "name": 1, "issuer": 1})
@@ -22464,10 +22536,8 @@ async def get_approved_reinvestment_logs(
     
     # Sub-brokers can only see their clients' logs
     if current_user['role'] == 'sub_broker':
-        clients = await db.Private_Investor.find(
-            {"linked_subbroker_id": current_user['id']}, 
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
+        clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in clients]
         query["client_id"] = {"$in": client_ids}
     
@@ -22488,7 +22558,7 @@ async def get_approved_reinvestment_logs(
         if bond:
             log['bond_name'] = bond.get('name', log.get('bond_name', 'Unknown'))
         
-        client = await db.Private_Investor.find_one({"id": log.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
+        client = await find_private_investor({"id": log.get('client_id')}, {"_id": 0, "name": 1, "pan_number": 1})
         if client:
             log['client_name'] = client.get('name', log.get('client_name', 'Unknown'))
             log['client_pan'] = client.get('pan_number', '')
@@ -22509,7 +22579,7 @@ async def send_reinvestment_approval_email(
         raise HTTPException(status_code=403, detail="Only brokers can send approval emails")
     
     # Get client
-    client = await db.Private_Investor.find_one({"id": request.client_id})
+    client = await find_private_investor({"id": request.client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -22676,7 +22746,7 @@ async def approve_reinvestment_via_link(token: str, action: str = "approve"):
         approved = action.lower() == "approve"
         
         # Get client info for logging
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         
         # Update all cashflows in holding_cashflows
         await db.holding_cashflows.update_many(
@@ -22778,7 +22848,7 @@ async def submit_to_kinntegraa(
             ).to_list(1000)
             
             # Get client
-            client = await db.Private_Investor.find_one({"id": submission['client_id']})
+            client = await find_private_investor({"id": submission['client_id']})
             
             # Prepare API payload (structure to be confirmed with Kinntegraa)
             api_payload = {
@@ -22871,10 +22941,8 @@ async def get_reinvestment_logs_v2(
             query['client_id'] = client_id
     elif current_user['role'] == 'sub_broker':
         # Sub-broker can only see logs for their linked clients
-        linked_clients = await db.Private_Investor.find(
-            {"linked_subbroker_id": current_user['id']},
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
+        linked_clients = await find_private_investors({"linked_subbroker_id": current_user['id']},
+            {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in linked_clients]
         
         if client_id:
@@ -23041,7 +23109,7 @@ class ClientChangePassword(BaseModel):
 async def get_client_verification_details(token: str):
     """Get client details for verification (no auth required)"""
     
-    client = await db.Private_Investor.find_one({"verification_token": token}, {"_id": 0})
+    client = await find_private_investor({"verification_token": token}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Invalid verification token")
     
@@ -23067,7 +23135,7 @@ async def get_client_verification_details(token: str):
 async def verify_client_profile(token: str, verify: ClientVerifyProfile):
     """Client verifies their profile details"""
     
-    client = await db.Private_Investor.find_one({"verification_token": token})
+    client = await find_private_investor({"verification_token": token})
     if not client:
         raise HTTPException(status_code=404, detail="Invalid verification token")
     
@@ -23095,7 +23163,7 @@ async def verify_client_profile(token: str, verify: ClientVerifyProfile):
     )
     
     # Update client verification status
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client['id']},
         {"$set": {
             "verification_status": "verified",
@@ -23125,9 +23193,9 @@ async def get_client_profile(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Get client record - try both user_id and id (they share the same ID in private investor flow)
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
-        client = await db.Private_Investor.find_one({"id": current_user['id']}, {"_id": 0})
+        client = await find_private_investor({"id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23184,7 +23252,7 @@ async def request_kyc_completion(current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=403, detail="Only clients can request KYC completion")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23209,7 +23277,7 @@ async def request_kyc_completion(current_user: dict = Depends(get_current_user))
     await db.notifications.insert_one(notification)
     
     # Update client record to mark KYC request sent
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client['id']},
         {"$set": {
             "kyc_request_sent": True,
@@ -23270,9 +23338,9 @@ async def submit_client_kyc(kyc_data: ClientKYCSubmission, current_user: dict = 
         raise HTTPException(status_code=403, detail="Only clients can submit KYC")
     
     # Get client record - try both user_id and id
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']})
+    client = await find_private_investor({"user_id": current_user['id']})
     if not client:
-        client = await db.Private_Investor.find_one({"id": current_user['id']})
+        client = await find_private_investor({"id": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23289,7 +23357,7 @@ async def submit_client_kyc(kyc_data: ClientKYCSubmission, current_user: dict = 
     update_data.update(kyc_dict)
     
     # Update client record
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client['id']},
         {"$set": update_data}
     )
@@ -23336,9 +23404,9 @@ async def upload_kyc_document(
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
     # Get client record - try both user_id and id
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']})
+    client = await find_private_investor({"user_id": current_user['id']})
     if not client:
-        client = await db.Private_Investor.find_one({"id": current_user['id']})
+        client = await find_private_investor({"id": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23367,7 +23435,7 @@ async def upload_kyc_document(
     }
     
     # Update client with new document
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client['id']},
         {"$push": {"kyc_documents": document}}
     )
@@ -23390,14 +23458,14 @@ async def delete_kyc_document(document_id: str, current_user: dict = Depends(get
         raise HTTPException(status_code=403, detail="Only clients can delete their KYC documents")
     
     # Get client record - try both user_id and id
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']})
+    client = await find_private_investor({"user_id": current_user['id']})
     if not client:
-        client = await db.Private_Investor.find_one({"id": current_user['id']})
+        client = await find_private_investor({"id": current_user['id']})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
     # Remove document
-    result = await db.Private_Investor.update_one(
+    result = await update_private_investor(
         {"id": client['id']},
         {"$pull": {"kyc_documents": {"id": document_id}}}
     )
@@ -23416,12 +23484,12 @@ async def get_client_kyc_documents(current_user: dict = Depends(get_current_user
         raise HTTPException(status_code=403, detail="Only clients can view their KYC documents")
     
     # Try both user_id and id
-    client = await db.Private_Investor.find_one(
+    client = await find_private_investor(
         {"user_id": current_user['id']},
         {"_id": 0, "kyc_documents": 1}
     )
     if not client:
-        client = await db.Private_Investor.find_one(
+        client = await find_private_investor(
             {"id": current_user['id']},
             {"_id": 0, "kyc_documents": 1}
         )
@@ -23451,7 +23519,7 @@ async def verify_client_kyc(client_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=403, detail="Only brokers can verify KYC")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"id": client_id})
+    client = await find_private_investor({"id": client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -23460,7 +23528,7 @@ async def verify_client_kyc(client_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Update client KYC status
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": client_id},
         {"$set": {
             "kyc_status": "verified",
@@ -23493,13 +23561,11 @@ async def get_pending_kyc_verifications(current_user: dict = Depends(get_current
         raise HTTPException(status_code=403, detail="Only brokers can view pending KYC verifications")
     
     # Find clients with submitted KYC pending verification
-    pending_clients = await db.Private_Investor.find(
-        {
+    pending_clients = await find_private_investors({
             "created_by": current_user['id'],
             "kyc_status": "pending_verification"
         },
-        {"_id": 0, "password_hash": 0, "pin_hash": 0}
-    ).to_list(1000)
+        {"_id": 0, "password_hash": 0, "pin_hash": 0}, limit=1000)
     
     return pending_clients
 
@@ -23541,7 +23607,7 @@ async def get_client_own_holdings(current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23557,7 +23623,7 @@ async def get_client_trades(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23580,7 +23646,7 @@ async def get_client_reinvestment_tags(current_user: dict = Depends(get_current_
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23624,7 +23690,7 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
         raise HTTPException(status_code=403, detail="Only clients can access this endpoint")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -23723,7 +23789,7 @@ async def create_client_trade(trade_data: TradeCreate, current_user: dict = Depe
         raise HTTPException(status_code=403, detail="Only clients can use this endpoint")
     
     # Get client record
-    client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+    client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client record not found")
     
@@ -24951,9 +25017,10 @@ async def reset_database(secret_key: str = None):
     try:
         deleted_counts = {}
         
-        # 1. Delete all clients
-        result = await db.Private_Investor.delete_many({})
-        deleted_counts['clients'] = result.deleted_count
+        # 1. Delete all clients from both passport collections
+        result1 = await db.Private_Investor_Indian_Passport.delete_many({})
+        result2 = await db.Private_Investor_Foreign_Passport.delete_many({})
+        deleted_counts['clients'] = result1.deleted_count + result2.deleted_count
         
         # 2. Delete all non-broker users (keep broker accounts)
         result = await db.users.delete_many({"role": {"$ne": "broker"}})
@@ -25461,9 +25528,10 @@ async def reset_clients(
     try:
         deleted_counts = {}
         
-        # Delete clients
-        result = await db.Private_Investor.delete_many({})
-        deleted_counts['clients'] = result.deleted_count
+        # Delete clients from both passport collections
+        result1 = await db.Private_Investor_Indian_Passport.delete_many({})
+        result2 = await db.Private_Investor_Foreign_Passport.delete_many({})
+        deleted_counts['clients'] = result1.deleted_count + result2.deleted_count
         
         # Delete client user accounts
         result = await db.users.delete_many({"role": "client"})
@@ -28783,7 +28851,7 @@ async def get_real_estate_opportunities(
         # Clients see:
         # 1. Broker-created opportunities
         # 2. Sub-broker created opportunities ONLY if tagged to that sub-broker
-        client = await db.Private_Investor.find_one({"id": current_user['id']}, {"_id": 0, "linked_subbroker_id": 1, "broker_id": 1, "created_by": 1})
+        client = await find_private_investor({"id": current_user['id']}, {"_id": 0, "linked_subbroker_id": 1, "broker_id": 1, "created_by": 1})
         if client:
             broker_id = client.get('broker_id') or client.get('created_by')
             linked_subbroker_id = client.get('linked_subbroker_id')
@@ -30418,7 +30486,7 @@ async def invest_in_opportunity(
         raise HTTPException(status_code=400, detail="This opportunity is no longer available for investment")
     
     # Verify client exists
-    client = await db.Private_Investor.find_one({"id": allocation.client_id})
+    client = await find_private_investor({"id": allocation.client_id})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -30553,7 +30621,7 @@ async def record_payment_milestone(
         # Sub-broker must have a client invested in this opportunity
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
         # Get clients linked to this sub-broker
-        sub_broker_clients = await db.Private_Investor.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_clients = await find_private_investors({"linked_subbroker_id": user_id}, {"id": 1}, limit=1000)
         sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
         if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
             raise HTTPException(status_code=403, detail="No linked clients invested in this property")
@@ -30561,7 +30629,7 @@ async def record_payment_milestone(
         # Client must be an investor
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
         # Get client record for this user
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         if not client or client['id'] not in investor_client_ids:
             raise HTTPException(status_code=403, detail="You are not invested in this property")
     else:
@@ -30636,13 +30704,13 @@ async def upload_swift_copy(
             raise HTTPException(status_code=403, detail="Not authorized")
     elif user_role == 'sub_broker':
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        sub_broker_clients = await db.Private_Investor.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_clients = await find_private_investors({"linked_subbroker_id": user_id}, {"id": 1}, limit=1000)
         sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
         if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
             raise HTTPException(status_code=403, detail="Not authorized")
     elif user_role == 'client':
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         if not client or client['id'] not in investor_client_ids:
             raise HTTPException(status_code=403, detail="Not authorized")
     else:
@@ -30718,12 +30786,12 @@ async def get_payment_schedule(
         authorized = opportunity.get('created_by') == user_id
     elif user_role == 'sub_broker':
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        sub_broker_clients = await db.Private_Investor.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_clients = await find_private_investors({"linked_subbroker_id": user_id}, {"id": 1}, limit=1000)
         sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
         authorized = any(cid in investor_client_ids for cid in sub_broker_client_ids)
     elif user_role == 'client':
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         authorized = client and client['id'] in investor_client_ids
     
     if not authorized:
@@ -30795,7 +30863,7 @@ async def express_interest(
     
     # ─── Also surface this interest on the broker's "Approvals → Interests" tab ───
     # Mirrors the /api/leads flow so the Heart button creates an actionable lead.
-    client_profile = await db.Private_Investor.find_one(
+    client_profile = await find_private_investor(
         {"id": current_user.get('client_id', current_user['id'])},
         {"_id": 0}
     )
@@ -31403,13 +31471,13 @@ async def download_invoice(
     elif user_role == 'sub_broker':
         # Sub-broker can view invoices for their clients
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        sub_broker_clients = await db.Private_Investor.find({"linked_subbroker_id": user_id}, {"id": 1}).to_list(1000)
+        sub_broker_clients = await find_private_investors({"linked_subbroker_id": user_id}, {"id": 1}, limit=1000)
         sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
         if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
             raise HTTPException(status_code=403, detail="Not authorized")
     elif user_role == 'client':
         # Client can only view their own invoices
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         if not client or invoice.get('investor_id') != client['id']:
             raise HTTPException(status_code=403, detail="Not authorized to view this invoice")
     else:
@@ -31539,7 +31607,7 @@ async def upload_developer_receipt(
     
     # Verify authorization - client can only upload for their own payment, broker can upload for any
     if current_user['role'] == 'client':
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         if not client or payment.get('investor_id') != client.get('id'):
             raise HTTPException(status_code=403, detail="Not authorized to upload receipt for this payment")
     elif current_user['role'] not in ['broker', 'sub_broker']:
@@ -31606,13 +31674,13 @@ async def download_developer_receipt(
     # Check authorization
     user_role = current_user['role']
     if user_role == 'client':
-        client = await db.Private_Investor.find_one({"pan_number": current_user.get('pan_number')})
+        client = await find_private_investor({"pan_number": current_user.get('pan_number')})
         if not client or payment.get('investor_id') != client.get('id'):
             raise HTTPException(status_code=403, detail="Not authorized")
     elif user_role == 'sub_broker':
         # Sub-broker can view receipts for their clients
         investor_client_ids = [inv.get('client_id') for inv in opportunity.get('investors', [])]
-        sub_broker_clients = await db.Private_Investor.find({"linked_subbroker_id": current_user['id']}, {"id": 1}).to_list(1000)
+        sub_broker_clients = await find_private_investors({"linked_subbroker_id": current_user['id']}, {"id": 1}, limit=1000)
         sub_broker_client_ids = [c['id'] for c in sub_broker_clients]
         if not any(cid in investor_client_ids for cid in sub_broker_client_ids):
             raise HTTPException(status_code=403, detail="Not authorized")
@@ -32170,7 +32238,7 @@ async def get_client_real_estate_investments(current_user: dict = Depends(get_cu
     
     # Get client record - try pan_number first, then pan for legacy users
     pan = current_user.get('pan_number') or current_user.get('pan')
-    client = await db.Private_Investor.find_one({"pan_number": pan})
+    client = await find_private_investor({"pan_number": pan})
     if not client:
         raise HTTPException(status_code=404, detail="Client profile not found")
     
@@ -32329,7 +32397,7 @@ async def get_xirr_comparison_report(
     projected_rates = {p['year']: p for p in settings.get('currency_projections', [])} if settings else {}
     
     # Get client info
-    client = await db.Private_Investor.find_one({"id": investor_id}, {"_id": 0, "name": 1, "preferred_currency": 1})
+    client = await find_private_investor({"id": investor_id}, {"_id": 0, "name": 1, "preferred_currency": 1})
     client_currency = client.get('preferred_currency', 'INR') if client else 'INR'
     
     # Get investor's share percentage
@@ -32702,7 +32770,7 @@ async def share_bond_via_email(
     clients_failed = []
     
     for client_id in request.client_ids:
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         if not client:
             clients_failed.append({"id": client_id, "reason": "Client not found"})
             continue
@@ -32790,7 +32858,7 @@ async def share_real_estate_via_email(
     clients_failed = []
     
     for client_id in request.client_ids:
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         if not client:
             clients_failed.append({"id": client_id, "reason": "Client not found"})
             continue
@@ -33228,7 +33296,7 @@ async def process_emails_unified(
                             logger.info(f"Auto-linked '{client_name}' to '{matched_client_name}' from saved mapping")
                         else:
                             # Fall back to 95% similarity matching
-                            all_clients = await db.Private_Investor.find({}, {'_id': 0, 'id': 1, 'name': 1}).to_list(1000)
+                            all_clients = await find_private_investors({}, {'_id': 0, 'id': 1, 'name': 1}, limit=1000)
                             best_match = None
                             best_sim = 0
                             
@@ -33290,7 +33358,7 @@ async def process_emails_unified(
                             # If client was unknown, identify from trade
                             if not matched_client_id and trade.get('client_id'):
                                 matched_client_id = trade.get('client_id')
-                                client_obj = await db.Private_Investor.find_one({"id": matched_client_id}, {"_id": 0})
+                                client_obj = await find_private_investor({"id": matched_client_id}, {"_id": 0})
                                 if client_obj:
                                     matched_client_name = client_obj.get('name')
                                     match_similarity = 1.0
@@ -33317,7 +33385,7 @@ async def process_emails_unified(
                                         # If client was unknown, identify from trade
                                         if not matched_client_id and trade.get('client_id'):
                                             matched_client_id = trade.get('client_id')
-                                            client_obj = await db.Private_Investor.find_one({"id": matched_client_id}, {"_id": 0})
+                                            client_obj = await find_private_investor({"id": matched_client_id}, {"_id": 0})
                                             if client_obj:
                                                 matched_client_name = client_obj.get('name')
                                                 match_similarity = 1.0
@@ -33883,7 +33951,7 @@ async def assign_client_to_log(
             raise HTTPException(status_code=404, detail="Email log not found")
         
         # Get the client
-        client = await db.Private_Investor.find_one({"id": request.client_id}, {"_id": 0, "id": 1, "name": 1})
+        client = await find_private_investor({"id": request.client_id}, {"_id": 0, "id": 1, "name": 1})
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
         
@@ -33969,7 +34037,7 @@ async def manual_tag_email_to_holding(
         raise HTTPException(status_code=404, detail="Email log not found")
     
     # Get client details
-    client = await db.Private_Investor.find_one({"id": request.client_id}, {"_id": 0, "id": 1, "name": 1, "pan_number": 1})
+    client = await find_private_investor({"id": request.client_id}, {"_id": 0, "id": 1, "name": 1, "pan_number": 1})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -35124,7 +35192,7 @@ async def auto_tag_single_email(
         raise HTTPException(status_code=404, detail="Email log not found")
     
     # Get the client
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+    client = await find_private_investor({"id": client_id}, {"_id": 0})
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     
@@ -35911,7 +35979,7 @@ async def get_client_actual_repayments(
     repayments = await db.Ncd_Repayments.find(query, {"_id": 0}).to_list(500)
     
     # Get client name
-    client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0, "name": 1})
+    client = await find_private_investor({"id": client_id}, {"_id": 0, "name": 1})
     client_name = client.get('name', 'Unknown') if client else 'Unknown'
     
     # Group by trade
@@ -36420,7 +36488,7 @@ async def get_email_engagement_dashboard(
     client_name_filter = None
     if client_id:
         # First try to get client from clients collection
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0, "name": 1})
+        client = await find_private_investor({"id": client_id}, {"_id": 0, "name": 1})
         if client:
             client_name_filter = client.get('name', '')
         else:
@@ -36780,7 +36848,7 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     broker_id = current_user['id']
     
     # Get clients
-    clients = await db.Private_Investor.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    clients = await find_private_investors({"created_by": broker_id}, {"_id": 0}, limit=1000)
     total_clients = len(clients)
     
     # Check user accounts for login status
@@ -36866,7 +36934,7 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
     for trade in all_trades:
         client_id = trade.get('client_id')
         if client_id:
-            client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0, "pan_number": 1})
+            client = await find_private_investor({"id": client_id}, {"_id": 0, "pan_number": 1})
             if client and client.get('pan_number'):
                 ncd_client_pans.add(client.get('pan_number'))
     ncd_unique_clients = len(ncd_client_pans)
@@ -37096,7 +37164,7 @@ async def get_clients_by_city(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only brokers can access dashboard")
     
     broker_id = current_user['id']
-    clients = await db.Private_Investor.find({"created_by": broker_id}, {"_id": 0}).to_list(1000)
+    clients = await find_private_investors({"created_by": broker_id}, {"_id": 0}, limit=1000)
     
     city_counts = {}
     for client in clients:
@@ -37188,7 +37256,7 @@ async def get_aum_distribution(current_user: dict = Depends(get_current_user)):
     for partner in partners:
         partner_id = partner.get('id')
         # Get clients linked to this sub-broker
-        linked_clients = await db.Private_Investor.find({"linked_subbroker_id": partner_id}, {"_id": 0}).to_list(1000)
+        linked_clients = await find_private_investors({"linked_subbroker_id": partner_id}, {"_id": 0}, limit=1000)
         
         # Calculate AUM from bond allocations
         sb_bond_aum = 0
@@ -37244,7 +37312,7 @@ async def get_activity_log(limit: int = 20, current_user: dict = Depends(get_cur
     ).sort("created_at", -1).to_list(limit)
     
     for trade in trades:
-        client = await db.Private_Investor.find_one({"id": trade.get('client_id')}, {"_id": 0, "name": 1})
+        client = await find_private_investor({"id": trade.get('client_id')}, {"_id": 0, "name": 1})
         bond = await db.Ncd_Master.find_one({"id": trade.get('bond_id')}, {"_id": 0, "issuer": 1, "face_value": 1})
         
         activities.append({
@@ -37266,7 +37334,7 @@ async def get_activity_log(limit: int = 20, current_user: dict = Depends(get_cur
         investors = re.get('investors', [])
         property_name = re.get('building_name', re.get('property_name', 'Unknown'))
         for inv in investors:
-            client = await db.Private_Investor.find_one({"id": inv.get('client_id')}, {"_id": 0, "name": 1})
+            client = await find_private_investor({"id": inv.get('client_id')}, {"_id": 0, "name": 1})
             activities.append({
                 "type": "real_estate_investment",
                 "status": "invested",
@@ -37277,11 +37345,16 @@ async def get_activity_log(limit: int = 20, current_user: dict = Depends(get_cur
                 "property_name": property_name
             })
     
-    # Get recent client creations
-    clients = await db.Private_Investor.find(
+    # Get recent client creations from both passport collections
+    indian_clients = await db.Private_Investor_Indian_Passport.find(
         {"created_by": broker_id},
         {"_id": 0, "name": 1, "created_at": 1, "city": 1}
     ).sort("created_at", -1).to_list(limit)
+    foreign_clients = await db.Private_Investor_Foreign_Passport.find(
+        {"created_by": broker_id},
+        {"_id": 0, "name": 1, "created_at": 1, "city": 1}
+    ).sort("created_at", -1).to_list(limit)
+    clients = sorted(indian_clients + foreign_clients, key=lambda x: x.get('created_at', ''), reverse=True)[:limit]
     
     for client in clients:
         activities.append({
@@ -37352,7 +37425,7 @@ async def get_monthly_stats(year: int = None, current_user: dict = Depends(get_c
                     pass
     
     # Get new clients by month
-    clients = await db.Private_Investor.find({"created_by": broker_id}, {"_id": 0, "created_at": 1}).to_list(1000)
+    clients = await find_private_investors({"created_by": broker_id}, {"_id": 0, "created_at": 1}, limit=1000)
     for client in clients:
         created_at = client.get('created_at')
         if created_at:
@@ -37392,7 +37465,7 @@ async def upload_cas_pdf(
     """
     try:
         # Validate client exists and get details
-        client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0})
+        client = await find_private_investor({"id": client_id}, {"_id": 0})
         if not client:
             raise HTTPException(status_code=404, detail="Client not found. Please select a valid client.")
         
@@ -37622,7 +37695,7 @@ async def upload_cas_pdf_v2(
         pan_results = []
         for pan in all_cas_info['pans']:
             # Check if client with this PAN already exists
-            existing_client = await db.Private_Investor.find_one(
+            existing_client = await find_private_investor(
                 {"$or": [
                     {"pan_number": {"$regex": f"^{pan}$", "$options": "i"}},
                     {"pan": {"$regex": f"^{pan}$", "$options": "i"}}
@@ -37803,7 +37876,7 @@ async def generate_report_from_session(
         for pr in pan_results:
             if pr['status'] == 'new':
                 # Check if PAN already exists (double-check, should be caught in upload step)
-                existing_client = await db.Private_Investor.find_one({
+                existing_client = await find_private_investor({
                     "$or": [
                         {"pan_number": pr['pan']},
                         {"pan": pr['pan']}
@@ -37853,7 +37926,8 @@ async def generate_report_from_session(
                     "source": "cas_auto_create"
                 }
                 
-                await db.Private_Investor.insert_one(new_client)
+                # CAS auto-create uses PAN, so goes to Indian passport collection
+                await db.Private_Investor_Indian_Passport.insert_one(new_client)
                 created_clients.append(new_client)
                 
                 # Send setup email
@@ -38246,7 +38320,7 @@ async def get_analysis_details(
         # Fix client_name - lookup from clients collection by PAN
         client_pan = analysis.get('client_pan', '').upper()
         if client_pan:
-            client_doc = await db.Private_Investor.find_one(
+            client_doc = await find_private_investor(
                 {"pan_number": client_pan},
                 {"_id": 0, "name": 1}
             )
@@ -38407,14 +38481,14 @@ async def get_analysis_dashboard(
         # Get correct client name - first try by PAN, then by client_id
         client_name = analysis.get('client_name')
         if client_pan:
-            client_doc = await db.Private_Investor.find_one(
+            client_doc = await find_private_investor(
                 {"pan_number": client_pan},
                 {"_id": 0, "name": 1}
             )
             if client_doc:
                 client_name = client_doc.get('name', client_name)
         elif analysis.get('client_id'):
-            client_doc = await db.Private_Investor.find_one(
+            client_doc = await find_private_investor(
                 {"id": analysis.get('client_id')},
                 {"_id": 0, "name": 1}
             )
@@ -38971,10 +39045,7 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
     sub_broker_id = current_user['id']
     
     # Get clients linked to this sub-broker
-    linked_clients = await db.Private_Investor.find(
-        {"linked_subbroker_id": sub_broker_id},
-        {"_id": 0}
-    ).to_list(1000)
+    linked_clients = await find_private_investors({"linked_subbroker_id": sub_broker_id}, {"_id": 0}, limit=1000)
     
     client_ids = [c.get('id') for c in linked_clients]
     total_clients = len(linked_clients)
@@ -39342,7 +39413,7 @@ async def create_lead(request: CreateLeadRequest, current_user: dict = Depends(g
     client = None
     client_sub_broker_id = None
     if current_user['role'] == 'client':
-        client = await db.Private_Investor.find_one({"id": current_user.get('client_id')}, {"_id": 0})
+        client = await find_private_investor({"id": current_user.get('client_id')}, {"_id": 0})
         if client:
             # Get the sub-broker who manages this client (if any)
             client_sub_broker_id = client.get('sub_broker_id') or client.get('created_by_sub_broker')
@@ -39494,7 +39565,7 @@ async def get_leads(
         if not lead.get('client_email') or not lead.get('client_mobile'):
             client_id = lead.get('client_id')
             if client_id:
-                client = await db.Private_Investor.find_one(
+                client = await find_private_investor(
                     {"$or": [{"id": client_id}, {"user_id": client_id}]},
                     {"_id": 0, "email": 1, "mobile": 1, "phone": 1}
                 )
@@ -40333,7 +40404,7 @@ async def log_user_activity(request: LogUserActivityRequest, current_user: dict 
         if sub_broker:
             activity_log['broker_id'] = sub_broker.get('created_by')
     elif current_user['role'] == 'client':
-        client = await db.Private_Investor.find_one({"user_id": current_user['id']}, {"_id": 0})
+        client = await find_private_investor({"user_id": current_user['id']}, {"_id": 0})
         if client:
             activity_log['broker_id'] = client.get('created_by')
             activity_log['linked_subbroker_id'] = client.get('linked_subbroker_id')
@@ -40417,7 +40488,7 @@ async def get_user_activity_logs(
         
         # Get client name if client_id present and different from user
         if log.get('client_id') and log.get('user_role') != 'client':
-            client = await db.Private_Investor.find_one({"id": log['client_id']}, {"_id": 0, "name": 1})
+            client = await find_private_investor({"id": log['client_id']}, {"_id": 0, "name": 1})
             log['viewed_client_name'] = client.get('name') if client else None
     
     return {
@@ -40638,10 +40709,8 @@ async def get_untagged_trades(
     
     # Sub-brokers can only see their clients' trades
     if current_user['role'] == 'sub_broker':
-        sub_broker_clients = await db.Private_Investor.find(
-            {"created_by": current_user['id']}, 
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
+        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in sub_broker_clients]
         query["client_id"] = {"$in": client_ids}
     
@@ -40661,10 +40730,8 @@ async def get_pending_approval_trades(current_user: dict = Depends(get_current_u
     if current_user['role'] == 'client':
         query["client_id"] = current_user.get('client_id')
     elif current_user['role'] == 'sub_broker':
-        sub_broker_clients = await db.Private_Investor.find(
-            {"created_by": current_user['id']}, 
-            {"_id": 0, "id": 1}
-        ).to_list(1000)
+        sub_broker_clients = await find_private_investors({"created_by": current_user['id']}, 
+            {"_id": 0, "id": 1}, limit=1000)
         client_ids = [c['id'] for c in sub_broker_clients]
         query["client_id"] = {"$in": client_ids}
     
@@ -40696,7 +40763,7 @@ async def tag_trade(
     
     # Sub-broker can only tag their clients' trades
     if current_user['role'] == 'sub_broker':
-        client = await db.Private_Investor.find_one({"id": trade['client_id']}, {"_id": 0})
+        client = await find_private_investor({"id": trade['client_id']}, {"_id": 0})
         if not client or client.get('created_by') != current_user['id']:
             raise HTTPException(status_code=403, detail="You can only tag your own clients' trades")
     
@@ -40739,7 +40806,7 @@ async def tag_trade(
                 "portfolio": request.portfolio,
                 "allocated_at": datetime.now(timezone.utc).isoformat()
             }
-            await db.Private_Investor.update_one(
+            await update_private_investor(
                 {"id": trade['client_id']},
                 {"$push": {"bond_allocations": allocation}}
             )
@@ -40818,7 +40885,7 @@ async def client_approve_trade(trade_id: str, current_user: dict = Depends(get_c
             "portfolio": trade.get('portfolio'),
             "allocated_at": datetime.now(timezone.utc).isoformat()
         }
-        await db.Private_Investor.update_one(
+        await update_private_investor(
             {"id": trade['client_id']},
             {"$push": {"bond_allocations": allocation}}
         )
@@ -44202,7 +44269,7 @@ async def send_private_investor_otp(request: PrivateInvestorOTPRequest, backgrou
     email_lower = request.email.lower().strip()
     
     # Check if email already exists in clients
-    existing = await db.Private_Investor.find_one({"email": email_lower})
+    existing = await find_private_investor({"email": email_lower})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered. Please login.")
     
@@ -44262,7 +44329,7 @@ async def register_private_investor(request: PrivateInvestorRegister):
             raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
     
     # Check if email already exists
-    existing = await db.Private_Investor.find_one({"email": email_lower})
+    existing = await find_private_investor({"email": email_lower})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
@@ -44322,11 +44389,16 @@ async def get_pending_private_investors(current_user: dict = Depends(get_current
     for p in pending_self_signup:
         p['source'] = 'self_signup'
     
-    # Get MFD/RIA created pending clients
-    pending_subbroker = await db.Private_Investor.find(
+    # Get MFD/RIA created pending clients from both passport collections
+    pending_subbroker_indian = await db.Private_Investor_Indian_Passport.find(
         {"approval_status": "pending_approval", "created_by_subbroker": True}, 
         {"_id": 0}
     ).sort("created_at", -1).to_list(1000)
+    pending_subbroker_foreign = await db.Private_Investor_Foreign_Passport.find(
+        {"approval_status": "pending_approval", "created_by_subbroker": True}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    pending_subbroker = pending_subbroker_indian + pending_subbroker_foreign
     
     # Get sub-broker names for each
     for p in pending_subbroker:
@@ -44397,7 +44469,12 @@ async def approve_private_investor(investor_id: str, current_user: dict = Depend
         "source": "public_signup"
     }
     
-    await db.Private_Investor.insert_one(client_data)
+    # Insert into appropriate collection based on passport type
+    passport_type = pending.get("passport_type", "indian")
+    if passport_type == "indian":
+        await db.Private_Investor_Indian_Passport.insert_one(client_data)
+    else:
+        await db.Private_Investor_Foreign_Passport.insert_one(client_data)
     
     # Also create in users collection for login
     user_data = {
@@ -44480,7 +44557,7 @@ async def approve_subbroker_created_client(investor_id: str, current_user: dict 
         raise HTTPException(status_code=403, detail="Access denied")
     
     # Find the pending client in clients collection
-    client = await db.Private_Investor.find_one({"id": investor_id, "approval_status": "pending_approval", "created_by_subbroker": True})
+    client = await find_private_investor({"id": investor_id, "approval_status": "pending_approval", "created_by_subbroker": True})
     if not client:
         raise HTTPException(status_code=404, detail="Pending client not found")
     
@@ -44495,7 +44572,7 @@ async def approve_subbroker_created_client(investor_id: str, current_user: dict 
         )
     
     # Update client status to approved
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": investor_id},
         {"$set": {
             "approval_status": "approved",
@@ -44560,12 +44637,12 @@ async def reject_subbroker_created_client(investor_id: str, reason: str = Body(.
     if current_user['role'] != 'broker':
         raise HTTPException(status_code=403, detail="Access denied")
     
-    client = await db.Private_Investor.find_one({"id": investor_id, "approval_status": "pending_approval", "created_by_subbroker": True})
+    client = await find_private_investor({"id": investor_id, "approval_status": "pending_approval", "created_by_subbroker": True})
     if not client:
         raise HTTPException(status_code=404, detail="Pending client not found")
     
     # Update status to rejected
-    await db.Private_Investor.update_one(
+    await update_private_investor(
         {"id": investor_id},
         {"$set": {
             "approval_status": "rejected",
@@ -46492,7 +46569,7 @@ async def bulk_upload_real_estate_investors(
                 raise ValueError(f"No Real_Estate_Master for '{building_name}' unit '{unit_no}'")
 
             # Lookup investor by PAN
-            client_doc = await db.Private_Investor.find_one(
+            client_doc = await find_private_investor(
                 {"pan_number": str(client_pan).upper()},
                 {"id": 1, "name": 1, "client_id": 1},
             )
