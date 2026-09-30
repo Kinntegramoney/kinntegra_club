@@ -18315,6 +18315,11 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         if reinv_log.get('reinvestment_tag'):
             found_tags_count += 1
             logger.info(f"REINV_TAG_FOUND: er_id={er_id}, trade_id={trade_id}, date_key={date_key}, tag={reinv_log.get('reinvestment_tag')}, found_by={'tuple' if log_by_tuple else 'id'}")
+        elif er_id:
+            # Log when lookup fails for entries that have an id (potential mismatch)
+            # Only log first few to avoid spam
+            if found_tags_count == 0 and len(cashflows_by_trade) < 5:
+                logger.debug(f"REINV_LOOKUP_MISS: er_id={er_id}, trade_id={trade_id}, date_key={date_key}, index_has_id={er_id in reinv_logs_index}, index_has_tuple={(trade_id, date_key) in reinv_logs_index}")
         
         synthetic_cf = {
             "id": er_id,
