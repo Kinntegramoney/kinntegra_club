@@ -31,6 +31,12 @@ const LOGIN_OPTIONS = [
   { type: 'mfd_ria_partner', label: 'MFD/RIA', icon: Wallet, hint: 'Partner Code' },
 ];
 
+const SIGNUP_OPTIONS = [
+  { path: '/signup', label: 'Private Investor', icon: UserCircle2, hint: 'Register as investor' },
+  { path: '/re-broker-signup', label: 'Real Estate Broker', icon: Home, hint: 'Register with RERA' },
+  { path: '/mfd-signup', label: 'MFD/RIA Partner', icon: Wallet, hint: 'Register as partner' },
+];
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -108,6 +114,34 @@ const LandingPage = () => {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:scale-105 flex items-center gap-2 border-2"
+                    style={{ borderColor: colors.gold, color: colors.white, backgroundColor: 'transparent' }}
+                    data-testid="desktop-signup-trigger"
+                  >
+                    Sign Up
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60 bg-white shadow-xl border border-gray-100 rounded-xl p-1">
+                  {SIGNUP_OPTIONS.map(({ path, label, icon: Icon, hint }) => (
+                    <DropdownMenuItem
+                      key={path}
+                      onSelect={() => navigate(path)}
+                      className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-amber-50 focus:text-amber-900"
+                      data-testid={`desktop-signup-${path.replace('/', '')}`}
+                    >
+                      <Icon className="h-4 w-4 text-amber-600" />
+                      <div className="ml-2 flex flex-col">
+                        <span className="text-sm font-semibold">{label}</span>
+                        <span className="text-[11px] text-gray-400">{hint}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <button
@@ -140,6 +174,20 @@ const LandingPage = () => {
                     onClick={() => { setMobileMenuOpen(false); navigate(`/login?type=${type}`); }}
                     className="w-full flex items-center gap-2 py-2 px-2 rounded-lg text-sm text-white/80 hover:bg-white/10 hover:text-white"
                     data-testid={`mobile-login-${type}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 border-t border-white/10 pt-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-white/40 px-1">Sign Up as</p>
+                {SIGNUP_OPTIONS.map(({ path, label, icon: Icon }) => (
+                  <button
+                    key={path}
+                    onClick={() => { setMobileMenuOpen(false); navigate(path); }}
+                    className="w-full flex items-center gap-2 py-2 px-2 rounded-lg text-sm text-white/80 hover:bg-white/10 hover:text-white"
+                    data-testid={`mobile-signup-${path.replace('/', '')}`}
                   >
                     <Icon className="h-4 w-4" />
                     {label}

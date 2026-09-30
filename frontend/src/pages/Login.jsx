@@ -342,6 +342,36 @@ export default function Login() {
                lineHeight: '1.6',
                color: '#6B7280'
              }}>
+          {/* Sign Up Link */}
+          <div className="mb-6 pb-6 border-b" style={{ borderColor: '#E5E7EB' }}>
+            <p className="text-sm mb-3" style={{ color: '#374151' }}>Don't have an account?</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                to="/signup"
+                className="px-4 py-2 text-sm rounded-lg transition-colors hover:bg-amber-100"
+                style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                data-testid="signup-private-investor"
+              >
+                Private Investor
+              </Link>
+              <Link
+                to="/re-broker-signup"
+                className="px-4 py-2 text-sm rounded-lg transition-colors hover:bg-amber-100"
+                style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                data-testid="signup-re-broker"
+              >
+                RE Broker
+              </Link>
+              <Link
+                to="/mfd-signup"
+                className="px-4 py-2 text-sm rounded-lg transition-colors hover:bg-amber-100"
+                style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                data-testid="signup-mfd"
+              >
+                MFD/RIA
+              </Link>
+            </div>
+          </div>
           <p className="font-semibold" style={{ color: '#374151' }}>Kinntegraa L.L.C-FZ</p>
           <p className="mt-1">License No: 2418465.01</p>
           <p className="mt-1">Meydan Grandstand, 6th floor, Meydan Road,<br />Nad Al Sheba, Dubai, U.A.E.</p>
