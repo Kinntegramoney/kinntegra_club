@@ -18274,24 +18274,29 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         {"_id": 0}
     ).to_list(50000)
     
-    # Index reinvestment_logs by (trade_id, expected_date) for efficient lookup
+    # Index reinvestment_logs by multiple keys for robust lookup
     reinv_logs_index: dict = {}
     logs_with_tag_count = 0
     for log in all_reinv_logs:
         trade_id = log.get('trade_id')
         date_key = (log.get('expected_date') or log.get('cashflow_date') or "").split("T")[0].split(" ")[0]
         cf_id = log.get('cashflow_id')
+        client_id = log.get('client_id')
+        bond_id = log.get('bond_id')
         tag = log.get('reinvestment_tag')
         
         if tag:
             logs_with_tag_count += 1
-            logger.info(f"REINV_LOG_INDEX: cf_id={cf_id}, trade_id={trade_id}, date_key={date_key}, tag={tag}")
+            logger.info(f"REINV_LOG_INDEX: cf_id={cf_id}, trade_id={trade_id}, date_key={date_key}, client_id={client_id}, bond_id={bond_id}, tag={tag}")
         
+        # Index by multiple keys for robust lookup
         if trade_id and date_key:
             reinv_logs_index[(trade_id, date_key)] = log
-        # Also index by cashflow_id for backward compatibility
         if cf_id:
             reinv_logs_index[cf_id] = log
+        # Additional index by (client_id, bond_id, date_key) for cases where trade_id might not match
+        if client_id and bond_id and date_key:
+            reinv_logs_index[(client_id, bond_id, date_key)] = log
     
     logger.info(f"REINV_LOG_INDEX_SUMMARY: total_logs={len(all_reinv_logs)}, logs_with_tags={logs_with_tag_count}, index_size={len(reinv_logs_index)}")
 
@@ -18306,10 +18311,15 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         date_key = (er.get("expected_date") or "").split("T")[0].split(" ")[0]
         er_id = er.get("id")
         
-        # Try both lookup methods
+        # Try multiple lookup methods to find the reinvestment log
         log_by_tuple = reinv_logs_index.get((trade_id, date_key))
         log_by_id = reinv_logs_index.get(er_id)
-        reinv_log = log_by_tuple or log_by_id or {}
+        # Also try by (client_id, bond_id, date_key) for more robust matching
+        client_id = er.get("client_id")
+        bond_id = er.get("bond_id")
+        log_by_client_bond = reinv_logs_index.get((client_id, bond_id, date_key)) if client_id and bond_id else None
+        
+        reinv_log = log_by_tuple or log_by_id or log_by_client_bond or {}
         
         # Debug: log lookups for tagged entries
         if reinv_log.get('reinvestment_tag'):
