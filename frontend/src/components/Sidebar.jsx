@@ -69,6 +69,7 @@ export default function Sidebar({ user }) {
     { path: "/broker/admin/clients", label: "Private Investors", icon: UserCheck },
     { path: "/broker/bulk-upload", label: "Upload", icon: Upload },
     { path: "/broker/downloads", label: "Downloads", icon: Download },
+    { path: "/broker/database-manager", label: "DB Manager", icon: Database },
     { path: "/broker/settings", label: "Settings", icon: Settings },
   ];
 

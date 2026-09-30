@@ -68,6 +68,7 @@ import BrokerDashboardSummary from "@/pages/BrokerDashboardSummary";
 import UntaggedTrades from "@/pages/UntaggedTrades";
 import EmailEngagementDashboard from "@/pages/EmailEngagementDashboard";
 import DataGathering from "@/pages/DataGathering";
+import DatabaseManager from "@/pages/DatabaseManager";
 import { Toaster } from "@/components/ui/sonner";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 // InstallPWA removed per user request
@@ -276,6 +277,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["broker"]}>
                 <Downloads />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/broker/database-manager" 
+            element={
+              <ProtectedRoute allowedRoles={["broker"]}>
+                <DatabaseManager />
               </ProtectedRoute>
             } 
           />

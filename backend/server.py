@@ -25119,6 +25119,234 @@ async def reset_database(secret_key: str = None):
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
+
+# =============================================
+# Database Collections Management
+# =============================================
+
+# Define collection categories and status
+COLLECTION_CATEGORIES = {
+    # Active Core Collections
+    "active": {
+        "users": "User accounts (brokers, sub-brokers)",
+        "Private_Investor_Indian_Passport": "Indian passport holders",
+        "Private_Investor_Foreign_Passport": "Foreign passport holders",
+        "Mfd_Ria_Partner": "MFD/RIA partners (sub-brokers)",
+        "Ncd_Master": "NCD/Bond master data",
+        "Ncd_Investment_Details": "NCD trades/investments",
+        "Ncd_Expected_Repayments": "Expected NCD repayments (single source of truth)",
+        "Ncd_Repayments": "Actual NCD repayments (from email sync)",
+        "actual_repayments": "Actual repayments mapped from emails",
+        "reinvestment_logs": "Reinvestment tagging decisions",
+        "Real_Estate_Master": "Real estate opportunities",
+        "real_estate_investments": "Real estate investments",
+        "cas_analyses": "CAS analysis records",
+        "notifications": "System notifications",
+        "activity_logs": "Activity audit logs",
+        "broker_settings": "Broker configuration",
+        "email_sync_status": "Email sync tracking",
+    },
+    # Deprecated Collections (can be safely removed)
+    "deprecated": {
+        "holding_cashflows": "DEPRECATED - Was used for expected cashflows, now using Ncd_Expected_Repayments",
+        "Private_Investor": "DEPRECATED - Migrated to Indian/Foreign passport collections",
+        "cashflows": "DEPRECATED - Old cashflow storage",
+    },
+    # Master/Reference Data (usually not deleted)
+    "master": {
+        "Gender": "Gender master",
+        "Country": "Country master",
+        "scheme_master": "MF scheme master",
+        "MFSD201": "Karvy MF data",
+        "MFSD202": "CAMS MF data",
+    },
+    # Protected Collections (never delete)
+    "protected": {
+        "users": "User accounts - contains broker logins",
+    }
+}
+
+@api_router.get("/admin/database/collections")
+async def list_database_collections(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    List all database collections with their record counts and status.
+    Shows which collections are active, deprecated, or can be safely removed.
+    """
+    if current_user.get('role') not in ['broker', 'superuser', 'admin']:
+        raise HTTPException(status_code=403, detail="Only brokers/admins can view collections")
+    
+    try:
+        # Get all collection names from MongoDB
+        collection_names = await db.list_collection_names()
+        
+        collections_info = []
+        total_records = 0
+        
+        for name in sorted(collection_names):
+            # Skip system collections
+            if name.startswith('system.'):
+                continue
+            
+            # Get document count
+            try:
+                count = await db[name].count_documents({})
+            except Exception:
+                count = 0
+            
+            total_records += count
+            
+            # Determine category and status
+            category = "unknown"
+            status = "active"
+            description = ""
+            can_delete = True
+            
+            for cat, collections in COLLECTION_CATEGORIES.items():
+                if name in collections:
+                    category = cat
+                    description = collections[name]
+                    if cat == "deprecated":
+                        status = "deprecated"
+                    elif cat == "protected":
+                        status = "protected"
+                        can_delete = False
+                    elif cat == "master":
+                        status = "master"
+                        can_delete = False
+                    break
+            
+            # Protected users collection
+            if name == "users":
+                can_delete = False
+            
+            collections_info.append({
+                "name": name,
+                "count": count,
+                "category": category,
+                "status": status,
+                "description": description,
+                "can_delete": can_delete,
+            })
+        
+        # Sort: deprecated first, then by count descending
+        collections_info.sort(key=lambda x: (
+            0 if x['status'] == 'deprecated' else 1,
+            -x['count']
+        ))
+        
+        return {
+            "total_collections": len(collections_info),
+            "total_records": total_records,
+            "collections": collections_info,
+            "categories": {
+                "active": len([c for c in collections_info if c['status'] == 'active']),
+                "deprecated": len([c for c in collections_info if c['status'] == 'deprecated']),
+                "master": len([c for c in collections_info if c['status'] == 'master']),
+                "protected": len([c for c in collections_info if c['status'] == 'protected']),
+                "unknown": len([c for c in collections_info if c['category'] == 'unknown']),
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to list collections: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list collections: {str(e)}")
+
+
+@api_router.delete("/admin/database/collections/{collection_name}")
+async def delete_collection(
+    collection_name: str,
+    secret_key: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete a specific collection. Requires secret key for safety.
+    Protected and master collections cannot be deleted.
+    """
+    if current_user.get('role') not in ['broker', 'superuser', 'admin']:
+        raise HTTPException(status_code=403, detail="Only brokers/admins can delete collections")
+    
+    if secret_key != RESET_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    # Check if collection is protected
+    if collection_name in COLLECTION_CATEGORIES.get('protected', {}):
+        raise HTTPException(status_code=403, detail=f"Collection '{collection_name}' is protected and cannot be deleted")
+    
+    if collection_name == "users":
+        raise HTTPException(status_code=403, detail="Users collection cannot be deleted")
+    
+    try:
+        # Get count before deletion
+        count_before = await db[collection_name].count_documents({})
+        
+        # Delete all documents
+        result = await db[collection_name].delete_many({})
+        
+        # Optionally drop the collection entirely
+        await db[collection_name].drop()
+        
+        return {
+            "success": True,
+            "collection": collection_name,
+            "deleted_count": result.deleted_count,
+            "message": f"Collection '{collection_name}' deleted successfully ({count_before} records removed)"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to delete collection {collection_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete collection: {str(e)}")
+
+
+@api_router.post("/admin/database/cleanup-deprecated")
+async def cleanup_deprecated_collections(
+    secret_key: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Remove all deprecated collections in one go.
+    This cleans up old/unused collections like holding_cashflows, Private_Investor, etc.
+    """
+    if current_user.get('role') not in ['broker', 'superuser', 'admin']:
+        raise HTTPException(status_code=403, detail="Only brokers/admins can cleanup collections")
+    
+    if secret_key != RESET_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    try:
+        deprecated = COLLECTION_CATEGORIES.get('deprecated', {})
+        results = {}
+        
+        for collection_name, description in deprecated.items():
+            try:
+                count = await db[collection_name].count_documents({})
+                if count > 0:
+                    await db[collection_name].delete_many({})
+                await db[collection_name].drop()
+                results[collection_name] = {
+                    "status": "deleted",
+                    "records_removed": count,
+                    "description": description
+                }
+            except Exception as e:
+                results[collection_name] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        return {
+            "success": True,
+            "message": "Deprecated collections cleanup complete",
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to cleanup deprecated collections: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+
+
 # =============================================
 # Individual Reset Endpoints
 # =============================================
