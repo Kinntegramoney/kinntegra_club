@@ -25157,6 +25157,10 @@ COLLECTION_CATEGORIES = {
         "Country": "DEPRECATED - Unused country master",
         "MFSD201": "DEPRECATED - Unused Karvy MF data placeholder",
         "MFSD202": "DEPRECATED - Unused CAMS MF data placeholder",
+        "activity_logs": "DEPRECATED - Unused activity logging placeholder",
+        "approval_workflows": "DEPRECATED - Unused workflow placeholder",
+        "bonds": "DEPRECATED - Unused, use Ncd_Master instead",
+        "clients": "DEPRECATED - Unused, use Private_Investor_* collections instead",
     },
     # Master/Reference Data (usually not deleted)
     "master": {
