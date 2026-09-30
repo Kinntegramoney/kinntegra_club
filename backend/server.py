@@ -18285,6 +18285,8 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         cf_id = log.get('cashflow_id')
         if cf_id:
             reinv_logs_index[cf_id] = log
+    
+    logger.info(f"Reinv logs index: {len(reinv_logs_index)} entries, sample keys: {list(reinv_logs_index.keys())[:5]}")
 
     # Build cashflows_by_trade directly from Ncd_Expected_Repayments
     # Tagging state comes from reinvestment_logs only
@@ -18297,6 +18299,10 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         
         # Get tagging state from reinvestment_logs
         reinv_log = reinv_logs_index.get((trade_id, date_key)) or reinv_logs_index.get(er.get("id"), {})
+        
+        # Debug: log when a tag is found
+        if reinv_log.get('reinvestment_tag'):
+            logger.info(f"Found reinv_log for er.id={er.get('id')}, trade_id={trade_id}, date_key={date_key}, tag={reinv_log.get('reinvestment_tag')}")
         
         synthetic_cf = {
             "id": er.get("id"),
