@@ -20509,8 +20509,31 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             {"$set": update_data}
         )
         
+        # Also update Ncd_Expected_Repayments with tagging state
+        # This is now the source of truth for the Reinvestment Tagging page
+        await db.Ncd_Expected_Repayments.update_one(
+            {"id": cashflow_id},
+            {"$set": {
+                "reinvestment_tag": update.reinvestment_tag,
+                "approval_status": update_data.get('approval_status', 'pending'),
+                "client_approved": update_data.get('client_approved', False),
+                "has_split_allocations": True,
+                "ucc_allocations": validated_allocations,
+                "target_ucc": validated_allocations[0]['ucc'],
+                "portfolio_category": validated_allocations[0]['portfolio'],
+                "tagged_at": datetime.now(timezone.utc).isoformat(),
+                "tagged_by": current_user['id'],
+            }}
+        )
+        
         # Delete any existing log entries for this cashflow (to prevent duplicates)
         await db.reinvestment_logs.delete_many({"cashflow_id": cashflow_id})
+        # Also delete by trade_id + expected_date to handle any mismatched keys
+        if cashflow.get('trade_id') and cashflow.get('date'):
+            await db.reinvestment_logs.delete_many({
+                "trade_id": cashflow['trade_id'],
+                "expected_date": cashflow['date'].split('T')[0].split(' ')[0]
+            })
         
         # Distribute the cashflow's true net_amount across allocations so that
         # non-residual rows carry their rounded investment amount as
@@ -20530,6 +20553,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 "id": str(uuid.uuid4()),
                 "type": "reinvestment_tag_split",
                 "cashflow_id": cashflow_id,
+                "trade_id": cashflow.get('trade_id'),  # CRITICAL: Needed for lookup in get_upcoming_reinvestments
                 "client_id": cashflow['client_id'],
                 "client_name": client.get('name', ''),
                 "bond_id": cashflow.get('bond_id'),
@@ -20543,12 +20567,16 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 "residual_amount": alloc_residual,  # Difference (net - round_down)
                 "portfolio": alloc['portfolio'],
                 "tag": alloc['tag'],
+                "reinvestment_tag": alloc['tag'],  # Alias for consistency
                 "total_allocations": len(validated_allocations),
                 "total_cashflow_net_amount": cashflow.get('net_amount', 0),  # Full cashflow net amount
                 "tagged_by": current_user['id'],
                 "tagged_by_name": current_user.get('name', ''),
                 "is_past_date": is_past_date,
                 "approval_status": update_data.get('approval_status', 'pending'),
+                "client_approved": update_data.get('client_approved', False),
+                "has_split_allocations": True,
+                "ucc_allocations": validated_allocations,  # Store all allocations for reference
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.reinvestment_logs.insert_one(log_entry)
