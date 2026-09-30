@@ -9056,8 +9056,8 @@ async def bulk_upload_historical_trades(
                     results['failed'] += 1
                     continue
                 
-                # Check for duplicate actual repayment
-                existing = await db.actual_repayments.find_one({
+                # Check for duplicate repayment in Ncd_Repayments
+                existing = await db.Ncd_Repayments.find_one({
                     "bond_id": bond['id'],
                     "client_id": client['id'],
                     "repayment_date": rep_date_str,
@@ -9108,7 +9108,7 @@ async def bulk_upload_historical_trades(
                             matching_trade = sorted(all_client_trades, key=lambda x: x.get('investment_date', ''))[0]
                             inv_date_str = matching_trade.get('investment_date', '')[:10] if matching_trade.get('investment_date') else None
                 
-                # Store actual repayment
+                # Store repayment in Ncd_Repayments (unified collection)
                 actual_repayment = {
                     "id": str(uuid.uuid4()),
                     "bond_id": bond['id'],
@@ -9125,13 +9125,14 @@ async def bulk_upload_historical_trades(
                     "tds": tds,
                     "net_amount": net_amount,
                     "type": "actual",  # Mark as actual
+                    "source": "historical_upload",  # Source marker for unified collection
                     "created_by": current_user['id'],
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "is_historical": True,
                     "trade_id": matching_trade['id'] if matching_trade else None
                 }
                 
-                await db.actual_repayments.insert_one(actual_repayment)
+                await db.Ncd_Repayments.insert_one(actual_repayment)
                 results['repayments_recorded'] += 1
                 results['success'] += 1
                 
@@ -15434,6 +15435,116 @@ async def export_ncd_repayments(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/admin/migrate-actual-to-ncd-repayments")
+async def migrate_actual_to_ncd_repayments(
+    dry_run: bool = True,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Migrate all records from `actual_repayments` collection to `Ncd_Repayments`.
+    
+    This consolidates repayment data into a single collection:
+    - Records that already exist in Ncd_Repayments (by client_id+bond_id+date+amount) are merged
+    - New records are inserted with source="migrated_from_actual_repayments"
+    
+    Use dry_run=true (default) to preview changes without applying them.
+    Use dry_run=false to actually perform the migration.
+    """
+    if current_user.get('role') != 'broker':
+        raise HTTPException(status_code=403, detail="Only brokers can run migrations")
+    
+    # Get all actual_repayments
+    actual_reps = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(None)
+    
+    if not actual_reps:
+        return {
+            "success": True,
+            "message": "No records in actual_repayments to migrate",
+            "migrated": 0,
+            "merged": 0,
+            "dry_run": dry_run
+        }
+    
+    migrated = 0
+    merged = 0
+    migration_details = []
+    
+    for ar in actual_reps:
+        # Check for duplicate in Ncd_Repayments by key fields
+        existing = await db.Ncd_Repayments.find_one({
+            "client_id": ar.get("client_id"),
+            "bond_id": ar.get("bond_id"),
+            "repayment_date": ar.get("repayment_date"),
+            "gross_amount": ar.get("gross_amount")
+        }, {"_id": 0})
+        
+        if existing:
+            # Merge additional fields from actual_repayments into existing Ncd_Repayments record
+            merge_fields = {
+                "trade_id": ar.get("trade_id") or existing.get("trade_id"),
+                "investment_date": ar.get("investment_date") or existing.get("investment_date"),
+                "is_historical": ar.get("is_historical", False) or existing.get("is_historical", False),
+                "type": ar.get("type") or existing.get("type"),
+                "email_log_id": ar.get("email_log_id") or existing.get("email_log_id"),
+            }
+            # Merge reinvestment tagging fields if present
+            if ar.get("reinvestment_tag"):
+                merge_fields["reinvestment_tag"] = ar.get("reinvestment_tag")
+            if ar.get("portfolio_category"):
+                merge_fields["portfolio_category"] = ar.get("portfolio_category")
+            if ar.get("target_ucc"):
+                merge_fields["target_ucc"] = ar.get("target_ucc")
+            if ar.get("tagged_at"):
+                merge_fields["tagged_at"] = ar.get("tagged_at")
+            if ar.get("tagged_by"):
+                merge_fields["tagged_by"] = ar.get("tagged_by")
+            
+            if not dry_run:
+                await db.Ncd_Repayments.update_one(
+                    {"id": existing["id"]},
+                    {"$set": merge_fields}
+                )
+            
+            merged += 1
+            migration_details.append({
+                "action": "merged",
+                "client_name": ar.get("client_name", "Unknown"),
+                "bond_code": ar.get("bond_code", ""),
+                "repayment_date": ar.get("repayment_date", ""),
+                "gross_amount": ar.get("gross_amount", 0)
+            })
+        else:
+            # Insert as new record
+            new_doc = {**ar}
+            # Ensure it has the source marker
+            if not new_doc.get("source"):
+                new_doc["source"] = "migrated_from_actual_repayments"
+            # Remove MongoDB _id if present
+            new_doc.pop("_id", None)
+            
+            if not dry_run:
+                await db.Ncd_Repayments.insert_one(new_doc)
+            
+            migrated += 1
+            migration_details.append({
+                "action": "migrated",
+                "client_name": ar.get("client_name", "Unknown"),
+                "bond_code": ar.get("bond_code", ""),
+                "repayment_date": ar.get("repayment_date", ""),
+                "gross_amount": ar.get("gross_amount", 0)
+            })
+    
+    return {
+        "success": True,
+        "message": f"{'Would migrate' if dry_run else 'Migrated'} {migrated} records, {'would merge' if dry_run else 'merged'} {merged} records",
+        "total_actual_repayments": len(actual_reps),
+        "migrated": migrated,
+        "merged": merged,
+        "dry_run": dry_run,
+        "details": migration_details[:50]  # Show first 50 for preview
+    }
+
+
 @api_router.get("/holdings/private-investors")
 async def get_holdings_clients(current_user: dict = Depends(get_current_user)):
     """Get list of clients with their holding summaries for the Holdings page.
@@ -15821,9 +15932,9 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
     # This prevents the same repayment from being counted multiple times across groups
     assigned_email_repayment_ids = set()
     
-    # PRE-FETCH all actual_repayments for this client ONCE to avoid duplication across holdings
-    # Then we'll distribute them properly to each holding
-    all_client_actual_repayments = await db.actual_repayments.find({
+    # PRE-FETCH all repayments for this client from unified Ncd_Repayments collection
+    # This includes historical uploads, email-synced, and all other sources
+    all_client_actual_repayments = await db.Ncd_Repayments.find({
         "client_id": client_id
     }, {"_id": 0}).to_list(5000)
 
@@ -16461,7 +16572,7 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
                     })
         
         # Fetch actual repayments (from historical uploads, email auto-tag, etc.)
-        actual_repayments = await db.actual_repayments.find({
+        actual_repayments = await db.Ncd_Repayments.find({
             "bond_id": trade['bond_id'],
             "client_id": client_id
         }, {"_id": 0}).to_list(100)
@@ -18086,7 +18197,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     ).to_list(50000)
     
     # Get all actual repayments for balance calculation
-    all_actual_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(50000)
+    all_actual_repayments = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(50000)
     repayments_by_trade = {}
     for ar in all_actual_repayments:
         trade_id = ar.get('trade_id')
@@ -18789,7 +18900,7 @@ async def clear_all_reinvestment_logs(current_user: dict = Depends(get_current_u
     )
     
     # Clear reinvestment tags from actual_repayments
-    await db.actual_repayments.update_many(
+    await db.Ncd_Repayments.update_many(
         {},
         {"$set": {
             "reinvestment_tag": "not_tagged",
@@ -18869,13 +18980,13 @@ async def clear_reinvestment_logs_by_date(
     }
 
 
-@api_router.delete("/actual-repayments/clear-duplicates")
-async def clear_duplicate_actual_repayments(
+@api_router.delete("/repayments/clear-duplicates")
+async def clear_duplicate_repayments(
     secret_key: str = None,
     current_user: dict = Depends(get_current_user_optional)
 ):
     """
-    Remove duplicate entries from actual_repayments collection.
+    Remove duplicate entries from Ncd_Repayments collection.
     Duplicates are identified by same client_id + bond_id + repayment_date + similar amount (±1 Rs).
     
     Keeps entries with source='reprocess_email_logs' or 'email_auto_approval' (from email tracker).
@@ -18889,13 +19000,13 @@ async def clear_duplicate_actual_repayments(
         if not current_user or current_user.get('role') != 'broker':
             raise HTTPException(status_code=403, detail="Access denied. Use secret_key or broker login.")
     
-    # Get all actual_repayments
-    all_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(50000)
+    # Get all repayments from unified collection
+    all_repayments = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(50000)
     
     if not all_repayments:
         return {
             "success": True,
-            "message": "No actual_repayments found",
+            "message": "No repayments found",
             "total_before": 0,
             "duplicates_removed": 0
         }
@@ -18946,7 +19057,7 @@ async def clear_duplicate_actual_repayments(
         }
     
     # Delete duplicates
-    result = await db.actual_repayments.delete_many({
+    result = await db.Ncd_Repayments.delete_many({
         "id": {"$in": duplicates_to_delete}
     })
     
@@ -19019,7 +19130,7 @@ async def clear_duplicate_reinvestment_entries(current_user: dict = Depends(get_
                     pass
     
     # Get actual repayments to find their trade_ids and details
-    actual_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(50000)
+    actual_repayments = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(50000)
     repay_details = {r.get('id'): r for r in actual_repayments}
     
     # Find duplicate repay_ entries that match expected cashflows
@@ -19085,7 +19196,7 @@ async def clear_duplicate_reinvestment_entries(current_user: dict = Depends(get_
         
         # Also reset tags in actual_repayments for these duplicates
         repay_ids = [cid.replace('repay_', '') for cid in duplicates_to_delete]
-        await db.actual_repayments.update_many(
+        await db.Ncd_Repayments.update_many(
             {"id": {"$in": repay_ids}},
             {"$set": {
                 "reinvestment_tag": "not_tagged",
@@ -19809,7 +19920,7 @@ async def diagnose_duplicate_repayments(
         query['client_id'] = client_id
     
     # Fetch repayments
-    all_repayments = await db.actual_repayments.find(query, {"_id": 0}).to_list(10000)
+    all_repayments = await db.Ncd_Repayments.find(query, {"_id": 0}).to_list(10000)
     
     def amounts_similar(amount1, amount2, tolerance_percent=5.0):
         if amount1 == 0 and amount2 == 0:
@@ -19895,7 +20006,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
     if is_prepayment_entry:
         # Handle prepayment tagging - update actual_repayments collection
         actual_repayment_id = cashflow_id.replace('prepay_', '')
-        prepayment = await db.actual_repayments.find_one({"id": actual_repayment_id})
+        prepayment = await db.Ncd_Repayments.find_one({"id": actual_repayment_id})
         if not prepayment:
             raise HTTPException(status_code=404, detail="Prepayment not found")
         
@@ -19934,7 +20045,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
         else:
             update_data["approval_status"] = "pending"
         
-        await db.actual_repayments.update_one(
+        await db.Ncd_Repayments.update_one(
             {"id": actual_repayment_id},
             {"$set": update_data}
         )
@@ -19956,7 +20067,7 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             if cashflow_id.startswith('actual_repay_') or cashflow_id.startswith('prepay_'):
                 # This is from actual_repayments - create a holding_cashflow entry
                 base_id = cashflow_id.replace('actual_repay_', '').replace('prepay_', '')
-                actual_repay = await db.actual_repayments.find_one({"id": base_id})
+                actual_repay = await db.Ncd_Repayments.find_one({"id": base_id})
                 if actual_repay:
                     # Create a holding_cashflow entry from actual_repayment
                     client_id = actual_repay.get('client_id')
@@ -22208,13 +22319,13 @@ async def sync_repayments_from_emails(current_user: dict = Depends(get_current_u
             continue
         
         # Check if actual_repayment already exists for this email
-        existing_ar = await db.actual_repayments.find_one({"email_log_id": email_id}, {"_id": 0})
+        existing_ar = await db.Ncd_Repayments.find_one({"email_log_id": email_id}, {"_id": 0})
         
         if existing_ar:
             # Update with correct amounts from email
             current_gross = existing_ar.get('gross_amount', 0)
             if abs(current_gross - email_gross) > 1:
-                await db.actual_repayments.update_one(
+                await db.Ncd_Repayments.update_one(
                     {"id": existing_ar.get('id')},
                     {"$set": {
                         "gross_amount": email_gross,
@@ -22254,7 +22365,7 @@ async def sync_repayments_from_emails(current_user: dict = Depends(get_current_u
                 "source": "email",
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
-            await db.actual_repayments.insert_one(new_ar)
+            await db.Ncd_Repayments.insert_one(new_ar)
             created_count += 1
             synced_entries.append({
                 "action": "created",
@@ -25077,9 +25188,9 @@ async def reset_database(secret_key: str = None):
         result = await db.approval_workflows.delete_many({})
         deleted_counts['approval_workflows'] = result.deleted_count
         
-        # 34. Delete actual repayments
-        result = await db.actual_repayments.delete_many({})
-        deleted_counts['actual_repayments'] = result.deleted_count
+        # 34. Delete all repayments (unified Ncd_Repayments collection)
+        result = await db.Ncd_Repayments.delete_many({})
+        deleted_counts['Ncd_Repayments'] = result.deleted_count
         
         # 35. Clean uploaded files from disk (except templates)
         upload_dir = os.path.join(os.path.dirname(__file__), 'uploads')
@@ -25135,8 +25246,7 @@ COLLECTION_CATEGORIES = {
         "Ncd_Master": "NCD/Bond master data",
         "Ncd_Investment_Details": "NCD trades/investments",
         "Ncd_Expected_Repayments": "Expected NCD repayments (single source of truth)",
-        "Ncd_Repayments": "Actual NCD repayments (from email sync)",
-        "actual_repayments": "Actual repayments mapped from emails",
+        "Ncd_Repayments": "Unified NCD repayments (email-synced + historical uploads + all sources)",
         "reinvestment_logs": "Reinvestment tagging decisions",
         "Real_Estate_Master": "Real estate opportunities",
         "real_estate_investments": "Real estate investments",
@@ -25151,6 +25261,7 @@ COLLECTION_CATEGORIES = {
         "holding_cashflows": "DEPRECATED - Was used for expected cashflows, now using Ncd_Expected_Repayments",
         "Private_Investor": "DEPRECATED - Migrated to Indian/Foreign passport collections",
         "cashflows": "DEPRECATED - Old cashflow storage",
+        "actual_repayments": "DEPRECATED - Merged into Ncd_Repayments (unified collection)",
     },
     # Master/Reference Data (usually not deleted)
     "master": {
@@ -33404,7 +33515,7 @@ async def process_emails_unified(
                         try:
                             # DUPLICATE CHECK: Ensure we don't create duplicate repayments
                             # Check by client_id + bond_id + repayment_date + gross_amount
-                            existing_repayment = await db.actual_repayments.find_one({
+                            existing_repayment = await db.Ncd_Repayments.find_one({
                                 "client_id": matched_client_id,
                                 "bond_id": bond_id,
                                 "repayment_date": repayment_date,
@@ -33449,7 +33560,7 @@ async def process_emails_unified(
                                 'created_at': datetime.now(timezone.utc).isoformat()
                             }
                             
-                            await db.actual_repayments.insert_one(actual_repayment)
+                            await db.Ncd_Repayments.insert_one(actual_repayment)
                             
                             # For regular repayments: mark the matching cashflow as repaid
                             if matching_cashflow and matching_cashflow.get('id'):
@@ -33652,7 +33763,7 @@ async def approve_email_log(
         tds = log.get('tds_amount', 0)
         
         # Check if already exists - check both by email_log_id and by content
-        existing = await db.actual_repayments.find_one({
+        existing = await db.Ncd_Repayments.find_one({
             "email_log_id": log_id
         })
         
@@ -33660,7 +33771,7 @@ async def approve_email_log(
             raise HTTPException(status_code=400, detail="Repayment record already exists for this email")
         
         # Also check for duplicate by content (same client, bond, date, amount)
-        existing_by_content = await db.actual_repayments.find_one({
+        existing_by_content = await db.Ncd_Repayments.find_one({
             "client_id": matched_client_id,
             "bond_id": bond_id,
             "repayment_date": repayment_date,
@@ -33702,7 +33813,7 @@ async def approve_email_log(
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
-        await db.actual_repayments.insert_one(repayment_record)
+        await db.Ncd_Repayments.insert_one(repayment_record)
         
         # Update email log as approved
         await db.email_read_logs.update_one(
@@ -34162,7 +34273,7 @@ async def process_email_repayment(
     }
     
     # Insert into actual_repayments
-    await db.actual_repayments.insert_one(repayment_record)
+    await db.Ncd_Repayments.insert_one(repayment_record)
     
     # Update the email_read_log to mark as processed
     await db.email_read_logs.update_one(
@@ -34569,7 +34680,7 @@ async def auto_tag_email_repayments(
                 continue
             
             # IDEMPOTENCY CHECK 1: Skip if this email_log_id already has repayments
-            existing_by_email = await db.actual_repayments.find_one({
+            existing_by_email = await db.Ncd_Repayments.find_one({
                 "email_log_id": log_id
             })
             if existing_by_email:
@@ -34659,7 +34770,7 @@ async def auto_tag_email_repayments(
             similar_amount_min = log_gross_amount * 0.99
             similar_amount_max = log_gross_amount * 1.01
             
-            existing_historical = await db.actual_repayments.find_one({
+            existing_historical = await db.Ncd_Repayments.find_one({
                 "bond_code": bond_code,
                 "repayment_date": log_repayment_date,
                 "gross_amount": {"$gte": similar_amount_min, "$lte": similar_amount_max}
@@ -34682,7 +34793,7 @@ async def auto_tag_email_repayments(
             
             # DUPLICATE CHECK 2: Use (client_name, trade_id, gross_amount, repayment_date) as unique combination
             # This allows entries with same amount for different trades of the same client
-            existing_by_combo = await db.actual_repayments.find_one({
+            existing_by_combo = await db.Ncd_Repayments.find_one({
                 "client_name": matched_trade.get('client_name'),
                 "trade_id": matched_trade.get('id'),
                 "gross_amount": log_gross_amount,
@@ -34826,7 +34937,7 @@ async def auto_tag_email_repayments(
                 "source": "auto_tag"
             }
             
-            await db.actual_repayments.insert_one(repayment_record)
+            await db.Ncd_Repayments.insert_one(repayment_record)
             
             # UPDATE FINAL MATURITY CASHFLOW: Only for prepayments
             # For scheduled payments, don't recalculate - just mark as paid
@@ -34869,7 +34980,7 @@ async def auto_tag_email_repayments(
                     
                     # Get ALL repayments for this trade, sorted by date
                     # Query by both trade_id AND investment_date to catch all repayments
-                    all_repayments = await db.actual_repayments.find(
+                    all_repayments = await db.Ncd_Repayments.find(
                         {
                             "$or": [
                                 {"trade_id": trade_id},
@@ -35129,7 +35240,7 @@ async def auto_tag_single_email(
         raise HTTPException(status_code=404, detail="No trade found for this client and bond")
     
     # Check if already tagged
-    existing = await db.actual_repayments.find_one({
+    existing = await db.Ncd_Repayments.find_one({
         "email_log_id": log_id
     })
     if existing:
@@ -35160,7 +35271,7 @@ async def auto_tag_single_email(
         "created_by": current_user.get('id')
     }
     
-    await db.actual_repayments.insert_one(actual_repayment)
+    await db.Ncd_Repayments.insert_one(actual_repayment)
     
     # Update holding_cashflows to mark as repaid
     # Find matching holding_cashflow by amount
@@ -35232,7 +35343,7 @@ async def reset_client_prepayment_tags(
         raise HTTPException(status_code=403, detail="Only brokers can reset client tags")
     
     # Find and delete actual_repayments for this client (auto-tagged ones)
-    deleted_repayments = await db.actual_repayments.delete_many({
+    deleted_repayments = await db.Ncd_Repayments.delete_many({
         "$or": [
             {"client_name": client_name},
             {"original_email_client": client_name}
@@ -35536,7 +35647,7 @@ async def recalculate_all_maturity(
         bond = bonds.get(bc, {})
         
         # Only recalculate if trade has repayments
-        repayment_count = await db.actual_repayments.count_documents({
+        repayment_count = await db.Ncd_Repayments.count_documents({
             "$or": [
                 {"trade_id": trade.get('id')},
                 {
@@ -35589,7 +35700,7 @@ async def reset_auto_tag_data(
     }
     
     # Step 1: Delete all auto-tagged actual_repayments
-    delete_result = await db.actual_repayments.delete_many({
+    delete_result = await db.Ncd_Repayments.delete_many({
         "bond_code": bond_code,
         "source": "auto_tag"
     })
@@ -35681,10 +35792,10 @@ async def reset_actual_repayments(
         query['source'] = source
     
     # Get count before delete
-    count_before = await db.actual_repayments.count_documents(query)
+    count_before = await db.Ncd_Repayments.count_documents(query)
     
     # Delete matching records
-    result = await db.actual_repayments.delete_many(query)
+    result = await db.Ncd_Repayments.delete_many(query)
     
     return {
         "success": True,
@@ -35723,7 +35834,7 @@ async def validate_actual_repayments(
         }
         
         # Get all actual_repayments
-        all_repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(10000)
+        all_repayments = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(10000)
         logger.info(f"Validating {len(all_repayments)} actual_repayments")
         
         # Cache trades for lookup
@@ -35792,7 +35903,7 @@ async def validate_actual_repayments(
                 })
                 if fix_issues:
                     # Fix the client_id to match trade
-                    await db.actual_repayments.update_one(
+                    await db.Ncd_Repayments.update_one(
                         {"id": rep_id},
                         {"$set": {"client_id": trade_client_id, "client_id_fixed": True, "original_client_id": client_id}}
                     )
@@ -35815,7 +35926,7 @@ async def validate_actual_repayments(
         # Delete invalid entries if requested
         deleted_count = 0
         if fix_issues and entries_to_delete:
-            result = await db.actual_repayments.delete_many({"id": {"$in": entries_to_delete}})
+            result = await db.Ncd_Repayments.delete_many({"id": {"$in": entries_to_delete}})
             deleted_count = result.deleted_count
         
         summary = {
@@ -35867,10 +35978,10 @@ async def delete_client_actual_repayments(
         query["repayment_date"] = {"$regex": f"^{repayment_date[:10]}"}
     
     # Count before delete
-    count = await db.actual_repayments.count_documents(query)
+    count = await db.Ncd_Repayments.count_documents(query)
     
     # Delete
-    result = await db.actual_repayments.delete_many(query)
+    result = await db.Ncd_Repayments.delete_many(query)
     
     logger.info(f"Deleted {result.deleted_count} actual_repayments for client {client_id}")
     
@@ -35898,7 +36009,7 @@ async def get_client_actual_repayments(
     if bond_id:
         query["bond_id"] = bond_id
     
-    repayments = await db.actual_repayments.find(query, {"_id": 0}).to_list(500)
+    repayments = await db.Ncd_Repayments.find(query, {"_id": 0}).to_list(500)
     
     # Get client name
     client = await db.Private_Investor.find_one({"id": client_id}, {"_id": 0, "name": 1})
@@ -36147,11 +36258,11 @@ async def delete_cashflows_by_bond_date(
     
     actual_repay_entries_deleted = []
     for query in actual_repay_queries:
-        count = await db.actual_repayments.count_documents(query)
+        count = await db.Ncd_Repayments.count_documents(query)
         if count > 0:
-            entries = await db.actual_repayments.find(query, {"_id": 0, "id": 1, "net_amount": 1, "client_name": 1, "repayment_date": 1}).to_list(100)
+            entries = await db.Ncd_Repayments.find(query, {"_id": 0, "id": 1, "net_amount": 1, "client_name": 1, "repayment_date": 1}).to_list(100)
             actual_repay_entries_deleted.extend(entries)
-            result = await db.actual_repayments.delete_many(query)
+            result = await db.Ncd_Repayments.delete_many(query)
             actual_repay_deleted_count += result.deleted_count
     
     if total_deleted == 0 and reinv_deleted_count == 0 and email_deleted_count == 0 and actual_repay_deleted_count == 0:
@@ -36161,7 +36272,7 @@ async def delete_cashflows_by_bond_date(
             {"_id": 0, "bond_code": 1, "date": 1, "repayment_date": 1}
         ).to_list(5)
         
-        sample_actual_repay = await db.actual_repayments.find(
+        sample_actual_repay = await db.Ncd_Repayments.find(
             {"bond_code": {"$regex": bond_code, "$options": "i"}},
             {"_id": 0, "bond_code": 1, "repayment_date": 1}
         ).to_list(5)
@@ -36213,10 +36324,10 @@ async def reset_historical_repayments(
         raise HTTPException(status_code=400, detail="Must specify bond_id, client_id, or set reset_all_clients=true")
     
     # Get count before delete
-    count = await db.actual_repayments.count_documents(query)
+    count = await db.Ncd_Repayments.count_documents(query)
     
     # Delete
-    result = await db.actual_repayments.delete_many(query)
+    result = await db.Ncd_Repayments.delete_many(query)
     
     logger.info(f"Reset historical repayments: deleted {result.deleted_count} entries")
     
@@ -36265,7 +36376,7 @@ async def reset_ncd_complete(
     try:
         if reset_type in ["repayments", "all"]:
             # Delete actual_repayments
-            rep_result = await db.actual_repayments.delete_many({"bond_id": bond_id})
+            rep_result = await db.Ncd_Repayments.delete_many({"bond_id": bond_id})
             results["actual_repayments_deleted"] = rep_result.deleted_count
             
             # Delete email_read_logs
@@ -36316,7 +36427,7 @@ async def get_ncds_list(
     for ncd in ncds:
         ncd_id = ncd.get('id')
         ncd['trades_count'] = await db.Ncd_Investment_Details.count_documents({"bond_id": ncd_id})
-        ncd['repayments_count'] = await db.actual_repayments.count_documents({"bond_id": ncd_id})
+        ncd['repayments_count'] = await db.Ncd_Repayments.count_documents({"bond_id": ncd_id})
         ncd['email_logs_count'] = await db.email_read_logs.count_documents({"bond_id": ncd_id})
     
     return {
@@ -36342,7 +36453,7 @@ async def get_data_summary(
     query = {"bond_code": bond_code} if bond_code else {}
     
     # Count records in each collection
-    actual_repayments_count = await db.actual_repayments.count_documents(query)
+    actual_repayments_count = await db.Ncd_Repayments.count_documents(query)
     email_read_logs_count = await db.email_read_logs.count_documents(query)
     
     # For holding_cashflows, we need to match by bond_code in trades
@@ -36354,9 +36465,9 @@ async def get_data_summary(
         holding_cashflows_count = await db.holding_cashflows.count_documents({})
     
     # Get breakdown
-    auto_tagged = await db.actual_repayments.count_documents({**query, "source": "auto_tag"})
-    manual_tagged = await db.actual_repayments.count_documents({**query, "source": "manual"})
-    historical = await db.actual_repayments.count_documents({**query, "source": {"$nin": ["auto_tag", "manual"]}})
+    auto_tagged = await db.Ncd_Repayments.count_documents({**query, "source": "auto_tag"})
+    manual_tagged = await db.Ncd_Repayments.count_documents({**query, "source": "manual"})
+    historical = await db.Ncd_Repayments.count_documents({**query, "source": {"$nin": ["auto_tag", "manual"]}})
     
     email_updated = await db.email_read_logs.count_documents({**query, "holding_updated": True})
     email_pending = await db.email_read_logs.count_documents({**query, "holding_updated": {"$ne": True}})
@@ -36441,7 +36552,7 @@ async def get_email_engagement_dashboard(
     email_logs = all_email_logs
     
     # Get all actual_repayments that came from email sources to cross-reference
-    email_repayments = await db.actual_repayments.find(
+    email_repayments = await db.Ncd_Repayments.find(
         {"source": {"$in": ["email_auto_approval", "auto_tag", "email"]}},
         {"_id": 0, "id": 1, "gross_amount": 1, "client_id": 1, "repayment_date": 1}
     ).to_list(1000)
@@ -36921,7 +37032,7 @@ async def get_dashboard_summary(current_user: dict = Depends(get_current_user)):
         bond_total_profits += trade_profit
         
         # Get repayments for this trade to calculate repaid vs pending
-        trade_repayments = await db.actual_repayments.find({
+        trade_repayments = await db.Ncd_Repayments.find({
             "$or": [
                 {"trade_id": trade_id},
                 {"bond_id": bond_id, "client_id": client_id}
@@ -39061,7 +39172,7 @@ async def get_sub_broker_dashboard_summary(current_user: dict = Depends(get_curr
                 total_bond_deal_size += units_paid * face_value
                 
                 # Get cashflows for P/I breakdown
-                actual_cashflows = await db.actual_repayments.find({
+                actual_cashflows = await db.Ncd_Repayments.find({
                     "client_id": client.get('id'),
                     "bond_id": alloc.get('bond_id')
                 }, {"_id": 0}).to_list(100)
@@ -40449,7 +40560,7 @@ async def get_cashflow_comparison(
     if bond_id:
         actual_query["bond_id"] = bond_id
     
-    actuals = await db.actual_repayments.find(actual_query, {"_id": 0}).to_list(10000)
+    actuals = await db.Ncd_Repayments.find(actual_query, {"_id": 0}).to_list(10000)
     
     # Get client's bond investments for context
     trades = await db.Ncd_Investment_Details.find(
@@ -40588,7 +40699,7 @@ async def get_actual_repayments(
     if bond_id:
         query['bond_id'] = bond_id
     
-    repayments = await db.actual_repayments.find(query, {"_id": 0}).sort("repayment_date", -1).to_list(10000)
+    repayments = await db.Ncd_Repayments.find(query, {"_id": 0}).sort("repayment_date", -1).to_list(10000)
     return repayments
 
 
@@ -41038,7 +41149,7 @@ async def _auto_tag_pending_emails():
                     continue
                 
                 # Idempotency check: already processed?
-                existing_by_email = await db.actual_repayments.find_one({"email_log_id": log_id})
+                existing_by_email = await db.Ncd_Repayments.find_one({"email_log_id": log_id})
                 if existing_by_email:
                     skipped_count += 1
                     continue
@@ -41171,7 +41282,7 @@ async def _auto_tag_pending_emails():
                             trade_interest = 0
                     
                     # Idempotency check: Use (client_name, trade_id, repayment_date, per_unit_amount) as unique combination
-                    existing_by_combo = await db.actual_repayments.find_one({
+                    existing_by_combo = await db.Ncd_Repayments.find_one({
                         "trade_id": trade.get('id'),
                         "repayment_date": log_repayment_date,
                         "per_unit_amount": trade_per_unit
@@ -41209,7 +41320,7 @@ async def _auto_tag_pending_emails():
                         "source": "auto_tag"
                     }
                     
-                    await db.actual_repayments.insert_one(repayment_record)
+                    await db.Ncd_Repayments.insert_one(repayment_record)
                     created_repayment_ids.append(repayment_id)
                     tagged_count += 1
                 
@@ -45719,8 +45830,8 @@ async def export_ncd_master(current_user: dict = Depends(get_current_user)):
                 c = ws5.cell(row=row_idx, column=col, value=v)
                 c.border = thin
 
-        # ────────── Sheet 6: Historical Repayments (actual_repayments) — Amber ──────────
-        repayments = await db.actual_repayments.find({}, {"_id": 0}).to_list(None)
+        # ────────── Sheet 6: Historical Repayments (Ncd_Repayments - unified) — Amber ──────────
+        repayments = await db.Ncd_Repayments.find({}, {"_id": 0}).to_list(None)
 
         # Build lookup maps for rows missing denormalized fields
         bond_lookup = {}

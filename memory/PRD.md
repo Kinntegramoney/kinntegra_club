@@ -165,3 +165,27 @@ Enhance a financial cash flow projection tool within the `Data Gathering` module
 - Backend: FastAPI (Python)
 - Database: MongoDB
 - Preview URL: https://financial-cash-flow.preview.emergentagent.com
+
+---
+
+## Recent Changes
+
+### Collection Merge: `actual_repayments` → `Ncd_Repayments` (Dec 2025)
+**Status:** ✅ Code changes complete, migration endpoint available
+
+**What was done:**
+- Merged `actual_repayments` collection into `Ncd_Repayments` (unified collection)
+- Updated 62 code references in server.py
+- Added migration endpoint: `POST /api/admin/migrate-actual-to-ncd-repayments`
+- Marked `actual_repayments` as deprecated in DB Manager
+- Updated `Ncd_Repayments` to be the single source of truth for all NCD repayments
+- Detailed migration plan at `/app/memory/MIGRATION_PLAN_actual_repayments_to_Ncd_Repayments.md`
+
+**Next steps:**
+1. Run migration with `dry_run=false` to move existing data
+2. Verify Holdings and Reinvestment Tagging work correctly
+3. Optionally delete deprecated `actual_repayments` collection via DB Manager
+
+**Known Issues (Pre-existing):**
+- 113 lint errors inherited from prior codebase (route shadowing, bare exceptions, etc.)
+- These do not affect functionality
