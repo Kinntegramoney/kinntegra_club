@@ -14809,17 +14809,23 @@ async def _rebuild_ncd_expected_repayments() -> dict:
     async def _load_client(cid: str) -> dict:
         if cid in client_cache:
             return client_cache[cid]
-        c = (
-            await db.Private_Investor_Indian_Passport.find_one(
-                {"id": cid}, {"_id": 0, "name": 1, "pan": 1, "email": 1}
-            )
-            or await db.Private_Investor_Foreign_Passport.find_one(
-                {"id": cid}, {"_id": 0, "name": 1, "passport_number": 1, "email": 1}
-            )
-            or {}
+        # Check main Private_Investor collection first (where most clients are)
+        c = await db.Private_Investor.find_one(
+            {"id": cid}, {"_id": 0, "name": 1, "pan": 1, "pan_number": 1, "email": 1, "passport_number": 1}
         )
-        client_cache[cid] = c
-        return c
+        # Fallback to passport-specific collections if not found
+        if not c:
+            c = (
+                await db.Private_Investor_Indian_Passport.find_one(
+                    {"id": cid}, {"_id": 0, "name": 1, "pan": 1, "email": 1}
+                )
+                or await db.Private_Investor_Foreign_Passport.find_one(
+                    {"id": cid}, {"_id": 0, "name": 1, "passport_number": 1, "email": 1}
+                )
+                or {}
+            )
+        client_cache[cid] = c or {}
+        return client_cache[cid]
 
     rows: list = []
     today_iso = datetime.now(timezone.utc).isoformat()
