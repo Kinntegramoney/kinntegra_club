@@ -15979,28 +15979,53 @@ async def get_client_holdings(client_id: str, current_user: dict = Depends(get_c
         trade['merged_trades'] = len(bond_trades)  # Track how many trades were merged
         trade['individual_trades'] = bond_trades  # Keep reference to original trades (all same date)
         
-        # Collect ALL stored cashflows from ALL trades for this bond
-        all_stored_cashflows = []
+        # Collect expected cashflows from Ncd_Expected_Repayments (single source of truth)
+        # No need for holding_cashflows - expected repayments are rebuilt on approval
+        all_expected_cashflows = []
         all_trade_ids = [t['id'] for t in bond_trades]
-        for t in bond_trades:
-            stored_cfs = await db.holding_cashflows.find({
-                "trade_id": t['id']
-            }, {"_id": 0}).to_list(100)
+        
+        # Query Ncd_Expected_Repayments for all trades in this bond group
+        expected_cfs = await db.Ncd_Expected_Repayments.find({
+            "trade_id": {"$in": all_trade_ids}
+        }, {"_id": 0}).to_list(500)
+        
+        # Get tagging state from reinvestment_logs
+        reinv_logs = await db.reinvestment_logs.find({
+            "trade_id": {"$in": all_trade_ids}
+        }, {"_id": 0}).to_list(500)
+        reinv_logs_index = {}
+        for log in reinv_logs:
+            key = (log.get('trade_id'), (log.get('expected_date') or log.get('cashflow_date') or '').split('T')[0])
+            reinv_logs_index[key] = log
+        
+        # Convert Ncd_Expected_Repayments format to cashflow format
+        for er in expected_cfs:
+            date_key = (er.get('expected_date') or '').split('T')[0]
+            reinv_log = reinv_logs_index.get((er.get('trade_id'), date_key), {})
             
-            if not stored_cfs:
-                # Generate and store cashflows for this individual trade
-                cashflows = generate_client_cashflows(t, bond)
-                if cashflows:
-                    for cf in cashflows:
-                        cf['client_id'] = client_id
-                        cf['bond_id'] = bond_id
-                        cf['bond_name'] = t['bond_name']
-                    await db.holding_cashflows.insert_many(cashflows)
-                    stored_cfs = await db.holding_cashflows.find({
-                        "trade_id": t['id']
-                    }, {"_id": 0}).to_list(100)
-            
-            all_stored_cashflows.extend(stored_cfs)
+            cf = {
+                'id': er.get('id'),
+                'trade_id': er.get('trade_id'),
+                'client_id': er.get('client_id'),
+                'bond_id': er.get('bond_id'),
+                'bond_name': er.get('bond_name', ''),
+                'date': er.get('expected_date'),
+                'type': er.get('type', 'interest'),
+                'principal_component': er.get('principal_component', 0) or 0,
+                'interest_component': er.get('interest_component', 0) or 0,
+                'gross_amount': er.get('gross_amount', 0) or 0,
+                'tds_amount': er.get('tds_amount', 0) or 0,
+                'net_amount': er.get('net_amount', 0) or 0,
+                'is_repaid': er.get('is_repaid', False),
+                # Tagging state from reinvestment_logs
+                'reinvestment_tag': reinv_log.get('reinvestment_tag'),
+                'approval_status': reinv_log.get('approval_status'),
+                'target_ucc': reinv_log.get('target_ucc'),
+                'portfolio_category': reinv_log.get('portfolio_category'),
+            }
+            all_expected_cashflows.append(cf)
+        
+        all_stored_cashflows = all_expected_cashflows
         
         # Merge cashflows by date - combine amounts for same dates
         merged_cashflows_map = {}
