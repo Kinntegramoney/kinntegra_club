@@ -20514,42 +20514,61 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
             {"$set": update_data}
         )
         
-        # Also update Ncd_Expected_Repayments with tagging state
-        # This is now the source of truth for the Reinvestment Tagging page
+        # =====================================================
+        # CRITICAL: Update Ncd_Expected_Repayments - this is the 
+        # source that get_upcoming_reinvestments reads from
+        # =====================================================
+        ncd_expected_update = {
+            "reinvestment_tag": update.reinvestment_tag,
+            "approval_status": update_data.get('approval_status', 'pending'),
+            "client_approved": update_data.get('client_approved', False),
+            "has_split_allocations": True,
+            "ucc_allocations": validated_allocations,
+            "target_ucc": validated_allocations[0]['ucc'],
+            "portfolio_category": validated_allocations[0]['portfolio'],
+            "tagged_at": datetime.now(timezone.utc).isoformat(),
+            "tagged_by": current_user['id'],
+        }
         await db.Ncd_Expected_Repayments.update_one(
             {"id": cashflow_id},
-            {"$set": {
-                "reinvestment_tag": update.reinvestment_tag,
-                "approval_status": update_data.get('approval_status', 'pending'),
-                "client_approved": update_data.get('client_approved', False),
-                "has_split_allocations": True,
-                "ucc_allocations": validated_allocations,
-                "target_ucc": validated_allocations[0]['ucc'],
-                "portfolio_category": validated_allocations[0]['portfolio'],
-                "tagged_at": datetime.now(timezone.utc).isoformat(),
-                "tagged_by": current_user['id'],
-            }}
+            {"$set": ncd_expected_update}
         )
+        logger.info(f"Updated Ncd_Expected_Repayments {cashflow_id} with tagging state")
         
-        # Delete any existing log entries for this cashflow (to prevent duplicates)
+        # =====================================================
+        # CRITICAL: Create reinvestment_logs with CORRECT keys
+        # The lookup in get_upcoming_reinvestments uses:
+        #   reinv_logs_index[(trade_id, date_key)]
+        # where date_key = er.get("expected_date").split("T")[0]
+        # =====================================================
+        
+        # Delete any existing log entries for this cashflow
         await db.reinvestment_logs.delete_many({"cashflow_id": cashflow_id})
-        # Also delete by trade_id + expected_date to handle any mismatched keys
-        if cashflow.get('trade_id') and cashflow.get('date'):
+        
+        # Get the expected_date from Ncd_Expected_Repayments (canonical source)
+        expected_row = await db.Ncd_Expected_Repayments.find_one({"id": cashflow_id}, {"_id": 0})
+        canonical_expected_date = None
+        canonical_trade_id = cashflow.get('trade_id')
+        
+        if expected_row:
+            canonical_expected_date = (expected_row.get('expected_date') or '').split('T')[0].split(' ')[0]
+            canonical_trade_id = expected_row.get('trade_id') or canonical_trade_id
+        elif cashflow.get('date'):
+            canonical_expected_date = cashflow['date'].split('T')[0].split(' ')[0]
+        
+        # Also delete by trade_id + expected_date to clean up any mismatched entries
+        if canonical_trade_id and canonical_expected_date:
             await db.reinvestment_logs.delete_many({
-                "trade_id": cashflow['trade_id'],
-                "expected_date": cashflow['date'].split('T')[0].split(' ')[0]
+                "trade_id": canonical_trade_id,
+                "expected_date": canonical_expected_date
             })
         
-        # Distribute the cashflow's true net_amount across allocations so that
-        # non-residual rows carry their rounded investment amount as
-        # `net_amount` and the decimal leftover is parked on the "None"
-        # residual row. Keeps Logs → Reinv Logs, Holdings → Trades → Reinv
-        # Logs, and the client's approval view perfectly aligned.
+        # Distribute the cashflow's true net_amount across allocations
         distributed_allocs = _distribute_allocation_net_amounts(
             validated_allocations, cashflow.get('net_amount', 0)
         )
         
-        # Create log entries for each allocation
+        # Create log entries for each allocation with CORRECT lookup keys
         for idx, alloc in enumerate(distributed_allocs):
             alloc_net_amount = alloc.get('net_amount', alloc['amount'])
             alloc_residual = round(alloc_net_amount - alloc['amount'], 2)
@@ -20558,33 +20577,38 @@ async def update_reinvestment_tag(cashflow_id: str, update: ReinvestmentTagUpdat
                 "id": str(uuid.uuid4()),
                 "type": "reinvestment_tag_split",
                 "cashflow_id": cashflow_id,
-                "trade_id": cashflow.get('trade_id'),  # CRITICAL: Needed for lookup in get_upcoming_reinvestments
+                # CRITICAL: These two fields are used for lookup in get_upcoming_reinvestments
+                # reinv_logs_index[(trade_id, date_key)] where date_key = expected_date
+                "trade_id": canonical_trade_id,
+                "expected_date": canonical_expected_date,
                 "client_id": cashflow['client_id'],
                 "client_name": client.get('name', ''),
                 "bond_id": cashflow.get('bond_id'),
                 "bond_name": cashflow.get('bond_name', ''),
-                "expected_date": cashflow['date'],
-                "mf_investment_date": (alloc.get('investment_date') or (datetime.strptime(cashflow['date'], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')) if cashflow.get('date') else None,
+                # Store the MF investment date from the allocation (user-selected)
+                "mf_investment_date": alloc.get('investment_date'),
+                "investment_date": alloc.get('investment_date'),  # Alias for frontend
                 "allocation_index": idx,
                 "ucc": alloc['ucc'],
-                "amount": alloc['amount'],  # Round-down investment amount
-                "net_amount": round(alloc_net_amount, 2),  # Actual net amount (share of cashflow)
-                "residual_amount": alloc_residual,  # Difference (net - round_down)
+                "amount": alloc['amount'],
+                "net_amount": round(alloc_net_amount, 2),
+                "residual_amount": alloc_residual,
                 "portfolio": alloc['portfolio'],
                 "tag": alloc['tag'],
-                "reinvestment_tag": alloc['tag'],  # Alias for consistency
+                "reinvestment_tag": alloc['tag'],
                 "total_allocations": len(validated_allocations),
-                "total_cashflow_net_amount": cashflow.get('net_amount', 0),  # Full cashflow net amount
+                "total_cashflow_net_amount": cashflow.get('net_amount', 0),
                 "tagged_by": current_user['id'],
                 "tagged_by_name": current_user.get('name', ''),
                 "is_past_date": is_past_date,
                 "approval_status": update_data.get('approval_status', 'pending'),
                 "client_approved": update_data.get('client_approved', False),
                 "has_split_allocations": True,
-                "ucc_allocations": validated_allocations,  # Store all allocations for reference
+                "ucc_allocations": validated_allocations,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             await db.reinvestment_logs.insert_one(log_entry)
+            logger.info(f"Created reinvestment_log for trade_id={canonical_trade_id}, expected_date={canonical_expected_date}, investment_date={alloc.get('investment_date')}")
         
         logger.info(f"Split allocation saved for cashflow {cashflow_id}: {len(validated_allocations)} allocations, total ₹{total_allocated:,.2f}")
         
