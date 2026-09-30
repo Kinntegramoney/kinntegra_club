@@ -23921,11 +23921,31 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
     # Only include future dates and tagged for reinvestment
     today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     
-    cashflows = await db.holding_cashflows.find({
+    # Query from Ncd_Expected_Repayments (primary source after tagging updates)
+    # Also fallback to holding_cashflows for backwards compatibility
+    cashflows_from_expected = await db.Ncd_Expected_Repayments.find({
         "client_id": client['id'],
-        "reinvestment_tag": {"$nin": ["not_tagged", None, "none"]},
+        "reinvestment_tag": {"$nin": ["not_tagged", None, "none", ""]},
+        "expected_date": {"$gte": today_str}  # Only future dates
+    }, {"_id": 0}).to_list(1000)
+    
+    # Also check holding_cashflows for any legacy tagged items
+    cashflows_from_holdings = await db.holding_cashflows.find({
+        "client_id": client['id'],
+        "reinvestment_tag": {"$nin": ["not_tagged", None, "none", ""]},
         "date": {"$gte": today_str}  # Only future dates
     }, {"_id": 0}).to_list(1000)
+    
+    # Merge and dedupe by id, preferring Ncd_Expected_Repayments data
+    cashflows_map = {}
+    for cf in cashflows_from_holdings:
+        cf['date'] = cf.get('date') or cf.get('expected_date')  # Normalize date field
+        cashflows_map[cf.get('id')] = cf
+    for cf in cashflows_from_expected:
+        cf['date'] = cf.get('expected_date') or cf.get('date')  # Normalize date field
+        cashflows_map[cf.get('id')] = cf  # Overwrite with expected repayments data
+    
+    cashflows = list(cashflows_map.values())
     
     # Also get reinvestment_logs to get allocation details
     log_map = {}
@@ -23957,6 +23977,7 @@ async def get_client_reinvestment_approvals(current_user: dict = Depends(get_cur
                     'rounded_amount': alloc.get('rounded_amount', alloc.get('amount', 0)),
                     'round_off_amount': alloc.get('amount', 0) - alloc.get('rounded_amount', alloc.get('amount', 0)),
                     'mf_investment_date': alloc.get('mf_investment_date'),
+                    'investment_date': alloc.get('investment_date') or alloc.get('mf_investment_date'),  # Include both for frontend
                     'approval_status': alloc.get('approval_status', 'pending')
                 })
         
