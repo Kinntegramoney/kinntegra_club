@@ -4,14 +4,10 @@
 
 ## Summary of Changes Made
 
-### 1. Migration Endpoint Added
-- **New endpoint**: `POST /api/admin/migrate-actual-to-ncd-repayments`
-- Supports `dry_run=true` (default) to preview changes
-- Use `dry_run=false` to actually migrate records
-- Merges existing records, inserts new ones with `source="migrated_from_actual_repayments"`
+### What was done:
+All code references to `actual_repayments` have been replaced with `Ncd_Repayments`. No data migration needed - `actual_repayments` contained junk/duplicate data.
 
-### 2. All Code References Updated (62 locations)
-All `db.actual_repayments` references have been changed to `db.Ncd_Repayments`:
+### Code Changes (62 locations updated):
 - Historical repayment upload (now writes with `source: "historical_upload"`)
 - Holdings cashflow calculations
 - Reinvestment tagging
@@ -21,53 +17,29 @@ All `db.actual_repayments` references have been changed to `db.Ncd_Repayments`:
 - Export functions
 - All read/write operations
 
-### 3. Collection Categories Updated
-- `Ncd_Repayments`: Updated description to "Unified NCD repayments (email-synced + historical uploads + all sources)"
-- `actual_repayments`: Moved to "deprecated" category with note "Merged into Ncd_Repayments"
+### Collection Categories Updated:
+- `Ncd_Repayments`: Now "Unified NCD repayments (email-synced + historical uploads + all sources)"
+- `actual_repayments`: Marked as DEPRECATED - can be deleted via DB Manager
 
-### 4. Unified Schema
-The `Ncd_Repayments` collection now supports all fields from both collections:
-- Core fields: `id`, `bond_id`, `bond_name`, `bond_code`, `client_id`, `client_name`, `client_pan`, `repayment_date`, `principal`, `interest`, `gross_amount`, `tds`, `net_amount`
-- Source tracking: `source` field distinguishes between `email_sync`, `historical_upload`, `email_auto_approval`, etc.
+### Unified Schema:
+The `Ncd_Repayments` collection supports all required fields:
+- Core: `id`, `bond_id`, `bond_name`, `bond_code`, `client_id`, `client_name`, `client_pan`, `repayment_date`, `principal`, `interest`, `gross_amount`, `tds`, `net_amount`
+- Source tracking: `source` field distinguishes `email_sync`, `historical_upload`, `email_auto_approval`, etc.
 - Trade linking: `trade_id`, `investment_date` (for historical/processed records)
 - Email metadata: `source_mailbox`, `source_uid`, `email_subject`, etc. (for email-synced records)
 - Reinvestment tagging: `reinvestment_tag`, `portfolio_category`, `target_ucc`, `tagged_at`, `tagged_by`
 
 ---
 
-## How to Run Migration
+## Next Steps
 
-### Step 1: Preview (Dry Run)
-```bash
-curl -X POST "https://your-domain/api/admin/migrate-actual-to-ncd-repayments?dry_run=true" \
-  -H "Authorization: Bearer <token>"
-```
-
-### Step 2: Execute Migration
-```bash
-curl -X POST "https://your-domain/api/admin/migrate-actual-to-ncd-repayments?dry_run=false" \
-  -H "Authorization: Bearer <token>"
-```
-
-### Step 3: Verify
-- Check Holdings page loads correctly
-- Check Reinvestment Tagging shows expected data
-- Check Historical Repayments export works
+1. **Delete `actual_repayments`** via DB Manager (it's now deprecated and may contain junk data)
+2. **Verify** Holdings and Reinvestment Tagging work correctly
 
 ---
 
 ## Rollback Plan
-If issues occur:
-1. The `actual_repayments` collection still exists in MongoDB (not deleted)
-2. Migrated records in `Ncd_Repayments` have `source: "migrated_from_actual_repayments"` for identification
-3. Code changes can be reverted via platform rollback feature
-
----
-
-## Post-Migration Cleanup (Optional)
-After confirming everything works:
-1. The `actual_repayments` collection can be deleted via DB Manager
-2. It's now marked as "deprecated" in the system
+If issues occur, code changes can be reverted via platform rollback feature.
 
 ## Schema Comparison
 
