@@ -14831,9 +14831,7 @@ async def _rebuild_ncd_expected_repayments() -> dict:
             continue
 
         cashflows_per_unit = bond.get("cashflows_per_unit") or []
-        if not cashflows_per_unit:
-            continue
-
+        
         try:
             inv_dt = datetime.fromisoformat(
                 trade["investment_date"].split("T")[0].split(" ")[0]
@@ -14853,55 +14851,152 @@ async def _rebuild_ncd_expected_repayments() -> dict:
         client_pan = trade.get("client_pan") or client.get("pan") or client.get("passport_number") or ""
         client_email = client.get("email") or ""
 
-        for cf in cashflows_per_unit:
-            cf_date_str = (cf.get("date") or "").split("T")[0].split(" ")[0]
-            if not cf_date_str:
-                continue
-            try:
-                cf_date = datetime.fromisoformat(cf_date_str)
-            except Exception:
-                continue
+        # Process cashflows_per_unit if available
+        if cashflows_per_unit:
+            for cf in cashflows_per_unit:
+                cf_date_str = (cf.get("date") or "").split("T")[0].split(" ")[0]
+                if not cf_date_str:
+                    continue
+                try:
+                    cf_date = datetime.fromisoformat(cf_date_str)
+                except Exception:
+                    continue
 
-            # Record-date convention — only entitled if investment_date <= record_date.
-            record_date = cf_date - _td(days=cutoff_days)
-            if inv_dt > record_date:
-                continue
+                # Record-date convention — only entitled if investment_date <= record_date.
+                record_date = cf_date - _td(days=cutoff_days)
+                if inv_dt > record_date:
+                    continue
 
-            interest_per_unit = cf.get("interest_per_unit", 0) or 0
-            principal_per_unit = cf.get("principal_per_unit", 0) or 0
-            gross_interest = round(interest_per_unit * units, 2)
-            principal_amount = round(principal_per_unit * units, 2)
-            total_gross = round(gross_interest + principal_amount, 2)
-            tds = round(gross_interest * 0.10, 2)  # 10% TDS on interest only
-            net_amount = round(total_gross - tds, 2)
+                interest_per_unit = cf.get("interest_per_unit", 0) or 0
+                principal_per_unit = cf.get("principal_per_unit", 0) or 0
+                gross_interest = round(interest_per_unit * units, 2)
+                principal_amount = round(principal_per_unit * units, 2)
+                total_gross = round(gross_interest + principal_amount, 2)
+                tds = round(gross_interest * 0.10, 2)  # 10% TDS on interest only
+                net_amount = round(total_gross - tds, 2)
 
-            if total_gross <= 0:
-                continue
+                if total_gross <= 0:
+                    continue
 
-            # Skip if already cited in Ncd_Repayments (Historical).
-            if _is_already_repaid(client_id, bond_code, bond_id, cf_date_str):
-                continue
+                # Skip if already cited in Ncd_Repayments (Historical).
+                if _is_already_repaid(client_id, bond_code, bond_id, cf_date_str):
+                    continue
 
-            rows.append({
-                "id": str(uuid.uuid4()),
-                "trade_id": trade.get("id"),
-                "bond_id": bond_id,
-                "bond_name": bond_name,
-                "bond_code": bond_code,
-                "client_id": client_id,
-                "client_name": client_name,
-                "client_pan": client_pan,
-                "client_email": client_email,
-                "type": "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined"),
-                "expected_date": cf_date_str,
-                "gross_amount": total_gross,
-                "tds_amount": tds,
-                "net_amount": net_amount,
-                "principal_component": principal_amount,
-                "interest_component": gross_interest,
-                "is_repaid": False,
-                "synced_at": today_iso,
-            })
+                rows.append({
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade.get("id"),
+                    "bond_id": bond_id,
+                    "bond_name": bond_name,
+                    "bond_code": bond_code,
+                    "client_id": client_id,
+                    "client_name": client_name,
+                    "client_pan": client_pan,
+                    "client_email": client_email,
+                    "type": "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined"),
+                    "expected_date": cf_date_str,
+                    "gross_amount": total_gross,
+                    "tds_amount": tds,
+                    "net_amount": net_amount,
+                    "principal_component": principal_amount,
+                    "interest_component": gross_interest,
+                    "is_repaid": False,
+                    "synced_at": today_iso,
+                })
+        else:
+            # FALLBACK: Use interest_payments and principal_payments if cashflows_per_unit is missing
+            # This matches the fallback logic in generate_client_cashflows()
+            interest_payments = bond.get("interest_payments") or []
+            principal_payments = bond.get("principal_payments") or []
+            
+            # Track cashflows by date to merge interest and principal on same date
+            cashflows_by_date = {}
+            
+            # Process interest payments
+            for ip in interest_payments:
+                ip_date_str = (ip.get("date") or "").split("T")[0].split(" ")[0]
+                if not ip_date_str:
+                    continue
+                try:
+                    ip_date = datetime.fromisoformat(ip_date_str)
+                except Exception:
+                    continue
+                
+                # Record-date convention
+                record_date = ip_date - _td(days=cutoff_days)
+                if inv_dt > record_date:
+                    continue
+                
+                interest_amount = (ip.get("amount", 0) or 0) * units
+                if interest_amount <= 0:
+                    continue
+                
+                if ip_date_str not in cashflows_by_date:
+                    cashflows_by_date[ip_date_str] = {"interest": 0, "principal": 0}
+                cashflows_by_date[ip_date_str]["interest"] += interest_amount
+            
+            # Process principal payments
+            total_units = bond.get("total_units", 1) or 1
+            bond_principal = bond.get("principal_amount", 0) or bond.get("face_value", 100000) or 100000
+            principal_per_unit = bond_principal / total_units if total_units > 0 else bond_principal
+            
+            for pp in principal_payments:
+                pp_date_str = (pp.get("date") or "").split("T")[0].split(" ")[0]
+                if not pp_date_str:
+                    continue
+                try:
+                    pp_date = datetime.fromisoformat(pp_date_str)
+                except Exception:
+                    continue
+                
+                # Record-date convention
+                record_date = pp_date - _td(days=cutoff_days)
+                if inv_dt > record_date:
+                    continue
+                
+                percentage = pp.get("percentage", 100) or 100
+                principal_amount = principal_per_unit * (percentage / 100) * units
+                if principal_amount <= 0:
+                    continue
+                
+                if pp_date_str not in cashflows_by_date:
+                    cashflows_by_date[pp_date_str] = {"interest": 0, "principal": 0}
+                cashflows_by_date[pp_date_str]["principal"] += principal_amount
+            
+            # Create rows from merged cashflows
+            for cf_date_str, amounts in cashflows_by_date.items():
+                gross_interest = round(amounts["interest"], 2)
+                principal_amount = round(amounts["principal"], 2)
+                total_gross = round(gross_interest + principal_amount, 2)
+                tds = round(gross_interest * 0.10, 2)
+                net_amount = round(total_gross - tds, 2)
+                
+                if total_gross <= 0:
+                    continue
+                
+                # Skip if already cited in Ncd_Repayments (Historical)
+                if _is_already_repaid(client_id, bond_code, bond_id, cf_date_str):
+                    continue
+                
+                rows.append({
+                    "id": str(uuid.uuid4()),
+                    "trade_id": trade.get("id"),
+                    "bond_id": bond_id,
+                    "bond_name": bond_name,
+                    "bond_code": bond_code,
+                    "client_id": client_id,
+                    "client_name": client_name,
+                    "client_pan": client_pan,
+                    "client_email": client_email,
+                    "type": "interest" if principal_amount == 0 else ("principal" if gross_interest == 0 else "combined"),
+                    "expected_date": cf_date_str,
+                    "gross_amount": total_gross,
+                    "tds_amount": tds,
+                    "net_amount": net_amount,
+                    "principal_component": principal_amount,
+                    "interest_component": gross_interest,
+                    "is_repaid": False,
+                    "synced_at": today_iso,
+                })
 
     await db.Ncd_Expected_Repayments.delete_many({})
     if rows:
