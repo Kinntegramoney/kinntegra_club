@@ -1227,7 +1227,8 @@ export default function ReinvestmentTagging() {
             ucc: alloc.ucc,
             amount: parseFloat(alloc.amount) || 0,
             portfolio: alloc.portfolio,
-            tag: alloc.tag || changes.reinvestment_tag
+            tag: alloc.tag || changes.reinvestment_tag,
+            investment_date: alloc.investment_date  // Include the user-selected investment date
           }));
         }
         
