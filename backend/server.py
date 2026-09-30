@@ -18276,36 +18276,48 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     
     # Index reinvestment_logs by (trade_id, expected_date) for efficient lookup
     reinv_logs_index: dict = {}
+    logs_with_tag_count = 0
     for log in all_reinv_logs:
         trade_id = log.get('trade_id')
         date_key = (log.get('expected_date') or log.get('cashflow_date') or "").split("T")[0].split(" ")[0]
+        cf_id = log.get('cashflow_id')
+        tag = log.get('reinvestment_tag')
+        
+        if tag:
+            logs_with_tag_count += 1
+            logger.info(f"REINV_LOG_INDEX: cf_id={cf_id}, trade_id={trade_id}, date_key={date_key}, tag={tag}")
+        
         if trade_id and date_key:
             reinv_logs_index[(trade_id, date_key)] = log
         # Also index by cashflow_id for backward compatibility
-        cf_id = log.get('cashflow_id')
         if cf_id:
             reinv_logs_index[cf_id] = log
     
-    logger.info(f"Reinv logs index: {len(reinv_logs_index)} entries, sample keys: {list(reinv_logs_index.keys())[:5]}")
+    logger.info(f"REINV_LOG_INDEX_SUMMARY: total_logs={len(all_reinv_logs)}, logs_with_tags={logs_with_tag_count}, index_size={len(reinv_logs_index)}")
 
     # Build cashflows_by_trade directly from Ncd_Expected_Repayments
     # Tagging state comes from reinvestment_logs only
     cashflows_by_trade: dict = {}
+    found_tags_count = 0
     for er in expected_rows:
         trade_id = er.get("trade_id")
         if not trade_id:
             continue
         date_key = (er.get("expected_date") or "").split("T")[0].split(" ")[0]
+        er_id = er.get("id")
         
-        # Get tagging state from reinvestment_logs
-        reinv_log = reinv_logs_index.get((trade_id, date_key)) or reinv_logs_index.get(er.get("id"), {})
+        # Try both lookup methods
+        log_by_tuple = reinv_logs_index.get((trade_id, date_key))
+        log_by_id = reinv_logs_index.get(er_id)
+        reinv_log = log_by_tuple or log_by_id or {}
         
-        # Debug: log when a tag is found
+        # Debug: log lookups for tagged entries
         if reinv_log.get('reinvestment_tag'):
-            logger.info(f"Found reinv_log for er.id={er.get('id')}, trade_id={trade_id}, date_key={date_key}, tag={reinv_log.get('reinvestment_tag')}")
+            found_tags_count += 1
+            logger.info(f"REINV_TAG_FOUND: er_id={er_id}, trade_id={trade_id}, date_key={date_key}, tag={reinv_log.get('reinvestment_tag')}, found_by={'tuple' if log_by_tuple else 'id'}")
         
         synthetic_cf = {
-            "id": er.get("id"),
+            "id": er_id,
             "trade_id": trade_id,
             "bond_id": er.get("bond_id"),
             "bond_code": er.get("bond_code"),
@@ -18327,6 +18339,8 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             "portfolio_category": reinv_log.get("portfolio_category"),
         }
         cashflows_by_trade.setdefault(trade_id, []).append(synthetic_cf)
+    
+    logger.info(f"REINV_SUMMARY: Total expected_rows={len(expected_rows)}, reinv_logs_index_size={len(reinv_logs_index)}, found_tags={found_tags_count}")
 
     # Historical rows from Ncd_Repayments — already-confirmed receipts. The
     # frontend renders these read-only with a muted colour so users can see
