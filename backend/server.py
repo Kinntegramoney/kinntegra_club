@@ -14667,7 +14667,12 @@ async def broker_ncd_summary(current_user: dict = Depends(get_current_user)):
 
     # ---- Associate (MFD/RIA) rollup - SUPERUSER only ----
     by_associate = []
-    is_superuser = current_user.get("pan") == "SUPERUSER"
+    # Check both pan and login_id for SUPERUSER (users collection may store it in either field)
+    is_superuser = (
+        current_user.get("pan") == "SUPERUSER" or 
+        current_user.get("login_id") == "SUPERUSER" or
+        (current_user.get("name") or "").upper() == "SUPER USER"
+    )
     if is_superuser:
         associate_agg: dict = {}
         # Get all MFD/RIA partners for lookup
