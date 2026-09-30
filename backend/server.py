@@ -4776,34 +4776,15 @@ async def broker_approve_trade(
             
             logger.info(f"Updated bond {bond.get('name')} units_sold from {current_units_sold} to {new_units_sold}")
 
-        # Generate `holding_cashflows` for this trade and refresh
-        # `Ncd_Expected_Repayments` so the client's Holdings → NCD and the
-        # Reinv Tag page see the new investment immediately.
-        # (Mirrors the same generate_client_cashflows + rebuild pattern used
-        # by /api/trades/{id}/tag-and-allocate.)
-        cashflows_generated = 0
-        if bond:
-            try:
-                trade_with_updates = {**trade, **update_data}
-                cashflows = generate_client_cashflows(trade_with_updates, bond)
-                if cashflows:
-                    for cf in cashflows:
-                        cf['client_id'] = trade.get('client_id')
-                        cf['bond_id'] = trade.get('bond_id')
-                        cf.setdefault('trade_id', trade_id)
-                        cf.setdefault('type', 'projected')
-                    await db.holding_cashflows.insert_many(cashflows)
-                    cashflows_generated = len(cashflows)
-                    logger.info(
-                        f"Generated {cashflows_generated} holding_cashflows for approved trade {trade_id}"
-                    )
-            except Exception as exc:
-                logger.error(f"[approval] holding_cashflows generation failed for {trade_id}: {exc}")
-
-            try:
-                await _rebuild_ncd_expected_repayments()
-            except Exception as exc:
-                logger.error(f"[approval] expected_repayments rebuild failed for {trade_id}: {exc}")
+        # Generate expected repayments for this trade by rebuilding
+        # `Ncd_Expected_Repayments`. This is the single source of truth for
+        # expected payments - no need for separate holding_cashflows.
+        # Tagging state is stored in `reinvestment_logs` collection.
+        try:
+            await _rebuild_ncd_expected_repayments()
+            logger.info(f"Rebuilt Ncd_Expected_Repayments after approving trade {trade_id}")
+        except Exception as exc:
+            logger.error(f"[approval] expected_repayments rebuild failed for {trade_id}: {exc}")
         
         return {
             "message": "Trade approved successfully",
@@ -4811,7 +4792,6 @@ async def broker_approve_trade(
             "status": "approved",
             "units": trade.get('units'),
             "bond_name": trade.get('bond_name'),
-            "cashflows_generated": cashflows_generated,
         }
     
     elif action.lower() == "reject":
@@ -18015,29 +17995,39 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
         expected_query, {"_id": 0}
     ).to_list(50000)
 
-    cf_state_index: dict = {}
-    async for cf in db.holding_cashflows.find({}, {"_id": 0}):
-        date_key = (cf.get("date") or "").split("T")[0].split(" ")[0]
-        # Key by (trade_id, date) — a single client can hold multiple trades
-        # on the same bond/date, and each trade has its own holding_cashflows
-        # row. Keying on (client_id, bond_id, date) collapses them onto one
-        # row, which causes duplicate `id`s in the API response and ties
-        # together two checkboxes on the Reinv Tag page.
-        if cf.get("trade_id") and date_key:
-            cf_state_index[(cf["trade_id"], date_key)] = cf
+    # Get all existing reinvestment logs for tag status
+    # This is now the ONLY source of tagging state (no holding_cashflows dependency)
+    all_reinv_logs = await db.reinvestment_logs.find(
+        {"approval_status": {"$nin": ["cancelled", "auto_cancelled", "rejected"]}},
+        {"_id": 0}
+    ).to_list(50000)
+    
+    # Index reinvestment_logs by (trade_id, expected_date) for efficient lookup
+    reinv_logs_index: dict = {}
+    for log in all_reinv_logs:
+        trade_id = log.get('trade_id')
+        date_key = (log.get('expected_date') or log.get('cashflow_date') or "").split("T")[0].split(" ")[0]
+        if trade_id and date_key:
+            reinv_logs_index[(trade_id, date_key)] = log
+        # Also index by cashflow_id for backward compatibility
+        cf_id = log.get('cashflow_id')
+        if cf_id:
+            reinv_logs_index[cf_id] = log
 
+    # Build cashflows_by_trade directly from Ncd_Expected_Repayments
+    # Tagging state comes from reinvestment_logs only
     cashflows_by_trade: dict = {}
     for er in expected_rows:
         trade_id = er.get("trade_id")
         if not trade_id:
             continue
         date_key = (er.get("expected_date") or "").split("T")[0].split(" ")[0]
-        cf_state = cf_state_index.get((trade_id, date_key), {})
+        
+        # Get tagging state from reinvestment_logs
+        reinv_log = reinv_logs_index.get((trade_id, date_key)) or reinv_logs_index.get(er.get("id"), {})
+        
         synthetic_cf = {
-            # Preserve holding_cashflows.id when we have one — that's what
-            # `reinvestment_logs.cashflow_id` references, so existing tag
-            # writes / approvals continue to round-trip correctly.
-            "id": cf_state.get("id") or er.get("id"),
+            "id": er.get("id"),
             "trade_id": trade_id,
             "bond_id": er.get("bond_id"),
             "bond_code": er.get("bond_code"),
@@ -18045,22 +18035,18 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             "date": er.get("expected_date"),
             "principal_component": er.get("principal_component", 0) or 0,
             "interest_component": er.get("interest_component", 0) or 0,
-            "type": cf_state.get("type") or er.get("type", "coupon"),
-            "is_maturity": cf_state.get("is_maturity", False),
-            "is_prepayment_adjusted": cf_state.get("is_prepayment_adjusted", False),
-            # Tagging state stays sourced from holding_cashflows.
-            "reinvestment_tag": cf_state.get("reinvestment_tag"),
-            "approval_status": cf_state.get("approval_status"),
-            "client_approved": cf_state.get("client_approved", False),
-            "kinntegra_api_submitted": cf_state.get("kinntegra_api_submitted", False),
-            # Split allocations (so the Reinv Tag "Tagged (Pending)" view
-            # can render every row — including sub-₹1000 residuals that
-            # were saved to `ucc_allocations` but don't live in the base
-            # `target_ucc` / `portfolio_category` fields).
-            "has_split_allocations": cf_state.get("has_split_allocations", False),
-            "ucc_allocations": cf_state.get("ucc_allocations"),
-            "target_ucc": cf_state.get("target_ucc"),
-            "portfolio_category": cf_state.get("portfolio_category"),
+            "type": er.get("type", "coupon"),
+            "is_maturity": er.get("type") == "maturity" or er.get("principal_component", 0) > 0,
+            "is_prepayment_adjusted": False,
+            # Tagging state from reinvestment_logs ONLY
+            "reinvestment_tag": reinv_log.get("reinvestment_tag"),
+            "approval_status": reinv_log.get("approval_status"),
+            "client_approved": reinv_log.get("client_approved", False),
+            "kinntegra_api_submitted": reinv_log.get("kinntegra_api_submitted", False),
+            "has_split_allocations": reinv_log.get("has_split_allocations", False),
+            "ucc_allocations": reinv_log.get("ucc_allocations"),
+            "target_ucc": reinv_log.get("target_ucc"),
+            "portfolio_category": reinv_log.get("portfolio_category"),
         }
         cashflows_by_trade.setdefault(trade_id, []).append(synthetic_cf)
 
@@ -18084,11 +18070,7 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                 repayments_by_trade[trade_id] = []
             repayments_by_trade[trade_id].append(ar)
     
-    # Get all existing reinvestment logs for tag status
-    all_reinv_logs = await db.reinvestment_logs.find(
-        {"approval_status": {"$nin": ["cancelled", "auto_cancelled", "rejected"]}},
-        {"_id": 0}
-    ).to_list(50000)
+    # Re-index reinvestment_logs by cashflow_id for later use
     reinv_logs_by_cashflow = {}
     for log in all_reinv_logs:
         cf_id = log.get('cashflow_id')
@@ -18218,9 +18200,9 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             # mislabelled as "Not Tagged" even after the broker had
             # submitted/approved it (visible on Holdings → NCD → Reinv Tag).
             repay_date_key = (repay_date or '').split('T')[0].split(' ')[0]
-            cf_state = cf_state_index.get((trade['id'], repay_date_key), {})
-            cashflow_id = cf_state.get('id') or f"repay_{repay.get('id', '')}"
-            reinv_log = reinv_logs_by_cashflow.get(cashflow_id, {})
+            # Get tagging state from reinvestment_logs (no holding_cashflows dependency)
+            reinv_log = reinv_logs_index.get((trade['id'], repay_date_key), {})
+            cashflow_id = reinv_log.get('cashflow_id') or f"repay_{repay.get('id', '')}"
             
             if not repay_net_amount:
                 continue
@@ -18243,23 +18225,13 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
             repay_type = "prepayment"
 
             # Resolve tagging state with the same fallback chain used for the
-            # expected-cashflow branch (reinvestment_logs → holding_cashflows
-            # → default). Without this, entries already submitted/approved on
+            # expected-cashflow branch (reinvestment_logs only).
+            # Without this, entries already submitted/approved on
             # Holdings appear as "Not Tagged" on the Reinv Tag page.
-            reinvestment_tag = (
-                reinv_log.get('reinvestment_tag')
-                or cf_state.get('reinvestment_tag')
-                or 'not_tagged'
-            )
-            approval_status = (
-                reinv_log.get('approval_status')
-                or cf_state.get('approval_status')
-                or 'none'
-            )
-            client_approved = reinv_log.get(
-                'client_approved', cf_state.get('client_approved', False)
-            )
-            kinntegra_submitted = cf_state.get('kinntegra_api_submitted', False)
+            reinvestment_tag = reinv_log.get('reinvestment_tag') or 'not_tagged'
+            approval_status = reinv_log.get('approval_status') or 'none'
+            client_approved = reinv_log.get('client_approved', False)
+            kinntegra_submitted = reinv_log.get('kinntegra_api_submitted', False)
             if kinntegra_submitted:
                 approval_status = 'submitted'
                 client_approved = True
@@ -18290,11 +18262,11 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
                 "auto_tagged": repay.get('auto_tagged', False),
                 "source": "actual_repayment",
                 "repayment_id": repay.get('id', ''),
-                "target_ucc": cf_state.get('target_ucc'),
-                "portfolio_category": cf_state.get('portfolio_category'),
-                "has_split_allocations": cf_state.get('has_split_allocations', False),
+                "target_ucc": reinv_log.get('target_ucc'),
+                "portfolio_category": reinv_log.get('portfolio_category'),
+                "has_split_allocations": reinv_log.get('has_split_allocations', False),
                 "allocations": _distribute_allocation_net_amounts(
-                    cf_state.get('ucc_allocations') or [], repay_net_amount
+                    reinv_log.get('ucc_allocations') or [], repay_net_amount
                 )
             })
         
@@ -18704,20 +18676,24 @@ async def get_upcoming_reinvestments(current_user: dict = Depends(get_current_us
     # rows often have an empty `trade_id` (especially for IMAP-synced
     # actuals): primary key is (trade_id, date), fallback key is
     # (client_id, bond_id, date).
+    # Now using reinvestment_logs instead of holding_cashflows
     submitted_cf_keys: set = set()
     submitted_cf_alt_keys: set = set()
-    for (tid, dkey), cf in cf_state_index.items():
-        tag = (cf.get('reinvestment_tag') or '').strip().lower()
+    for log in all_reinv_logs:
+        tag = (log.get('reinvestment_tag') or '').strip().lower()
         if not tag or tag in {'not_tagged', 'none'}:
             continue
         is_submitted = (
-            cf.get('kinntegra_api_submitted')
-            or cf.get('client_approved')
-            or (cf.get('approval_status') or '').strip().lower() in _SUBMITTED_STATUSES
+            log.get('kinntegra_api_submitted')
+            or log.get('client_approved')
+            or (log.get('approval_status') or '').strip().lower() in _SUBMITTED_STATUSES
         )
         if is_submitted:
-            submitted_cf_keys.add((tid, dkey))
-            submitted_cf_alt_keys.add((cf.get('client_id'), cf.get('bond_id'), dkey))
+            tid = log.get('trade_id')
+            dkey = (log.get('expected_date') or log.get('cashflow_date') or '').split('T')[0].split(' ')[0]
+            if tid and dkey:
+                submitted_cf_keys.add((tid, dkey))
+                submitted_cf_alt_keys.add((log.get('client_id'), log.get('bond_id'), dkey))
 
     historical: list = []
     for hr in historical_rows:
